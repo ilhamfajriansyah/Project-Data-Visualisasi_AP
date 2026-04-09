@@ -17,6 +17,16 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────
+# LOAD CSS DARI FILE EKSTERNAL
+# ─────────────────────────────────────────────
+def load_css(filepath: str):
+    with open(filepath, "r", encoding="utf-8") as f:
+        css = f.read()
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+load_css("style.css")
+
+
+# ─────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────
 defaults = {
@@ -29,147 +39,17 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ─────────────────────────────────────────────
-# CSS
-# ─────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-*, html, body { font-family: 'Inter', sans-serif !important; }
-
-.stApp { background: #f5f6fa !important; }
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding: 0 !important; max-width: 100% !important; }
-
-/* ══ SIDEBAR ══ */
-[data-testid="stSidebar"] {
-    background: #ffffff !important;
-    border-right: 1px solid #e8eaed !important;
-    min-width: 220px !important;
-    max-width: 220px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    visibility: visible !important;
-    overflow: visible !important;
-    transform: none !important;
-    transition: none !important;
-}
-[data-testid="stSidebarContent"] {
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow-y: auto !important;
-    height: 100vh !important;
-}
-[data-testid="collapsedControl"],
-button[data-testid="baseButton-header"] {
-    display: none !important;
-    visibility: hidden !important;
-}
-[data-testid="stSidebar"][aria-expanded="false"] {
-    min-width: 220px !important;
-    transform: translateX(0) !important;
-}
-
-/* ── SIDEBAR BUTTON ── */
-[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-    background: transparent !important;
-    color: #5f6368 !important;
-    border: none !important;
-    border-radius: 6px !important;
-    padding: 7px 12px 7px 36px !important;
-    font-size: 13px !important;
-    font-weight: 400 !important;
-    text-align: left !important;
-    box-shadow: none !important;
-    width: 100% !important;
-    margin: 1px 0 !important;
-    transform: none !important;
-    transition: background 0.15s !important;
-}
-[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
-    background: #f1f3f4 !important;
-    color: #202124 !important;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-/* ── BUTTON UTAMA ── */
-div[data-testid="stButton"] > button {
-    background: #1a73e8 !important; color: #fff !important;
-    border: none !important; border-radius: 8px !important;
-    padding: 10px 20px !important; font-size: 14px !important;
-    font-weight: 600 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
-    transition: all 0.2s !important;
-}
-div[data-testid="stButton"] > button:hover {
-    background: #1557b0 !important;
-    box-shadow: 0 4px 12px rgba(26,115,232,0.35) !important;
-    transform: translateY(-1px) !important;
-}
-
-/* ── KPI METRIC ── */
-[data-testid="metric-container"] {
-    background: #fff !important; border-radius: 10px !important;
-    padding: 14px 16px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-    border: 1px solid #e8eaed !important;
-}
-[data-testid="metric-container"] > label,
-[data-testid="metric-container"] > div > label {
-    font-size: 11px !important; color: #5f6368 !important; font-weight: 500 !important;
-}
-[data-testid="stMetricValue"] {
-    font-size: 18px !important; font-weight: 700 !important; color: #202124 !important;
-}
-[data-testid="stMetricDelta"] { font-size: 11px !important; font-weight: 500 !important; }
-[data-testid="stMetricDelta"] svg { display: none; }
-
-/* ── SELECTBOX ── */
-[data-testid="stSelectbox"] label { color: #202124 !important; font-size: 12px !important; }
-[data-testid="stSelectbox"] > div > div {
-    border-radius: 20px !important; border-color: #dadce0 !important;
-    background: #fff !important; color: #202124 !important; font-size: 13px !important;
-}
-
-/* ── DATAFRAME ── */
-[data-testid="stDataFrame"] {
-    border-radius: 8px !important; border: 1px solid #e8eaed !important;
-}
-
-/* ── CARD ── */
-.nad-card {
-    background: #fff; border-radius: 10px; padding: 18px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e8eaed;
-    margin-bottom: 14px;
-}
-.nad-card-title { font-size: 14px; font-weight: 700; color: #202124; margin: 0 0 2px 0; }
-.nad-card-sub   { font-size: 11px; color: #9aa0a6; margin: 0 0 12px 0; }
-
-/* ── NAV GROUP ── */
-.nav-group {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 16px 4px 12px;
-    font-size: 13px; font-weight: 600; color: #202124;
-}
-
-/* ── ACTIVE NAV ── */
-.nav-active {
-    background: #e8f0fe; border-radius: 6px;
-    padding: 7px 12px 7px 36px; margin: 1px 8px;
-    font-size: 13px; font-weight: 600; color: #1a73e8;
-}
-</style>
-""", unsafe_allow_html=True)
-
 
 # ─────────────────────────────────────────────
 # DATABASE & DATA
 # ─────────────────────────────────────────────
 @st.cache_resource
 def get_engine():
-    url = (f"postgresql://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASSWORD','postgres')}"
-           f"@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}"
-           f"/{os.getenv('DB_NAME','dashboard_tenant')}")
+    url = (
+        f"postgresql://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASSWORD','postgres')}"
+        f"@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}"
+        f"/{os.getenv('DB_NAME','dashboard_tenant')}"
+    )
     return create_engine(url)
 
 @st.cache_data(ttl=300)
@@ -181,18 +61,25 @@ def load_data():
 
 def generate_dummy_data():
     np.random.seed(42)
-    perusahaan = ["PT BUDI PUTRA BOGAJAYA","PT DEWATAAGUNG WIBAWA","PT PERTAMINA PATRA NIAGA",
-                  "PT KIJANG WAHANA KREATIFA","PT BOGAJAYA MEGAH ABADI","PT AQUARUS GEMILANG",
-                  "PT TAURUS GEMILANG","PT GAPURA ANGKASA","PT GARUDA MAINTENANCE"]
-    brands = ["Bakso Pak Dj","Bon Bon Voy","Pertamina","Bon Bon Voy","Kepompong",
-              "Majapahit","Wingman","GAUSD","GMFA"]
-    bulan  = ["January","February","March","April","May","June",
-              "July","August","September","October","November","December"]
+    perusahaan = [
+        "PT BUDI PUTRA BOGAJAYA", "PT DEWATAAGUNG WIBAWA", "PT PERTAMINA PATRA NIAGA",
+        "PT KIJANG WAHANA KREATIFA", "PT BOGAJAYA MEGAH ABADI", "PT AQUARUS GEMILANG",
+        "PT TAURUS GEMILANG", "PT GAPURA ANGKASA", "PT GARUDA MAINTENANCE"
+    ]
+    brands = [
+        "Bakso Pak Dj", "Bon Bon Voy", "Pertamina", "Bon Bon Voy", "Kepompong",
+        "Majapahit", "Wingman", "GAUSD", "GMFA"
+    ]
+    bulan = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+    ]
     rows = []
     for _ in range(600):
         idx = np.random.randint(0, len(perusahaan))
         rows.append({
-            "perusahaan":      perusahaan[idx], "brand": brands[idx],
+            "perusahaan":      perusahaan[idx],
+            "brand":           brands[idx],
             "terminal":        np.random.choice(["Terminal 1","Terminal 2"], p=[0.5,0.5]),
             "kode_ruang":      np.random.choice(["FB-02-02","POP-22-9","FTC","POP-22-8","P1"]),
             "bidang_usaha":    np.random.choice(["Food & Beverage","Retail","Services","Banking"]),
@@ -216,8 +103,10 @@ def fmt_rp(v):
     if v >= 1_000_000:         return f"Rp {v/1_000_000:.2f}M"
     return f"Rp {v:,.0f}"
 
-BULAN = ["January","February","March","April","May","June",
-         "July","August","September","October","November","December"]
+BULAN = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+]
 
 
 # ══════════════════════════════════════════════
@@ -269,7 +158,7 @@ def show_sidebar():
         # Traffic Monitor
         _nav_item("📈", "Traffic Monitor")
 
-        # User info bawah
+        # User info di bawah
         st.markdown("<br>" * 5, unsafe_allow_html=True)
         st.markdown("<hr style='border-color:#e8eaed;margin:0;'>", unsafe_allow_html=True)
         initial = st.session_state.user_name[0].upper() if st.session_state.user_name else "U"
@@ -288,6 +177,7 @@ def show_sidebar():
 
 
 def _nav_item(icon, label):
+    """Menu item level 1 (tidak punya sub-menu)"""
     is_active = st.session_state.active_menu == label
     if is_active:
         st.markdown(f"""
@@ -299,8 +189,10 @@ def _nav_item(icon, label):
     else:
         c1, c2 = st.columns([1, 5])
         with c1:
-            st.markdown(f"<div style='padding:7px 0 0 12px;font-size:14px;'>{icon}</div>",
-                        unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='padding:7px 0 0 12px;font-size:14px;'>{icon}</div>",
+                unsafe_allow_html=True
+            )
         with c2:
             if st.button(label, key=f"nav_{label}", use_container_width=True):
                 st.session_state.active_menu = label
@@ -308,6 +200,7 @@ def _nav_item(icon, label):
 
 
 def _nav_sub(label):
+    """Sub-menu item (dengan indentasi)"""
     is_active = st.session_state.active_menu == label
     if is_active:
         st.markdown(f'<div class="nav-active">{label}</div>', unsafe_allow_html=True)
@@ -323,12 +216,18 @@ def _nav_sub(label):
 def show_topnav(title="Non Aeronautical Dashboard"):
     n1, n2, n3 = st.columns([3, 4, 3])
     with n1:
-        st.markdown(f"""
-        <h2 style="margin:0;font-size:20px;font-weight:700;color:#202124;padding-top:6px;">
-            {title}</h2>""", unsafe_allow_html=True)
+        st.markdown(
+            f'<h2 style="margin:0;font-size:20px;font-weight:700;color:#202124;'
+            f'padding-top:6px;">{title}</h2>',
+            unsafe_allow_html=True
+        )
     with n2:
-        st.text_input("search", placeholder="🔍  Searching anything...",
-                      label_visibility="collapsed", key="search_bar")
+        st.text_input(
+            "search",
+            placeholder="🔍  Searching anything...",
+            label_visibility="collapsed",
+            key="search_bar"
+        )
     with n3:
         initial = st.session_state.user_name[0].upper() if st.session_state.user_name else "U"
         st.markdown(f"""
@@ -359,11 +258,17 @@ def page_revenue_sharing(df_raw):
     # Filter bar
     fb1, fb2, fb3, _, fe1, fe2 = st.columns([2, 2, 2, 2, 1, 1])
     with fb1:
-        sel_terminal = st.selectbox("", ["All Terminal"]+sorted(df_raw["terminal"].unique().tolist()), key="f_terminal")
+        sel_terminal = st.selectbox(
+            "", ["All Terminal"] + sorted(df_raw["terminal"].unique().tolist()),
+            key="f_terminal"
+        )
     with fb2:
-        sel_tahun = st.selectbox("", ["Semua Tahun"]+sorted(df_raw["tahun"].unique().tolist(), reverse=True), key="f_tahun")
+        sel_tahun = st.selectbox(
+            "", ["Semua Tahun"] + sorted(df_raw["tahun"].unique().tolist(), reverse=True),
+            key="f_tahun"
+        )
     with fb3:
-        sel_masa = st.selectbox("", ["Semua Bulan"]+BULAN, key="f_masa")
+        sel_masa = st.selectbox("", ["Semua Bulan"] + BULAN, key="f_masa")
     with fe1:
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         st.button("⇅", key="btn_share", use_container_width=True)
@@ -380,7 +285,7 @@ def page_revenue_sharing(df_raw):
     if sel_masa     != "Semua Bulan":  df = df[df["masa_jasa"] == sel_masa]
 
     # KPI Cards
-    k1,k2,k3,k4,k5,k6,k7 = st.columns(7)
+    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
     with k1: st.metric("Real Omzet",       fmt_rp(df["real_omzet"].sum()),      "+5.2% vs last month")
     with k2: st.metric("Min Omzet",        fmt_rp(df["min_omzet"].sum()),       "↑")
     with k3: st.metric("Pendapatan Sewa",  fmt_rp(df["pendapatan_sewa"].sum()), "↑")
@@ -391,37 +296,46 @@ def page_revenue_sharing(df_raw):
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # Row 2: Chart + Donut + Insight
+    # Row 2: Line Chart + Donut + Insight
     col_line, col_donut, col_insight = st.columns([4, 3, 3])
 
     with col_line:
         st.markdown('<div class="nad-card">', unsafe_allow_html=True)
         rc1, rc2 = st.columns([3, 1])
-        with rc1: st.markdown('<p class="nad-card-title">Pendapatan 2026</p>', unsafe_allow_html=True)
-        with rc2: st.selectbox("", ["This Week","This Month","This Year"], key="sel_line", label_visibility="collapsed")
+        with rc1:
+            st.markdown('<p class="nad-card-title">Pendapatan 2026</p>', unsafe_allow_html=True)
+        with rc2:
+            st.selectbox("", ["This Week","This Month","This Year"],
+                         key="sel_line", label_visibility="collapsed")
 
         df_line = df.groupby("masa_jasa").agg(
-            pend_sewa=("pendapatan_sewa","sum"),
-            pend_rs=("pendapatan_rs","sum"),
-            others=("kontribusi","sum")
+            pend_sewa=("pendapatan_sewa", "sum"),
+            pend_rs=("pendapatan_rs", "sum"),
+            others=("kontribusi", "sum")
         ).reset_index()
         df_line["masa_jasa"] = pd.Categorical(df_line["masa_jasa"], categories=BULAN, ordered=True)
         df_line = df_line.sort_values("masa_jasa")
         df_line["short"] = df_line["masa_jasa"].astype(str).str[:3]
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_line["short"], y=df_line["pend_sewa"],
+        fig.add_trace(go.Scatter(
+            x=df_line["short"], y=df_line["pend_sewa"],
             mode="lines+markers", name="Pendapatan Sewa",
-            line=dict(color="#1a73e8", width=2), marker=dict(size=5)))
-        fig.add_trace(go.Scatter(x=df_line["short"], y=df_line["pend_rs"],
+            line=dict(color="#1a73e8", width=2), marker=dict(size=5)
+        ))
+        fig.add_trace(go.Scatter(
+            x=df_line["short"], y=df_line["pend_rs"],
             mode="lines+markers", name="Pendapatan RS",
-            line=dict(color="#34a853", width=2), marker=dict(size=5)))
-        fig.add_trace(go.Scatter(x=df_line["short"], y=df_line["others"],
+            line=dict(color="#34a853", width=2), marker=dict(size=5)
+        ))
+        fig.add_trace(go.Scatter(
+            x=df_line["short"], y=df_line["others"],
             mode="lines+markers", name="Others",
-            line=dict(color="#fbbc04", width=2), marker=dict(size=5)))
+            line=dict(color="#fbbc04", width=2), marker=dict(size=5)
+        ))
         fig.update_layout(
             height=230, plot_bgcolor="#fff", paper_bgcolor="#fff",
-            margin=dict(t=5,b=0,l=0,r=0),
+            margin=dict(t=5, b=0, l=0, r=0),
             legend=dict(orientation="h", y=-0.25, font=dict(size=10, color="#5f6368")),
             xaxis=dict(showgrid=False, tickfont=dict(size=10, color="#9aa0a6")),
             yaxis=dict(showgrid=True, gridcolor="#f1f3f4", tickfont=dict(size=10, color="#9aa0a6")),
@@ -432,14 +346,19 @@ def page_revenue_sharing(df_raw):
     with col_donut:
         st.markdown('<div class="nad-card">', unsafe_allow_html=True)
         dc1, dc2 = st.columns([3, 1])
-        with dc1: st.markdown('<p class="nad-card-title">Terminal Contribution</p>', unsafe_allow_html=True)
-        with dc2: st.selectbox("", ["This Week","This Month"], key="sel_donut", label_visibility="collapsed")
+        with dc1:
+            st.markdown('<p class="nad-card-title">Terminal Contribution</p>', unsafe_allow_html=True)
+        with dc2:
+            st.selectbox("", ["This Week","This Month"],
+                         key="sel_donut", label_visibility="collapsed")
 
         df_donut = df.groupby("terminal")["kontribusi"].sum().reset_index()
-        fig_d = px.pie(df_donut, names="terminal", values="kontribusi",
-                       hole=0.55, color_discrete_sequence=["#202124","#dadce0"])
+        fig_d = px.pie(
+            df_donut, names="terminal", values="kontribusi",
+            hole=0.55, color_discrete_sequence=["#202124","#dadce0"]
+        )
         fig_d.update_layout(
-            height=230, margin=dict(t=0,b=10,l=0,r=0), showlegend=True,
+            height=230, margin=dict(t=0, b=10, l=0, r=0), showlegend=True,
             legend=dict(orientation="v", x=0.85, y=0.5, font=dict(size=11, color="#5f6368")),
             paper_bgcolor="#fff"
         )
@@ -469,12 +388,19 @@ def page_revenue_sharing(df_raw):
 
     # Row 3: Revenue/Sqm + Best 3
     col_rev, col_best = st.columns([1, 1])
+
     with col_rev:
         st.markdown('<div class="nad-card">', unsafe_allow_html=True)
-        rh1, rh2 = st.columns([3,1])
-        with rh1: st.markdown('<p class="nad-card-title">Revenue Per Sqm</p>', unsafe_allow_html=True)
-        with rh2: st.markdown("<p style='font-size:12px;color:#1a73e8;text-align:right;margin:2px 0;'>View All ▾</p>", unsafe_allow_html=True)
-        df_rev = df.groupby(["perusahaan","brand","kode_ruang"]).agg(rev=("rev_sqm","mean")).reset_index().head(5)
+        rh1, rh2 = st.columns([3, 1])
+        with rh1:
+            st.markdown('<p class="nad-card-title">Revenue Per Sqm</p>', unsafe_allow_html=True)
+        with rh2:
+            st.markdown(
+                "<p style='font-size:12px;color:#1a73e8;text-align:right;margin:2px 0;'>View All ▾</p>",
+                unsafe_allow_html=True
+            )
+        df_rev = df.groupby(["perusahaan","brand","kode_ruang"]).agg(
+            rev=("rev_sqm","mean")).reset_index().head(5)
         df_rev["rev"] = df_rev["rev"].apply(lambda x: f"Rp{x:,.0f}")
         df_rev.columns = ["Tenant","Brand","Kode Ruang","Rev/Sqm"]
         st.dataframe(df_rev, use_container_width=True, hide_index=True, height=160)
@@ -482,24 +408,33 @@ def page_revenue_sharing(df_raw):
 
     with col_best:
         st.markdown('<div class="nad-card">', unsafe_allow_html=True)
-        bh1, bh2 = st.columns([3,1])
-        with bh1: st.markdown('<p class="nad-card-title">Best 3 Achievement</p>', unsafe_allow_html=True)
-        with bh2: st.markdown("<p style='font-size:12px;color:#1a73e8;text-align:right;margin:2px 0;'>View All ▾</p>", unsafe_allow_html=True)
-        df_best = df.groupby(["perusahaan","brand"]).agg(r=("real_omzet","sum"), m=("min_omzet","sum")).reset_index()
+        bh1, bh2 = st.columns([3, 1])
+        with bh1:
+            st.markdown('<p class="nad-card-title">Best 3 Achievement</p>', unsafe_allow_html=True)
+        with bh2:
+            st.markdown(
+                "<p style='font-size:12px;color:#1a73e8;text-align:right;margin:2px 0;'>View All ▾</p>",
+                unsafe_allow_html=True
+            )
+        df_best = df.groupby(["perusahaan","brand"]).agg(
+            r=("real_omzet","sum"), m=("min_omzet","sum")).reset_index()
         df_best["Rev/Sqm"] = (df_best["r"] / df_best["m"] * 100).apply(lambda x: f"Rp{x:,.0f}")
         df_best = df_best.nlargest(3, "r")[["perusahaan","brand","Rev/Sqm"]]
         df_best.columns = ["Tenant","Brand","Rev/Sqm"]
         st.dataframe(df_best, use_container_width=True, hide_index=True, height=160)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Row 4: Tabel Detail
+    # Row 4: Tabel Detail Lengkap
     st.markdown('<div class="nad-card">', unsafe_allow_html=True)
-    th1, th2 = st.columns([3,1])
+    th1, th2 = st.columns([3, 1])
     with th1:
         st.markdown('<p class="nad-card-title">Revenue Per Sqm</p>', unsafe_allow_html=True)
         st.markdown('<p class="nad-card-sub">Data lengkap seluruh tenant</p>', unsafe_allow_html=True)
     with th2:
-        st.markdown("<p style='font-size:12px;color:#1a73e8;text-align:right;margin:4px 0;'>View All ▾</p>", unsafe_allow_html=True)
+        st.markdown(
+            "<p style='font-size:12px;color:#1a73e8;text-align:right;margin:4px 0;'>View All ▾</p>",
+            unsafe_allow_html=True
+        )
     df_det = df[["perusahaan","brand","kode_ruang","min_omzet","real_omzet","kontribusi"]].copy()
     df_det["min_omzet"]  = df_det["min_omzet"].apply(lambda x: f"Rp {x:,.0f}")
     df_det["real_omzet"] = df_det["real_omzet"].apply(lambda x: f"Rp {x:,.0f}")
@@ -516,7 +451,10 @@ def page_import():
     show_topnav("Import Manager")
     st.markdown('<div class="nad-card">', unsafe_allow_html=True)
     st.markdown('<p class="nad-card-title">📤 Upload File Excel</p>', unsafe_allow_html=True)
-    st.markdown('<p class="nad-card-sub">Import data pendapatan tenant dari file .xlsx ke PostgreSQL</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="nad-card-sub">Import data pendapatan tenant dari file .xlsx ke PostgreSQL</p>',
+        unsafe_allow_html=True
+    )
     uploaded = st.file_uploader("Pilih file .xlsx", type=["xlsx","xls"])
     if uploaded:
         try:
@@ -531,7 +469,7 @@ def page_import():
                 except Exception as e:
                     st.error(f"❌ Gagal simpan: {e}")
         except Exception as e:
-            st.error(f"❌ Gagal baca: {e}")
+            st.error(f"❌ Gagal baca file: {e}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -544,7 +482,8 @@ def page_coming_soon(name):
     <div class="nad-card" style="text-align:center;padding:80px 40px;margin-top:20px;">
         <div style="font-size:52px;margin-bottom:16px;">🚧</div>
         <div style="font-size:18px;font-weight:700;color:#202124;margin-bottom:8px;">Coming Soon</div>
-        <div style="font-size:13px;color:#9aa0a6;">Halaman <b>{name}</b> sedang dalam pengembangan</div>
+        <div style="font-size:13px;color:#9aa0a6;">
+            Halaman <b>{name}</b> sedang dalam pengembangan</div>
     </div>""", unsafe_allow_html=True)
 
 
