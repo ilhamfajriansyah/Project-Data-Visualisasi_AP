@@ -20,9 +20,11 @@ st.set_page_config(
 # LOAD CSS DARI FILE EKSTERNAL
 # ─────────────────────────────────────────────
 def load_css(filepath: str):
-    with open(filepath, "r", encoding="utf-8") as f:
+    """Baca file CSS dan inject ke Streamlit"""
+    with open(filepath, "r") as f:
         css = f.read()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
 load_css("style.css")
 
 
