@@ -20,8 +20,7 @@ st.set_page_config(
 # LOAD CSS DARI FILE EKSTERNAL
 # ─────────────────────────────────────────────
 def load_css(filepath: str):
-    """Baca file CSS dan inject ke Streamlit"""
-    with open(filepath, "r") as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         css = f.read()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
@@ -35,7 +34,7 @@ defaults = {
     "user_name":   "Administrator",
     "user_role":   "Admin",
     "user_email":  "admin@angkasapura.com",
-    "active_menu": "Revenue Sharing",
+    "active_menu": "Overview",
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -255,7 +254,7 @@ def show_topnav(title="Non Aeronautical Dashboard"):
 # PAGE: REVENUE SHARING
 # ══════════════════════════════════════════════
 def page_revenue_sharing(df_raw):
-    show_topnav("Non Aeronautical Dashboard")
+    show_topnav("Overview")
 
     # Filter bar
     fb1, fb2, fb3, _, fe1, fe2 = st.columns([2, 2, 2, 2, 1, 1])
@@ -497,10 +496,10 @@ show_sidebar()
 
 st.markdown("<div style='padding:20px 28px 40px 28px;'>", unsafe_allow_html=True)
 menu = st.session_state.active_menu
-if   menu == "Revenue Sharing": page_revenue_sharing(df_raw)
+if   menu == "Overview":        page_revenue_sharing(df_raw)
 elif menu == "Import Manager":  page_import()
-elif menu in ["Accrual & Billing","Room Database","Lease Contract",
-              "Data Verification","Traffic Monitor","Overview"]:
+elif menu in ["Revenue Sharing","Accrual & Billing","Room Database","Lease Contract",
+              "Data Verification","Traffic Monitor"]:
     page_coming_soon(menu)
 else:
     page_revenue_sharing(df_raw)
