@@ -1,0 +1,10 @@
+{
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.9",
+  "ignore": ["*"],
+  "reportGeneralTypeIssues": false,
+  "reportOptionalMemberAccess": false,
+  "reportOptionalOperand": false,
+  "reportOptionalIterable": false,
+  "reportUndefinedVariable": "off"
+}
