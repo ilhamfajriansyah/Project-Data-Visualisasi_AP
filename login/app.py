@@ -1,5 +1,14 @@
-import re
 import streamlit as st
+from access_control import (
+    authenticate_user,
+    available_roles,
+    get_access_mode_label,
+    get_current_user,
+    init_auth_state,
+    is_authenticated,
+    login_user,
+    logout_user,
+)
 from ui_shared import app_shell, render_auth_header, show_error
 from forgot_pass import render_forgot_panel
 from reset_pass import render_reset_panel
@@ -11,11 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-if "role" not in st.session_state:
-    st.session_state.role = "User"
-
-if "remember_me" not in st.session_state:
-    st.session_state.remember_me = False
+init_auth_state()
 
 if "auth_page" not in st.session_state:
     st.session_state.auth_page = "login"
@@ -25,66 +30,44 @@ if page_param in ["login", "forgot_password", "reset_password"]:
     st.session_state.auth_page = page_param
 
 
-def validate_email(email: str) -> bool:
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return re.match(pattern, email) is not None
-
-
-def account_exists(email: str) -> bool:
-    known_domains = ["@airport.com", "@example.com", "@injourney.com"]
-    return any(email.endswith(domain) for domain in known_domains)
-
-
-def validate_login(email: str, password: str) -> tuple[bool, str]:
-    if not email and not password:
-        return False, "Masukkan email dan password Anda."
-    if not email:
-        return False, "Email wajib diisi."
-    if not password:
-        return False, "Password wajib diisi."
-    if not validate_email(email):
-        return False, "Format email tidak valid."
-    if not account_exists(email):
-        return False, "Akun tidak ditemukan."
-    return True, ""
-
-
-def go_to(page_name: str) -> None:
-    st.session_state.auth_page = page_name
-    st.query_params["page"] = page_name
-    st.rerun()
-
-
 def render_login_panel() -> None:
     render_auth_header(
         "Airport Monitoring",
-        "Silahkan masuk ke sistem",
+        "Sign in to access your dashboard",
     )
 
-    role_left, role_right = st.columns(2)
+    if is_authenticated():
+        current_user = get_current_user()
+        if current_user:
+            st.markdown(
+                f"""
+                <div class="success-box">
+                    Login aktif sebagai <b>{current_user.name}</b>
+                    ({current_user.role.value}) - {get_access_mode_label(current_user.role)}.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    with role_left:
-        user_btn = st.button(
-            "User",
-            use_container_width=True,
-            key="role_user_btn",
-            type="primary" if st.session_state.role == "User" else "secondary",
-        )
+            st.markdown('<div class="auth-bottom-gap"></div>', unsafe_allow_html=True)
+            if st.button("Logout", key="logout_btn", use_container_width=True):
+                logout_user()
+                st.rerun()
 
-    with role_right:
-        admin_btn = st.button(
-            "Admin",
-            use_container_width=True,
-            key="role_admin_btn",
-            type="primary" if st.session_state.role == "Admin" else "secondary",
-        )
+            return
 
-    if user_btn:
-        st.session_state.role = "User"
-        st.rerun()
+    role_options = available_roles()
+    selected_role = st.segmented_control(
+        "Role",
+        role_options,
+        default=st.session_state.login_role,
+        key="login_role_selector",
+        label_visibility="collapsed",
+        width="stretch",
+    )
 
-    if admin_btn:
-        st.session_state.role = "Admin"
+    if selected_role and selected_role != st.session_state.login_role:
+        st.session_state.login_role = selected_role
         st.rerun()
 
     st.markdown('<div class="field-label">Email</div>', unsafe_allow_html=True)
@@ -134,14 +117,22 @@ def render_login_panel() -> None:
 
     if sign_in_clicked:
         st.session_state.remember_me = remember
-        is_valid, error_message = validate_login(email, password)
-
-        if is_valid:
-            st.success(
-                f"Login berhasil sebagai {st.session_state.role}. Email yang digunakan: {email}"
+        with st.spinner("Memproses login..."):
+            user, error_message = authenticate_user(
+                email=email,
+                password=password,
+                selected_role=st.session_state.login_role,
             )
-        else:
+
+        if not user:
             show_error(error_message)
+            return
+
+        login_user(user)
+        st.success(
+            f"Login berhasil sebagai {user.role.value}. Email yang digunakan: {user.email}"
+        )
+        st.rerun()
 
 
 def render_current_page() -> None:

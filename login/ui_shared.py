@@ -1,25 +1,41 @@
 from base64 import b64encode
+from html import escape
 from pathlib import Path
 import streamlit as st
 
 APP_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = APP_DIR.parent
-LOGO_PATH = PROJECT_DIR / "asset" / "logo.png"
+LOGO_PATHS = [
+    PROJECT_DIR / "asset" / "logo.png",
+    PROJECT_DIR / "asset" / "logo(2).png",
+]
 
 LEFT_PANEL_IMAGE_CANDIDATES = [
-    PROJECT_DIR / "airport-terminal 1.png",
-    PROJECT_DIR / "asset" / "airport-terminal 1.png",
+    PROJECT_DIR / "asset" / "background.jpeg",
+    PROJECT_DIR / "background.jpeg",
 ]
+
+IMAGE_MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
+
+
+def image_to_data_url(path: Path) -> str:
+    encoded_image = b64encode(path.read_bytes()).decode("ascii")
+    mime_type = IMAGE_MIME_TYPES.get(path.suffix.lower(), "image/png")
+    return f"data:{mime_type};base64,{encoded_image}"
 
 
 def get_left_panel_background_css() -> str:
     for path in LEFT_PANEL_IMAGE_CANDIDATES:
         if path.exists():
-            encoded_image = b64encode(path.read_bytes()).decode("ascii")
             return (
                 "background: "
                 "linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 28%, rgba(255,255,255,0.08) 100%), "
-                f'url("data:image/png;base64,{encoded_image}") center center / cover no-repeat;'
+                f'url("{image_to_data_url(path)}") center center / cover no-repeat;'
             )
 
     return (
@@ -29,11 +45,20 @@ def get_left_panel_background_css() -> str:
 
 
 def get_logo_markup() -> str:
-    if LOGO_PATH.exists():
-        encoded_logo = b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    logo_images = []
+
+    for index, path in enumerate(LOGO_PATHS):
+        if path.exists():
+            logo_images.append(
+                f'<img class="brand-logo brand-logo-{index + 1}" '
+                f'src="{image_to_data_url(path)}" alt="Logo {index + 1}" />'
+            )
+
+    if logo_images:
         return (
-            f'<img class="brand-logo" src="data:image/png;base64,{encoded_logo}" '
-            'alt="InJourney logo" />'
+            '<div class="brand-logo-row">'
+            + "".join(logo_images)
+            + "</div>"
         )
 
     return """
@@ -153,6 +178,20 @@ def inject_shared_css() -> None:
                 0 28px 56px rgba(15, 23, 42, 0.07) !important;
             padding: 36px 36px 34px !important;
             box-sizing: border-box !important;
+            transform-origin: center;
+            animation: auth-form-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            will-change: transform, opacity;
+        }}
+
+        @keyframes auth-form-enter {{
+            0% {{
+                opacity: 0;
+                transform: translateY(18px);
+            }}
+            100% {{
+                opacity: 1;
+                transform: translateY(0);
+            }}
         }}
 
         /* ── Reset Streamlit's default border inside our card ── */
@@ -171,6 +210,19 @@ def inject_shared_css() -> None:
             {get_left_panel_background_css()}
             border-right: 1px solid rgba(255, 255, 255, 0.72);
             box-shadow: inset -1px 0 0 rgba(203, 220, 245, 0.28);
+            animation: airport-image-enter 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            will-change: transform, opacity;
+        }}
+
+        @keyframes airport-image-enter {{
+            0% {{
+                opacity: 0;
+                transform: translateX(-28px);
+            }}
+            100% {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
         }}
 
         .left-panel::before {{
@@ -215,13 +267,28 @@ def inject_shared_css() -> None:
             margin: 0 0 10px;
         }}
 
+        .brand-logo-row {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            width: 100%;
+            margin: 14px auto 12px;
+            flex-wrap: wrap;
+            transform: translateY(10px);
+        }}
+
         .brand-logo {{
-            width: 200px;
-            max-height: 90px;
+            width: auto;
+            max-width: 190px;
+            max-height: 74px;
             height: auto;
             display: block;
-            margin: 14px auto 10px;
             object-fit: contain;
+        }}
+
+        .brand-logo-2 {{
+            max-width: 150px;
         }}
 
         .hero-title {{
@@ -275,6 +342,9 @@ def inject_shared_css() -> None:
             overflow: hidden !important;
             display: flex !important;
             align-items: center !important;
+            transition:
+                box-shadow 180ms ease,
+                transform 180ms ease !important;
         }}
 
         [data-baseweb="input"] > div {{
@@ -290,7 +360,14 @@ def inject_shared_css() -> None:
         }}
 
         [data-baseweb="input"]:focus-within {{
-            box-shadow: inset 0 0 0 1px #068585 !important, 0 0 0 3px rgba(6, 133, 133, 0.12) !important;
+            box-shadow:
+                inset 0 0 0 1.5px #068585,
+                0 0 0 4px rgba(6, 133, 133, 0.14),
+                0 10px 24px rgba(6, 133, 133, 0.16) !important;
+        }}
+
+        div[data-testid="column"]:nth-child(2) [data-baseweb="input"]:focus-within {{
+            transform: translateY(-2px);
         }}
 
         [data-baseweb="input"] input {{
@@ -323,6 +400,31 @@ def inject_shared_css() -> None:
             background: transparent !important;
             padding: 0 14px !important;
             margin: 0 !important;
+            color: #94a3b8 !important;
+            transition:
+                color 160ms ease,
+                opacity 160ms ease,
+                transform 180ms ease !important;
+        }}
+
+        [data-baseweb="input"] button:hover {{
+            color: #068585 !important;
+            transform: scale(1.08);
+        }}
+
+        [data-baseweb="input"] button:active {{
+            transform: scale(0.94);
+        }}
+
+        [data-baseweb="input"] button svg {{
+            transition:
+                opacity 160ms ease,
+                transform 180ms ease !important;
+        }}
+
+        [data-baseweb="input"] button:hover svg {{
+            opacity: 0.92;
+            transform: rotate(-6deg);
         }}
 
         [data-baseweb="input"] *,
@@ -334,12 +436,73 @@ def inject_shared_css() -> None:
             margin-bottom: 0 !important;
         }}
 
+        [data-testid="stButtonGroup"] {{
+            width: 100% !important;
+            min-height: 44px !important;
+            margin: 8px 0 22px !important;
+            padding: 3px !important;
+            border-radius: 17px !important;
+            background: #e8e8ec !important;
+            box-shadow: none !important;
+            box-sizing: border-box !important;
+        }}
+
+        [data-testid="stButtonGroup"] [data-baseweb="button-group"] {{
+            width: 100% !important;
+            height: 38px !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0 !important;
+        }}
+
+        [data-testid="stButtonGroup"] button {{
+            width: 100% !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            margin: 0 !important;
+            border: 1px solid transparent !important;
+            border-radius: 15px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: #111827 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            transform: none !important;
+        }}
+
+        [data-testid="stButtonGroup"] button:hover {{
+            background: rgba(255, 255, 255, 0.35) !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }}
+
+        [data-testid="stButtonGroup"] button[aria-checked="true"],
+        [data-testid="stButtonGroup"] button[aria-pressed="true"] {{
+            background: #ffffff !important;
+            border-color: #ffffff !important;
+            color: #000000 !important;
+            box-shadow: none !important;
+        }}
+
+        [data-testid="stButtonGroup"] button[aria-checked="true"]:hover,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"]:hover {{
+            background: #ffffff !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }}
+
         div[data-testid="stButton"] > button {{
             height: 52px;
             width: 100%;
             border-radius: 16px;
             font-size: 14px;
             font-weight: 700;
+            transition:
+                background 180ms ease,
+                border-color 180ms ease,
+                box-shadow 180ms ease,
+                transform 180ms ease !important;
         }}
 
         div[data-testid="stButton"] > button[kind="secondary"] {{
@@ -526,11 +689,16 @@ def inject_shared_css() -> None:
             text-align: right !important;
             text-decoration: none !important;
             white-space: nowrap !important;
+            transition:
+                color 160ms ease,
+                transform 160ms ease,
+                text-decoration-color 160ms ease !important;
         }}
 
         .forgot-password-link:hover {{
             color: #068585 !important;
             text-decoration: underline !important;
+            transform: translateY(-1px);
         }}
 
         div[data-testid="stButton"] > button[kind="tertiary"] {{
@@ -647,88 +815,142 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
         }}
 
         .error-alert {{
-            display: flex !important;
-            align-items: center !important;
-            gap: 12px;
-            background-color: #fee5e3 !important;
-            border: 1px solid #f39590 !important;
-            border-radius: 12px !important;
-            padding: 14px 16px !important;
-            margin-top: 16px !important;
+            position: relative;
             width: 100%;
+            margin-top: 18px !important;
+            padding: 14px 16px 14px 18px !important;
+            background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%) !important;
+            border: 1px solid #f3c8c8 !important;
+            border-left: 4px solid #dc2626 !important;
+            border-radius: 16px !important;
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.04),
+                0 12px 28px rgba(15, 23, 42, 0.07) !important;
+            box-sizing: border-box !important;
+            transform-origin: center;
+            animation: error-alert-trigger 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            will-change: transform, opacity;
         }}
 
-        .error-alert-icon {{
-            flex-shrink: 0;
-            font-size: 20px;
-            color: #e8634f;
+        @keyframes error-alert-trigger {{
+            0% {{
+                opacity: 0;
+                transform: translateY(-6px) scale(0.985);
+            }}
+            35% {{
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }}
+            48% {{
+                transform: translateX(-5px);
+            }}
+            62% {{
+                transform: translateX(4px);
+            }}
+            76% {{
+                transform: translateX(-2px);
+            }}
+            90% {{
+                transform: translateX(1px);
+            }}
+            100% {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
+        }}
+
+        .error-alert-title {{
+            margin: 0 0 4px 0;
+            color: #b91c1c !important;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: 0;
+            text-transform: uppercase;
         }}
 
         .error-alert-content {{
-            flex: 1;
-            color: #cc3d2d !important;
-            font-size: 14px;
+            color: #7f1d1d !important;
+            font-size: 13px;
             font-weight: 500;
-            line-height: 1.4;
+            line-height: 1.55;
             margin: 0;
             text-align: left !important;
         }}
 
-        bottom-link-wrap {{
-            margin-top: 22px;
-            text-align: center;
+        div[data-testid="stSpinner"] {{
+            margin: 12px 0 0 !important;
         }}
 
-        .bottom-link {{
-            color: #068585 !important;
-            text-decoration: none !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-        }}
-
-        .bottom-link:hover {{
-            color: #0a7e85 !important;
-            text-decoration: none !important;
-        }}
-
-        .bottom-login-link-wrap {{
-            margin-top: 14px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }}
-
-        .bottom-login-link-wrap [data-testid="stButton"] {{
-            margin: 0 !important;
-            width: auto !important;
-        }}
-
-        .bottom-login-link-wrap [data-testid="stButton"] > button[kind="tertiary"] {{
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
+        div[data-testid="stSpinner"] > div {{
             color: #068585 !important;
             font-size: 13px !important;
             font-weight: 600 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            min-height: auto !important;
-            height: auto !important;
-            width: auto !important;
-            line-height: 1.2 !important;
-            text-decoration: none !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
         }}
 
-        .bottom-login-link-wrap [data-testid="stButton"] > button[kind="tertiary"]:hover {{
-            background: transparent !important;
-            order: none !important;
-            box-shadow: none !important;
-            color: #0a7e85 !important;
-            text-decoration: underline !important;
+        div[data-testid="stSpinner"] svg {{
+            animation: auth-spinner-spin 780ms linear infinite !important;
+            color: #068585 !important;
+        }}
+
+        @keyframes auth-spinner-spin {{
+            100% {{
+                transform: rotate(360deg);
+            }}
+        }}
+
+        @media (prefers-reduced-motion: reduce) {{
+            .error-alert,
+            .left-panel,
+            div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"],
+            div[data-testid="column"]:nth-child(2) [data-baseweb="input"],
+            div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] > button:not(:hover),
+            [data-baseweb="input"] button,
+            [data-baseweb="input"] button svg,
+            div[data-testid="stSpinner"] svg {{
+                animation: none !important;
+                transition: none !important;
+                transform: none !important;
+                will-change: auto;
+            }}
+        }}
+
+        div[data-testid="stButton"] {{
+            transform-origin: center center !important;
+            transition:
+                transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+                filter 180ms ease !important;
+            will-change: transform;
+        }}
+
+        div[data-testid="stButton"]:hover {{
+            transform: translateY(-4px) scale(1.025) !important;
+            filter: brightness(1.03);
+        }}
+
+        div[data-testid="stButton"]:active {{
+            transform: translateY(0) scale(0.975) !important;
+        }}
+
+        div[data-testid="stButton"]:hover > button {{
+            box-shadow:
+                0 2px 6px rgba(15, 23, 42, 0.08),
+                0 16px 30px rgba(15, 23, 42, 0.14) !important;
+        }}
+
+        div[data-testid="stButton"]:hover > button[kind="primary"] {{
+            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
+            border-color: #04747a !important;
+            box-shadow:
+                0 2px 6px rgba(6, 133, 133, 0.14),
+                0 18px 32px rgba(6, 133, 133, 0.28) !important;
+        }}
+
+        div[data-testid="stButton"] > button[kind="tertiary"]:hover,
+        div[data-testid="stButton"]:has(> button[kind="tertiary"]):hover {{
             transform: none !important;
+            filter: none !important;
+            box-shadow: none !important;
         }}
 
         @media (max-width: 840px) {{
@@ -771,14 +993,17 @@ def render_auth_header(title: str, subtitle: str) -> None:
     )
 
 
-def show_error(message: str) -> None:
+def show_error(message: str, title: str = "Periksa kembali") -> None:
+    safe_title = escape(title.strip())
+    safe_message = escape(message.lstrip("*").strip())
+
     st.markdown(
-        f'''
-        <div class="error-alert">
-            <div class="error-alert-icon">⚠️</div>
-            <div class="error-alert-content">{message}</div>
+        f"""
+        <div class="error-alert" role="alert" aria-live="polite">
+            <div class="error-alert-title">{safe_title}</div>
+            <div class="error-alert-content">{safe_message}</div>
         </div>
-        ''',
+        """,
         unsafe_allow_html=True,
     )
 
