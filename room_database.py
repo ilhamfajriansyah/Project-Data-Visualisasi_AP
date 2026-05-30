@@ -346,18 +346,19 @@ def render_room_database():
 
     # ── Pagination ──
     if n_pages > 1:
-        pg_cols = st.columns(n_pages + 2)
-        with pg_cols[0]:
+        pagination_button_count = n_pages + 2
+        pg_cols = st.columns([1, *([0.12] * pagination_button_count), 1], gap="small")
+        with pg_cols[1]:
             if st.button("‹", key="pg_prev", disabled=(page == 0)):
                 st.session_state.room_page = page - 1
                 st.rerun()
         for i in range(n_pages):
-            with pg_cols[i + 1]:
+            with pg_cols[i + 2]:
                 label = f"**{i+1}**" if i == page else str(i + 1)
                 if st.button(label, key=f"pg_{i}"):
                     st.session_state.room_page = i
                     st.rerun()
-        with pg_cols[n_pages + 1]:
+        with pg_cols[n_pages + 2]:
             if st.button("›", key="pg_next", disabled=(page >= n_pages - 1)):
                 st.session_state.room_page = page + 1
                 st.rerun()

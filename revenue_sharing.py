@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, date
+from shared_import import import_status_html
 
 # ─────────────────────────────────────────────
 # DUMMY DATA
@@ -200,27 +201,42 @@ def page_revenue_sharing():
         box-shadow: 0 8px 24px rgba(6,182,212,0.14);
     }
     .rs-progress-ring {
-        width: 50px;
-        height: 50px;
+        width: 74px;
+        height: 74px;
         border-radius: 50%;
         background: conic-gradient(#6366f1 0 92%, rgba(99,102,241,0.14) 92% 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.85);
-        margin-bottom: 8px;
+        margin: 0;
+        flex: 0 0 auto;
     }
     .rs-progress-ring span {
-        width: 34px;
-        height: 34px;
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
         background: rgba(255,255,255,0.82);
         display: flex;
         align-items: center;
         justify-content: center;
         color: #4f46e5;
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 850;
+    }
+    .rs-ingestion-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .rs-ingestion-copy {
+        min-width: 0;
+    }
+    .rs-ingestion-copy .rs-card-title {
+        margin: 0 0 8px 0 !important;
+    }
+    .rs-ingestion-copy .rs-card-sub {
+        line-height: 1.35;
     }
     [data-testid="stFileUploader"] * {
         color: #1e293b !important;
@@ -287,7 +303,7 @@ def page_revenue_sharing():
     with n3:
         initial = st.session_state.get("user_name","Admin")[0].upper()
         uname   = st.session_state.get("user_name","Admin")
-        uemail  = st.session_state.get("user_email","angkasapura@mail.com")
+        uemail  = st.session_state.get("user_email","injourneyairports@mail.com")
         st.markdown(f"""
         <div style="display:flex;align-items:center;justify-content:flex-end;
                     gap:12px;padding-top:4px;">
@@ -331,10 +347,12 @@ def page_revenue_sharing():
         </div>""", unsafe_allow_html=True)
     with k3:
         st.markdown("""
-        <div class="rs-card rs-kpi-card" style="--accent:linear-gradient(135deg,#059669,#10b981);">
+        <div class="rs-card rs-kpi-card rs-ingestion-card" style="--accent:linear-gradient(135deg,#059669,#10b981);">
             <div class="rs-progress-ring"><span>92%</span></div>
-            <p class="rs-card-title">Ingestion Complete</p>
-            <p class="rs-card-sub">Expected files processed</p>
+            <div class="rs-ingestion-copy">
+                <p class="rs-card-title">Ingestion Complete</p>
+                <p class="rs-card-sub">Expected files processed</p>
+            </div>
         </div>""", unsafe_allow_html=True)
     with k4:
         st.markdown("""
@@ -361,11 +379,9 @@ def page_revenue_sharing():
             st.selectbox("", ["June","May","April"], key="tc_period",
                          label_visibility="collapsed")
 
-        # ✅ HANYA satu st.file_uploader — tidak ada HTML dark bar duplikat
-        uploaded = st.file_uploader(
-            "Drag & Drop atau pilih file Excel/CSV",
-            type=["xlsx","xls","csv"],
-            key="rs_upload"
+        st.markdown(
+            import_status_html("", "rs-section-title", "rs-section-sub"),
+            unsafe_allow_html=True,
         )
 
         # Tabel file status
@@ -489,6 +505,6 @@ def page_revenue_sharing():
 
 if __name__ == "__main__":
     if "user_name"  not in st.session_state: st.session_state.user_name  = "Admin"
-    if "user_email" not in st.session_state: st.session_state.user_email = "angkasapura@mail.com"
+    if "user_email" not in st.session_state: st.session_state.user_email = "injourneyairports@mail.com"
     if "user_role"  not in st.session_state: st.session_state.user_role  = "Admin"
     page_revenue_sharing()

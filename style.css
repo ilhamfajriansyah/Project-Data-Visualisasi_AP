@@ -122,11 +122,12 @@ body:has(.ap-sidebar-state.is-mini) [data-testid="stSidebarContent"] {
 }
 
 .ap-brand-name {
-    font-size: 12px;
+    font-size: 10.5px;
     font-weight: 800;
     color: #1e293b;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.2px;
     line-height: 1.3;
+    white-space: nowrap;
 }
 
 .ap-brand-sub {

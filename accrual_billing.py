@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, date, timedelta
+from shared_import import get_shared_import_meta, import_status_html
 
 # ─────────────────────────────────────────────
 # DUMMY DATA
@@ -308,7 +309,7 @@ def page_accrual_billing():
     with n3:
         initial = st.session_state.get("user_name", "Admin")[0].upper()
         uname   = st.session_state.get("user_name", "Admin")
-        uemail  = st.session_state.get("user_email", "angkasapura@mail.com")
+        uemail  = st.session_state.get("user_email", "injourneyairports@mail.com")
         st.markdown(f"""
         <div style="display:flex;align-items:center;justify-content:flex-end;
                     gap:12px;padding-top:4px;">
@@ -377,23 +378,18 @@ def page_accrual_billing():
         st.markdown('<p class="ab-section-sub">Upload batch revenue, validate, and generate billing runs</p>',
                     unsafe_allow_html=True)
 
-        # ✅ HANYA satu st.file_uploader — tidak ada HTML dark bar duplikat
-        uploaded = st.file_uploader(
-            "Drag & Drop atau pilih file Excel/CSV",
-            type=["xlsx","xls","csv"],
-            key="ab_upload"
+        st.markdown(
+            import_status_html("", "ab-section-title", "ab-section-sub"),
+            unsafe_allow_html=True,
         )
 
-        if uploaded:
-            st.success(f"✅ File '{uploaded.name}' berhasil diupload!")
-
         if st.button("Process Files", key="btn_process", use_container_width=True):
-            if uploaded:
+            if get_shared_import_meta():
                 with st.spinner("Memproses file..."):
                     import time; time.sleep(1)
-                st.success("✅ File berhasil diproses!")
+                st.success("Data dari Import Manager berhasil diproses.")
             else:
-                st.warning("⚠️ Upload file terlebih dahulu.")
+                st.warning("Upload file terlebih dahulu di halaman Import Manager.")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -554,6 +550,6 @@ def page_accrual_billing():
 
 if __name__ == "__main__":
     if "user_name"  not in st.session_state: st.session_state.user_name  = "Admin"
-    if "user_email" not in st.session_state: st.session_state.user_email = "angkasapura@mail.com"
+    if "user_email" not in st.session_state: st.session_state.user_email = "injourneyairports@mail.com"
     if "user_role"  not in st.session_state: st.session_state.user_role  = "Admin"
     page_accrual_billing()

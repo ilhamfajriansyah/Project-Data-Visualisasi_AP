@@ -1,6 +1,9 @@
 from accrual_billing import page_accrual_billing
 from revenue_sharing import page_revenue_sharing
 from room_database import render_room_database
+from lease_contract import render_lease_contract
+from import_manager import render_import_manager
+from shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -37,13 +40,13 @@ if "started" not in st.query_params:
     st.session_state["active_menu"] = "Overview"
     st.session_state["user_name"]   = "Administrator"
     st.session_state["user_role"]   = "Admin"
-    st.session_state["user_email"]  = "admin@angkasapura.com"
+    st.session_state["user_email"]  = "admin@injourneyairports.com"
     st.query_params["started"] = "1"
 
 defaults = {
     "user_name":   "Administrator",
     "user_role":   "Admin",
-    "user_email":  "admin@angkasapura.com",
+    "user_email":  "admin@injourneyairports.com",
     "active_menu": "Overview",
     "sidebar_minimized": False,
 }
@@ -75,6 +78,12 @@ def load_data():
         return pd.read_sql("SELECT * FROM pendapatan_tenant", get_engine())
     except Exception:
         return generate_dummy_data()
+
+def get_active_dashboard_data():
+    imported_df = get_shared_import_data()
+    if imported_df is not None and has_dashboard_ready_import():
+        return imported_df
+    return load_data()
 
 def generate_dummy_data():
     np.random.seed(42)
@@ -236,16 +245,16 @@ def _sidebar_brand():
     if st.session_state.sidebar_minimized:
         st.markdown("""
         <div class="ap-brand ap-brand-mini">
-            <div class="ap-logo">AP</div>
+            <div class="ap-logo">IA</div>
         </div>""", unsafe_allow_html=True)
         return
 
     st.markdown("""
     <div class="ap-brand">
         <div style="display:flex;align-items:center;gap:10px;">
-            <div class="ap-logo">AP</div>
+            <div class="ap-logo">IA</div>
             <div class="ap-brand-copy">
-                <div class="ap-brand-name">ANGKASA PURA</div>
+                <div class="ap-brand-name">INJOURNEY AIRPORTS</div>
                 <div class="ap-brand-sub">NON AERO SYSTEM</div>
             </div>
         </div>
@@ -632,9 +641,13 @@ def page_overview(df_raw):
 def page_import():
     show_topnav("Import Manager")
     st.markdown('<div class="nad-card">', unsafe_allow_html=True)
-    st.markdown('<p class="nad-card-title">📤 Upload File Excel</p>', unsafe_allow_html=True)
-    st.markdown('<p class="nad-card-sub">Import data pendapatan tenant dari file .xlsx ke PostgreSQL</p>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("Pilih file .xlsx", type=["xlsx", "xls"])
+    st.markdown('<p class="nad-card-title">Central Import Source</p>', unsafe_allow_html=True)
+    st.markdown('<p class="nad-card-sub">Upload data dipusatkan di halaman Import Manager.</p>', unsafe_allow_html=True)
+    uploaded = None
+    st.markdown(
+        import_status_html("nad-card", "nad-card-title", "nad-card-sub"),
+        unsafe_allow_html=True,
+    )
     if uploaded:
         try:
             df_up = pd.read_excel(uploaded)
@@ -670,7 +683,7 @@ def page_coming_soon(name):
 # ══════════════════════════════════════════════
 # MAIN — ROUTING
 # ══════════════════════════════════════════════
-df_raw = load_data()
+df_raw = get_active_dashboard_data()
 show_sidebar()
 
 menu = st.session_state.active_menu
@@ -678,9 +691,10 @@ menu = st.session_state.active_menu
 if   menu == "Overview":          page_overview(df_raw)
 elif menu == "Revenue Sharing":   page_revenue_sharing()
 elif menu == "Accrual & Billing": page_accrual_billing()
-elif menu == "Import Manager":    page_import()
+elif menu == "Import Manager":    render_import_manager()
 elif menu == "Room Database":     render_room_database()          # ← AKTIF
-elif menu in ["Lease Contract", "Data Verification", "Traffic Monitor"]:
+elif menu == "Lease Contract":    render_lease_contract()
+elif menu in ["Data Verification", "Traffic Monitor"]:
     page_coming_soon(menu)
 else:
     page_overview(df_raw)
