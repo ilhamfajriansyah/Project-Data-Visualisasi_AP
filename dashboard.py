@@ -3,6 +3,8 @@ from revenue_sharing import page_revenue_sharing
 from room_database import render_room_database
 from lease_contract import render_lease_contract
 from import_manager import render_import_manager
+from login.access_control import Role, get_access_mode_label, get_current_role, init_auth_state, is_authenticated, logout_user
+from login.app import render_current_page as render_login_page
 from shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
 import streamlit as st
 import pandas as pd
@@ -36,23 +38,53 @@ load_css("style.css")
 # ─────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────
-if "started" not in st.query_params:
-    st.session_state["active_menu"] = "Overview"
-    st.session_state["user_name"]   = "Administrator"
-    st.session_state["user_role"]   = "Admin"
-    st.session_state["user_email"]  = "admin@injourneyairports.com"
-    st.query_params["started"] = "1"
+init_auth_state()
+
+if not is_authenticated():
+    render_login_page()
+    st.stop()
 
 defaults = {
-    "user_name":   "Administrator",
-    "user_role":   "Admin",
-    "user_email":  "admin@injourneyairports.com",
     "active_menu": "Overview",
     "sidebar_minimized": False,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
+
+ROLE_MENUS = {
+    Role.USER: [
+        "Overview",
+        "Revenue Sharing",
+        "Accrual & Billing",
+        "Room Database",
+        "Lease Contract",
+        "Import Manager",
+        "Data Verification",
+        "Traffic Monitor",
+    ],
+    Role.ADMIN: [
+        "Overview",
+        "Revenue Sharing",
+        "Accrual & Billing",
+        "Room Database",
+        "Lease Contract",
+        "Data Verification",
+        "Traffic Monitor",
+    ],
+}
+
+
+def get_allowed_menus():
+    return ROLE_MENUS.get(get_current_role(), ["Overview"])
+
+
+def can_access_menu(menu_name):
+    return menu_name in get_allowed_menus()
+
+
+if not can_access_menu(st.session_state.active_menu):
+    st.session_state.active_menu = "Overview"
 
 st.markdown(
     f'<div class="ap-sidebar-state {"is-mini" if st.session_state.sidebar_minimized else "is-expanded"}"></div>',
@@ -200,6 +232,9 @@ def _toggle_sidebar():
 
 
 def _go_to_menu(menu_name):
+    if not can_access_menu(menu_name):
+        st.session_state.active_menu = "Overview"
+        return
     st.session_state.active_menu = menu_name
 
 
@@ -308,9 +343,12 @@ def _sidebar_user():
             <div style="font-size:12px;font-weight:700;color:#1e293b;
                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                 {st.session_state.user_name}</div>
-            <div style="font-size:10px;color:#94a3b8;">{st.session_state.user_role}</div>
+            <div style="font-size:10px;color:#94a3b8;">{st.session_state.user_role} - {get_access_mode_label()}</div>
         </div>
     </div>""", unsafe_allow_html=True)
+    if st.button("Logout", key="sidebar_logout", use_container_width=True):
+        logout_user()
+        st.rerun()
 
 
 def show_sidebar():
@@ -345,6 +383,9 @@ def show_sidebar():
 
 
 def _nav_item(icon, label):
+    if not can_access_menu(label):
+        return
+
     mini = st.session_state.sidebar_minimized
     is_active = st.session_state.active_menu == label
     if is_active:
@@ -360,6 +401,9 @@ def _nav_item(icon, label):
 
 
 def _nav_sub(icon, label):
+    if not can_access_menu(label):
+        return
+
     mini = st.session_state.sidebar_minimized
     is_active = st.session_state.active_menu == label
     if is_active:
