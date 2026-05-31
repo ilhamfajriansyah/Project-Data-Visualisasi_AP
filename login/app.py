@@ -1,31 +1,36 @@
+import sys
+from pathlib import Path
+
 import streamlit as st
 
-try:
+LOGIN_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = LOGIN_DIR.parent
+
+for path in (PROJECT_DIR, LOGIN_DIR):
+    path_text = str(path)
+    if path_text not in sys.path:
+        sys.path.insert(0, path_text)
+
+if __package__:
     from .access_control import (
         authenticate_user,
         available_roles,
         demo_email_for_role,
-        get_access_mode_label,
-        get_current_user,
         init_auth_state,
         is_authenticated,
         login_user,
-        logout_user,
     )
     from .ui_shared import app_shell, render_auth_header, render_role_selector, show_error
     from .forgot_pass import render_forgot_panel
     from .reset_pass import render_reset_panel
-except ImportError:
+else:
     from access_control import (
         authenticate_user,
         available_roles,
         demo_email_for_role,
-        get_access_mode_label,
-        get_current_user,
         init_auth_state,
         is_authenticated,
         login_user,
-        logout_user,
     )
     from ui_shared import app_shell, render_auth_header, render_role_selector, show_error
     from forgot_pass import render_forgot_panel
@@ -42,31 +47,14 @@ def init_login_page_state() -> None:
         st.session_state.auth_page = page_param
 
 
-def render_login_panel() -> None:
+def render_login_panel(redirect_to_dashboard: bool = False) -> None:
+    if is_authenticated():
+        return
+
     render_auth_header(
         "Airport Monitoring",
         "Sign in to access your dashboard",
     )
-
-    if is_authenticated():
-        current_user = get_current_user()
-        if current_user:
-            st.markdown(
-                f"""
-                <div class="success-box">
-                    Login aktif sebagai <b>{current_user.name}</b>
-                    ({current_user.role.value}) - {get_access_mode_label(current_user.role)}.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown('<div class="auth-bottom-gap"></div>', unsafe_allow_html=True)
-            if st.button("Logout", key="logout_btn", use_container_width=True):
-                logout_user()
-                st.rerun()
-
-            return
 
     role_options = available_roles()
     if "login_role_initialized" not in st.session_state:
@@ -156,19 +144,19 @@ def render_login_panel() -> None:
         st.rerun()
 
 
-def render_current_page() -> None:
+def render_current_page(redirect_to_dashboard: bool = False) -> None:
     init_login_page_state()
     page = st.session_state.auth_page
 
     if page == "login":
-        render_login_panel()
+        render_login_panel(redirect_to_dashboard=redirect_to_dashboard)
     elif page == "forgot_password":
         render_forgot_panel()
     elif page == "reset_password":
         render_reset_panel()
     else:
         st.session_state.auth_page = "login"
-        render_login_panel()
+        render_login_panel(redirect_to_dashboard=redirect_to_dashboard)
 
 
 def main() -> None:
@@ -178,7 +166,15 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="collapsed",
     )
-    app_shell(render_current_page)
+
+    init_auth_state()
+    if is_authenticated():
+        from dashboard import render_dashboard_app
+
+        render_dashboard_app()
+        return
+
+    app_shell(lambda: render_current_page(redirect_to_dashboard=True))
 
 
 if __name__ == "__main__":

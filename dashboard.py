@@ -3,8 +3,8 @@ from revenue_sharing import page_revenue_sharing
 from room_database import render_room_database
 from lease_contract import render_lease_contract
 from import_manager import render_import_manager
+from dashboard_style import DASHBOARD_CSS
 from login.access_control import Role, get_access_mode_label, get_current_role, init_auth_state, is_authenticated, logout_user
-from login.app import render_current_page as render_login_page
 from shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
 import streamlit as st
 import pandas as pd
@@ -17,41 +17,15 @@ import numpy as np
 
 load_dotenv()
 
-st.set_page_config(
-    page_title="Non Aeronautical Dashboard",
-    page_icon="✈️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # ─────────────────────────────────────────────
 # LOAD CSS
 # ─────────────────────────────────────────────
-def load_css(filepath: str):
-    with open(filepath, "r", encoding="utf-8") as f:
-        css = f.read()
-    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-
-load_css("style.css")
-
+def inject_dashboard_css():
+    st.markdown(f"<style>{DASHBOARD_CSS}</style>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────
-init_auth_state()
-
-if not is_authenticated():
-    render_login_page()
-    st.stop()
-
-defaults = {
-    "active_menu": "Overview",
-    "sidebar_minimized": False,
-}
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
 ROLE_MENUS = {
     Role.USER: [
         "Overview",
@@ -81,15 +55,6 @@ def get_allowed_menus():
 
 def can_access_menu(menu_name):
     return menu_name in get_allowed_menus()
-
-
-if not can_access_menu(st.session_state.active_menu):
-    st.session_state.active_menu = "Overview"
-
-st.markdown(
-    f'<div class="ap-sidebar-state {"is-mini" if st.session_state.sidebar_minimized else "is-expanded"}"></div>',
-    unsafe_allow_html=True
-)
 
 
 # ─────────────────────────────────────────────
@@ -727,18 +692,68 @@ def page_coming_soon(name):
 # ══════════════════════════════════════════════
 # MAIN — ROUTING
 # ══════════════════════════════════════════════
-df_raw = get_active_dashboard_data()
-show_sidebar()
+def init_dashboard_state():
+    init_auth_state()
+    defaults = {
+        "active_menu": "Overview",
+        "sidebar_minimized": False,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
-menu = st.session_state.active_menu
+    if not can_access_menu(st.session_state.active_menu):
+        st.session_state.active_menu = "Overview"
 
-if   menu == "Overview":          page_overview(df_raw)
-elif menu == "Revenue Sharing":   page_revenue_sharing()
-elif menu == "Accrual & Billing": page_accrual_billing()
-elif menu == "Import Manager":    render_import_manager()
-elif menu == "Room Database":     render_room_database()          # ← AKTIF
-elif menu == "Lease Contract":    render_lease_contract()
-elif menu in ["Data Verification", "Traffic Monitor"]:
-    page_coming_soon(menu)
-else:
-    page_overview(df_raw)
+
+def render_dashboard_app():
+    init_dashboard_state()
+    inject_dashboard_css()
+
+    st.markdown(
+        f'<div class="ap-sidebar-state {"is-mini" if st.session_state.sidebar_minimized else "is-expanded"}"></div>',
+        unsafe_allow_html=True,
+    )
+
+    df_raw = get_active_dashboard_data()
+    show_sidebar()
+
+    menu = st.session_state.active_menu
+
+    if menu == "Overview":
+        page_overview(df_raw)
+    elif menu == "Revenue Sharing":
+        page_revenue_sharing()
+    elif menu == "Accrual & Billing":
+        page_accrual_billing()
+    elif menu == "Import Manager":
+        render_import_manager()
+    elif menu == "Room Database":
+        render_room_database()
+    elif menu == "Lease Contract":
+        render_lease_contract()
+    elif menu in ["Data Verification", "Traffic Monitor"]:
+        page_coming_soon(menu)
+    else:
+        page_overview(df_raw)
+
+
+def main():
+    st.set_page_config(
+        page_title="Non Aeronautical Dashboard",
+        page_icon="A",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    init_auth_state()
+    if not is_authenticated():
+        from login.app import render_current_page as render_login_page
+
+        render_login_page()
+        st.stop()
+
+    render_dashboard_app()
+
+
+if __name__ == "__main__":
+    main()
