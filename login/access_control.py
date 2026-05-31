@@ -101,6 +101,15 @@ def available_roles() -> list[str]:
     return [role.value for role in Role]
 
 
+def demo_email_for_role(role: str | Role) -> str:
+    normalized_role = normalize_role(role)
+    for email, account in DEMO_ACCOUNTS.items():
+        if normalize_role(account["role"]) == normalized_role:
+            return email
+
+    raise ValueError(f"No demo email configured for role: {role}")
+
+
 def validate_email(email: str) -> bool:
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(pattern, email) is not None
@@ -134,18 +143,29 @@ def authenticate_user(
     if not account_exists(normalized_email):
         return None, "Akun tidak ditemukan."
 
+    try:
+        requested_role = normalize_role(selected_role)
+    except ValueError:
+        return None, "Role tidak valid."
+
     demo_account = DEMO_ACCOUNTS.get(normalized_email)
 
     if demo_account:
         if password != demo_account["password"]:
             return None, "Password tidak sesuai."
 
-        role = normalize_role(demo_account["role"])
+        account_role = normalize_role(demo_account["role"])
+        if account_role != requested_role:
+            return None, (
+                "Akun tidak ditemukan. Periksa email, password, dan role yang Anda pilih."
+            )
+
+        role = account_role
         name = demo_account["name"]
     else:
         # Prototype fallback. For production, replace this with a database lookup
         # and never trust role data submitted from the UI.
-        role = normalize_role(selected_role)
+        role = requested_role
         name = make_display_name(normalized_email)
 
     return AuthUser(email=normalized_email, name=name, role=role), ""
@@ -168,6 +188,7 @@ def logout_user() -> None:
     st.session_state.user_email = ""
     st.session_state.user_role = ""
     st.session_state.login_role = Role.USER.value
+    st.session_state.email_input = ""
 
 
 def is_authenticated() -> bool:

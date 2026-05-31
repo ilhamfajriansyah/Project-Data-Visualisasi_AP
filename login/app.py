@@ -2,6 +2,7 @@ import streamlit as st
 from access_control import (
     authenticate_user,
     available_roles,
+    demo_email_for_role,
     get_access_mode_label,
     get_current_user,
     init_auth_state,
@@ -9,7 +10,7 @@ from access_control import (
     login_user,
     logout_user,
 )
-from ui_shared import app_shell, render_auth_header, show_error
+from ui_shared import app_shell, render_auth_header, render_role_selector, show_error
 from forgot_pass import render_forgot_panel
 from reset_pass import render_reset_panel
 
@@ -57,23 +58,32 @@ def render_login_panel() -> None:
             return
 
     role_options = available_roles()
-    selected_role = st.segmented_control(
-        "Role",
-        role_options,
-        default=st.session_state.login_role,
-        key="login_role_selector",
-        label_visibility="collapsed",
-        width="stretch",
-    )
+    if "login_role_initialized" not in st.session_state:
+        st.session_state.login_role = role_options[0]
+        st.session_state.email_input = ""
+        st.session_state.login_role_initialized = True
 
-    if selected_role and selected_role != st.session_state.login_role:
+    if st.session_state.login_role not in role_options:
+        st.session_state.login_role = role_options[0]
+        st.session_state.email_input = ""
+
+    if (
+        "login_role_selector" not in st.session_state
+        or st.session_state.login_role_selector not in role_options
+    ):
+        st.session_state.login_role_selector = st.session_state.login_role
+
+    selected_role = render_role_selector(role_options, st.session_state.login_role)
+    if selected_role != st.session_state.login_role:
         st.session_state.login_role = selected_role
         st.rerun()
+
+    role_email = demo_email_for_role(st.session_state.login_role)
 
     st.markdown('<div class="field-label">Email</div>', unsafe_allow_html=True)
     email = st.text_input(
         "Email",
-        placeholder="user@airport.com",
+        placeholder=role_email,
         label_visibility="collapsed",
         key="email_input",
     )

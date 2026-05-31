@@ -380,6 +380,7 @@ def inject_shared_css() -> None:
             outline: none !important;
             background: transparent !important;
             color: #334155 !important;
+            caret-color: #111827 !important;
             font-size: 15px !important;
             box-sizing: border-box !important;
             appearance: none !important;
@@ -436,60 +437,458 @@ def inject_shared_css() -> None:
             margin-bottom: 0 !important;
         }}
 
+        [data-testid="stElementContainer"]:has([data-testid="stRadio"]),
+        [data-testid="stVerticalBlock"] > div:has(> [data-testid="stElementContainer"] [data-testid="stRadio"]) {{
+            width: 100% !important;
+        }}
+
+        [data-testid="stRadio"] {{
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 56px !important;
+            margin: 8px 0 22px !important;
+            padding: 0 !important;
+            border-radius: 20px !important;
+            background: linear-gradient(135deg, #e2e5ec 0%, #eaedf4 100%) !important;
+            box-shadow:
+                inset 0 1px 3px rgba(0,0,0,0.10),
+                inset 0 -1px 0 rgba(255,255,255,0.70),
+                0 1px 0 rgba(255,255,255,0.85) !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }}
+
+        [data-testid="stRadio"] > div,
+        [data-testid="stRadio"] > div > div,
+        [data-testid="stRadio"] [role="radiogroup"] {{
+            width: 100% !important;
+            max-width: none !important;
+        }}
+
+        [data-testid="stRadio"] [role="radiogroup"] {{
+            height: 56px !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0 !important;
+            align-items: stretch !important;
+            position: relative !important;
+            overflow: hidden !important;
+            border-radius: 20px !important;
+        }}
+
+        [data-testid="stRadio"] [role="radiogroup"]::before {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 auto 0 0 !important;
+            width: 50% !important;
+            height: 100% !important;
+            border-radius: 20px 0 0 20px !important;
+            background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
+            border: none !important;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.20),
+                inset 0 -1px 0 rgba(0,0,0,0.08) !important;
+            box-sizing: border-box !important;
+            contain: paint !important;
+            pointer-events: none !important;
+            transform: translateX(0) !important;
+            transition:
+                transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
+                border-radius 340ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 220ms ease,
+                background 220ms ease !important;
+            z-index: 0 !important;
+        }}
+
+        [data-testid="stRadio"] [role="radiogroup"]:has(label:last-child input[type="radio"]:checked)::before {{
+            border-radius: 0 20px 20px 0 !important;
+            transform: translateX(100%) !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]) {{
+            width: 100% !important;
+            max-width: none !important;
+            flex: 1 1 0 !important;
+            height: 56px !important;
+            min-height: 56px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 1.5px solid transparent !important;
+            border-radius: 0 !important;
+            color: #6b7280 !important;
+            background: transparent !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            letter-spacing: 0.01em !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            cursor: pointer !important;
+            transition:
+                color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease,
+                background 240ms ease !important;
+            z-index: 1 !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"])::after {{
+            content: "" !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 60% !important;
+            height: 100% !important;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.32) 50%,
+                transparent 100%
+            ) !important;
+            transition: left 500ms ease !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]):hover {{
+            color: #1f2937 !important;
+            background: rgba(255, 255, 255, 0.40) !important;
+            box-shadow:
+                0 1px 4px rgba(0,0,0,0.06),
+                0 4px 8px rgba(0,0,0,0.04) !important;
+            transform: none !important;
+            border-color: rgba(255,255,255,0.60) !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]):hover::after {{
+            left: 140% !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked),
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked):hover {{
+            background: transparent !important;
+            border-color: transparent !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            animation: none !important;
+        }}
+
+        [data-testid="stRadio"] label:first-child:has(input[type="radio"]:checked) {{
+            border-radius: 20px 0 0 20px !important;
+        }}
+
+        [data-testid="stRadio"] label:last-child:has(input[type="radio"]:checked) {{
+            border-radius: 0 20px 20px 0 !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked):hover {{
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }}
+
+        @keyframes tab-pill-settle {{
+            0%   {{ filter: brightness(1.08); }}
+            100% {{ filter: brightness(1); }}
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked)::after {{
+            inset: 0 !important;
+            left: auto !important;
+            width: 100% !important;
+            border-radius: inherit !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            animation: none !important;
+            z-index: -1 !important;
+        }}
+
+        [data-testid="stRadio"] input[type="radio"] {{
+            position: absolute !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            pointer-events: none !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]) > div:first-child {{
+            display: none !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]) p,
+        [data-testid="stRadio"] label:has(input[type="radio"]) span,
+        [data-testid="stRadio"] label:has(input[type="radio"]) div {{
+            color: inherit !important;
+            font-size: 14px !important;
+            font-weight: inherit !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+        }}
+
+        /* ── Role Tab Switch ── */
         [data-testid="stButtonGroup"] {{
             width: 100% !important;
-            min-height: 44px !important;
+            min-height: 52px !important;
             margin: 8px 0 22px !important;
-            padding: 3px !important;
-            border-radius: 17px !important;
-            background: #e8e8ec !important;
-            box-shadow: none !important;
+            padding: 4px !important;
+            border-radius: 20px !important;
+            background: linear-gradient(135deg, #e2e5ec 0%, #eaedf4 100%) !important;
+            box-shadow:
+                inset 0 1px 3px rgba(0,0,0,0.10),
+                inset 0 -1px 0 rgba(255,255,255,0.70),
+                0 1px 0 rgba(255,255,255,0.85) !important;
             box-sizing: border-box !important;
+            position: relative !important;
+            overflow: hidden !important;
         }}
 
         [data-testid="stButtonGroup"] [data-baseweb="button-group"] {{
             width: 100% !important;
-            height: 38px !important;
+            height: 44px !important;
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 0 !important;
+            position: relative !important;
         }}
 
+        /* base button style */
         [data-testid="stButtonGroup"] button {{
             width: 100% !important;
-            height: 38px !important;
-            min-height: 38px !important;
+            height: 44px !important;
+            min-height: 44px !important;
             margin: 0 !important;
-            border: 1px solid transparent !important;
-            border-radius: 15px !important;
+            border: 1.5px solid transparent !important;
+            border-radius: 16px !important;
             background: transparent !important;
             box-shadow: none !important;
-            color: #111827 !important;
+            color: #6b7280 !important;
             font-size: 14px !important;
             font-weight: 600 !important;
             line-height: 1 !important;
-            transform: none !important;
+            letter-spacing: 0.01em !important;
+            cursor: pointer !important;
+            position: relative !important;
+            overflow: hidden !important;
+            transition:
+                color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease,
+                background 240ms ease !important;
+            transform: scale(1) !important;
+            z-index: 1 !important;
         }}
 
+        /* ripple pseudo-element */
+        [data-testid="stButtonGroup"] button::before {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 50% !important;
+            width: 0 !important;
+            height: 0 !important;
+            border-radius: 50% !important;
+            background: rgba(6, 133, 133, 0.18) !important;
+            transform: translate(-50%, -50%) !important;
+            transition:
+                width 400ms ease,
+                height 400ms ease,
+                opacity 400ms ease !important;
+            opacity: 0 !important;
+            z-index: 0 !important;
+        }}
+
+        [data-testid="stButtonGroup"] button:active::before {{
+            width: 220px !important;
+            height: 220px !important;
+            opacity: 1 !important;
+            transition:
+                width 0ms,
+                height 0ms,
+                opacity 0ms !important;
+        }}
+
+        /* shimmer sweep on hover (inactive) */
+        [data-testid="stButtonGroup"] button::after {{
+            content: "" !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 60% !important;
+            height: 100% !important;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.32) 50%,
+                transparent 100%
+            ) !important;
+            transition: left 500ms ease !important;
+            pointer-events: none !important;
+            z-index: 0 !important;
+        }}
+
+        [data-testid="stButtonGroup"] button:hover::after {{
+            left: 140% !important;
+        }}
+
+        /* hover state (inactive) */
         [data-testid="stButtonGroup"] button:hover {{
-            background: rgba(255, 255, 255, 0.35) !important;
-            box-shadow: none !important;
-            transform: none !important;
+            color: #1f2937 !important;
+            background: rgba(255, 255, 255, 0.40) !important;
+            box-shadow:
+                0 1px 4px rgba(0,0,0,0.06),
+                0 4px 8px rgba(0,0,0,0.04) !important;
+            transform: scale(1.02) !important;
+            border-color: rgba(255,255,255,0.60) !important;
         }}
 
+        [data-testid="stButtonGroup"] button:active {{
+            transform: scale(0.97) !important;
+        }}
+
+        /* ACTIVE / SELECTED button */
         [data-testid="stButtonGroup"] button[aria-checked="true"],
-        [data-testid="stButtonGroup"] button[aria-pressed="true"] {{
-            background: #ffffff !important;
-            border-color: #ffffff !important;
-            color: #000000 !important;
+        [data-testid="stButtonGroup"] button[aria-pressed="true"],
+        [data-testid="stButtonGroup"] button[aria-selected="true"] {{
+            background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
+            border-color: #068585 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow:
+                0 2px 8px rgba(6, 133, 133, 0.18),
+                0 8px 22px rgba(6, 133, 133, 0.16),
+                0 1px 2px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.22) !important;
+            transform: scale(1.03) translateY(-1px) !important;
+            animation: tab-pill-pop 320ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
+            z-index: 2 !important;
+        }}
+
+        @keyframes tab-pill-pop {{
+            0%   {{ opacity: 0.6; transform: scale(0.95) translateY(2px); }}
+            55%  {{ transform: scale(1.05) translateY(-2px); }}
+            100% {{ opacity: 1;  transform: scale(1.03) translateY(-1px); }}
+        }}
+
+        /* glow pulse on active */
+        [data-testid="stButtonGroup"] button[aria-checked="true"]::after,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"]::after,
+        [data-testid="stButtonGroup"] button[aria-selected="true"]::after {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 !important;
+            left: auto !important;
+            width: 100% !important;
+            border-radius: 16px !important;
+            background: transparent !important;
+            box-shadow: 0 0 0 0 rgba(6, 133, 133, 0.30) !important;
+            animation: tab-glow-pulse 2.4s ease-in-out infinite !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+        }}
+
+        @keyframes tab-glow-pulse {{
+            0%   {{ box-shadow: 0 0 0 0   rgba(6, 133, 133, 0.28); }}
+            50%  {{ box-shadow: 0 0 0 6px rgba(6, 133, 133, 0.00); }}
+            100% {{ box-shadow: 0 0 0 0   rgba(6, 133, 133, 0.28); }}
+        }}
+
+        /* active + hover: stay lifted, add extra glow */
+        [data-testid="stButtonGroup"] button[aria-checked="true"]:hover,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"]:hover,
+        [data-testid="stButtonGroup"] button[aria-selected="true"]:hover {{
+            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 4px 14px rgba(6, 133, 133, 0.28),
+                0 12px 30px rgba(6, 133, 133, 0.22),
+                inset 0 1px 0 rgba(255,255,255,0.26) !important;
+            transform: scale(1.04) translateY(-2px) !important;
+            border-color: #04747a !important;
+        }}
+
+        /* Strong override for Streamlit/BaseWeb segmented controls. */
+        [data-testid="stButtonGroup"] label:has(input:checked),
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"],
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"],
+        [data-testid="stButtonGroup"] button[aria-checked="true"],
+        [data-testid="stButtonGroup"] button[aria-pressed="true"],
+        [data-testid="stButtonGroup"] button[aria-selected="true"],
+        [data-testid="stSegmentedControl"] label:has(input:checked),
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"],
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"],
+        [data-testid="stSegmentedControl"] button[aria-checked="true"],
+        [data-testid="stSegmentedControl"] button[aria-pressed="true"],
+        [data-testid="stSegmentedControl"] button[aria-selected="true"] {{
+            background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
+            border-color: #068585 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow:
+                0 2px 8px rgba(6, 133, 133, 0.18),
+                0 8px 22px rgba(6, 133, 133, 0.16),
+                0 1px 2px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.22) !important;
+            transform: scale(1.03) translateY(-1px) !important;
+        }}
+
+        [data-testid="stButtonGroup"] label:has(input:checked) *,
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] *,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"] *,
+        [data-testid="stButtonGroup"] button[aria-checked="true"] *,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"] *,
+        [data-testid="stButtonGroup"] button[aria-selected="true"] *,
+        [data-testid="stSegmentedControl"] label:has(input:checked) *,
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] *,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"] *,
+        [data-testid="stSegmentedControl"] button[aria-checked="true"] *,
+        [data-testid="stSegmentedControl"] button[aria-pressed="true"] *,
+        [data-testid="stSegmentedControl"] button[aria-selected="true"] * {{
+            color: #ffffff !important;
+        }}
+
+        [data-testid="stButtonGroup"] label:has(input:checked) > div,
+        [data-testid="stButtonGroup"] label:has(input:checked) > span,
+        [data-testid="stButtonGroup"] label:has(input:checked) [data-baseweb],
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] > div,
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] > span,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"] > div,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"] > span,
+        [data-testid="stSegmentedControl"] label:has(input:checked) > div,
+        [data-testid="stSegmentedControl"] label:has(input:checked) > span,
+        [data-testid="stSegmentedControl"] label:has(input:checked) [data-baseweb],
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] > div,
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] > span,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"] > div,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"] > span {{
+            background: transparent !important;
+            color: #ffffff !important;
+            border-color: transparent !important;
             box-shadow: none !important;
         }}
 
-        [data-testid="stButtonGroup"] button[aria-checked="true"]:hover,
-        [data-testid="stButtonGroup"] button[aria-pressed="true"]:hover {{
-            background: #ffffff !important;
-            box-shadow: none !important;
-            transform: none !important;
+        [data-testid="stButtonGroup"] label:has(input:checked):hover,
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"]:hover,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"]:hover,
+        [data-testid="stSegmentedControl"] label:has(input:checked):hover,
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"]:hover,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"]:hover {{
+            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
+            border-color: #04747a !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 4px 14px rgba(6, 133, 133, 0.28),
+                0 12px 30px rgba(6, 133, 133, 0.22),
+                inset 0 1px 0 rgba(255,255,255,0.26) !important;
+            transform: scale(1.04) translateY(-2px) !important;
         }}
 
         div[data-testid="stButton"] > button {{
@@ -990,6 +1389,19 @@ def render_auth_header(title: str, subtitle: str) -> None:
         </div>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def render_role_selector(role_options: list[str], selected_role: str) -> str:
+    selected_index = role_options.index(selected_role)
+
+    return st.radio(
+        "Role",
+        role_options,
+        index=selected_index,
+        key="login_role_selector",
+        label_visibility="collapsed",
+        horizontal=True,
     )
 
 
