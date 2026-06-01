@@ -1,5 +1,9 @@
 import streamlit as st
-from ui_shared import render_auth_header, show_error
+
+try:
+    from .ui_shared import render_auth_header, show_error
+except ImportError:
+    from ui_shared import render_auth_header, show_error
 
 
 def validate_new_password(password: str, confirm_password: str) -> tuple[bool, str]:
