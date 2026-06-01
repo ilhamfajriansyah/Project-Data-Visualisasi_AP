@@ -22,12 +22,6 @@ IMAGE_MIME_TYPES = {
     ".webp": "image/webp",
 }
 
-# Safe spacing controls. Change these numbers only when adjusting login layout.
-FIELD_LABEL_MARGIN_TOP = 18
-FIELD_LABEL_MARGIN_BOTTOM = 14
-TEXT_INPUT_MARGIN_BOTTOM = 10
-ROLE_SELECTOR_MARGIN_BOTTOM = 20
-
 
 def image_to_data_url(path: Path) -> str:
     encoded_image = b64encode(path.read_bytes()).decode("ascii")
@@ -185,18 +179,18 @@ def inject_shared_css() -> None:
             padding: 36px 36px 34px !important;
             box-sizing: border-box !important;
             transform-origin: center;
-            animation: auth-card-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            animation: auth-form-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
             will-change: transform, opacity;
         }}
 
-        @keyframes auth-card-enter {{
+        @keyframes auth-form-enter {{
             0% {{
                 opacity: 0;
-                transform: translateY(18px) scale(0.985);
+                transform: translateY(18px);
             }}
             100% {{
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0);
             }}
         }}
 
@@ -216,9 +210,8 @@ def inject_shared_css() -> None:
             {get_left_panel_background_css()}
             border-right: 1px solid rgba(255, 255, 255, 0.72);
             box-shadow: inset -1px 0 0 rgba(203, 220, 245, 0.28);
-            transform-origin: center;
-            animation: left-panel-breathe 18s ease-in-out infinite alternate;
-            will-change: transform, background-position;
+            animation: airport-image-enter 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            will-change: transform, opacity;
         }}
 
         @keyframes airport-image-enter {{
@@ -324,7 +317,7 @@ def inject_shared_css() -> None:
             color: #334155;
             font-size: 13px;
             font-weight: 600;
-            margin: {FIELD_LABEL_MARGIN_TOP}px 0 {FIELD_LABEL_MARGIN_BOTTOM}px;
+            margin: 15px 0 15px;
         }}
 
         div[data-testid="stForm"] {{
@@ -332,11 +325,11 @@ def inject_shared_css() -> None:
             border: none !important;
             box-shadow: none !important;
             padding: 0 !important;
-            margin-top: 24px !important;
+            margin-top: 4px !important;
         }}
 
         [data-testid="stTextInput"] {{
-            margin-bottom: {TEXT_INPUT_MARGIN_BOTTOM}px;
+            margin-bottom: 6px;
         }}
 
         [data-baseweb="input"] {{
@@ -367,7 +360,10 @@ def inject_shared_css() -> None:
         }}
 
         [data-baseweb="input"]:focus-within {{
-            box-shadow: inset 0 0 0 1px #068585 !important, 0 0 0 3px rgba(6, 133, 133, 0.12) !important;
+            box-shadow:
+                inset 0 0 0 1.5px #068585,
+                0 0 0 4px rgba(6, 133, 133, 0.14),
+                0 10px 24px rgba(6, 133, 133, 0.16) !important;
         }}
 
         div[data-testid="column"]:nth-child(2) [data-baseweb="input"]:focus-within {{
@@ -384,6 +380,7 @@ def inject_shared_css() -> None:
             outline: none !important;
             background: transparent !important;
             color: #334155 !important;
+            caret-color: #111827 !important;
             font-size: 15px !important;
             box-sizing: border-box !important;
             appearance: none !important;
@@ -440,93 +437,458 @@ def inject_shared_css() -> None:
             margin-bottom: 0 !important;
         }}
 
-        .role-toggle-start,
-        .role-toggle-end {{
-            display: none !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) {{
+        [data-testid="stElementContainer"]:has([data-testid="stRadio"]),
+        [data-testid="stVerticalBlock"] > div:has(> [data-testid="stElementContainer"] [data-testid="stRadio"]) {{
             width: 100% !important;
-            min-height: 46px !important;
-            margin: 8px 0 {ROLE_SELECTOR_MARGIN_BOTTOM}px !important;
-            padding: 4px !important;
-            gap: 0 !important;
-            border-radius: 18px !important;
-            background: #e9e9ed !important;
-            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12) !important;
-            box-sizing: border-box !important;
         }}
 
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) > div[data-testid="column"] {{
+        [data-testid="stRadio"] {{
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 56px !important;
+            margin: 8px 0 10px !important;
             padding: 0 !important;
-            min-height: 38px !important;
+            border-radius: 20px !important;
+            background: linear-gradient(135deg, #e2e5ec 0%, #eaedf4 100%) !important;
+            box-shadow:
+                inset 0 1px 3px rgba(0,0,0,0.10),
+                inset 0 -1px 0 rgba(255,255,255,0.70),
+                0 1px 0 rgba(255,255,255,0.85) !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
         }}
 
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stElementContainer"]:has(.role-toggle-start),
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stElementContainer"]:has(.role-toggle-end) {{
-            display: none !important;
+        [data-testid="stRadio"] > div,
+        [data-testid="stRadio"] > div > div,
+        [data-testid="stRadio"] [role="radiogroup"] {{
+            width: 100% !important;
+            max-width: none !important;
         }}
 
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] {{
-            height: 38px !important;
+        [data-testid="stRadio"] [role="radiogroup"] {{
+            height: 56px !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0 !important;
+            align-items: stretch !important;
+            position: relative !important;
+            overflow: hidden !important;
+            border-radius: 20px !important;
+        }}
+
+        [data-testid="stRadio"] [role="radiogroup"]::before {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 auto 0 0 !important;
+            width: 50% !important;
+            height: 100% !important;
+            border-radius: 20px 0 0 20px !important;
+            background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
+            border: none !important;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.20),
+                inset 0 -1px 0 rgba(0,0,0,0.08) !important;
+            box-sizing: border-box !important;
+            contain: paint !important;
+            pointer-events: none !important;
+            transform: translateX(0) !important;
+            transition:
+                transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
+                border-radius 340ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 220ms ease,
+                background 220ms ease !important;
+            z-index: 0 !important;
+        }}
+
+        [data-testid="stRadio"] [role="radiogroup"]:has(label:last-child input[type="radio"]:checked)::before {{
+            border-radius: 0 20px 20px 0 !important;
+            transform: translateX(100%) !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]) {{
+            width: 100% !important;
+            max-width: none !important;
+            flex: 1 1 0 !important;
+            height: 56px !important;
+            min-height: 56px !important;
             margin: 0 !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button {{
-            height: 38px !important;
-            min-height: 38px !important;
-            border-radius: 15px !important;
-            border: 1px solid transparent !important;
+            padding: 0 !important;
+            border: 1.5px solid transparent !important;
+            border-radius: 0 !important;
+            color: #6b7280 !important;
             background: transparent !important;
-            color: #111827 !important;
-            box-shadow: none !important;
             font-size: 14px !important;
             font-weight: 600 !important;
             line-height: 1 !important;
+            letter-spacing: 0.01em !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            cursor: pointer !important;
             transition:
-                background 180ms ease,
-                box-shadow 180ms ease,
-                transform 180ms ease !important;
+                color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease,
+                background 240ms ease !important;
+            z-index: 1 !important;
         }}
 
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button:hover {{
-            transform: translateY(-1px) scale(1.018) !important;
-            background: rgba(255, 255, 255, 0.58) !important;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08) !important;
+        [data-testid="stRadio"] label:has(input[type="radio"])::after {{
+            content: "" !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 60% !important;
+            height: 100% !important;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.32) 50%,
+                transparent 100%
+            ) !important;
+            transition: left 500ms ease !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
         }}
 
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button:active {{
-            transform: translateY(0) scale(0.985) !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button[kind="primary"] {{
-            background: #ffffff !important;
-            border-color: #ffffff !important;
-            color: #000000 !important;
+        [data-testid="stRadio"] label:has(input[type="radio"]):hover {{
+            color: #1f2937 !important;
+            background: rgba(255, 255, 255, 0.40) !important;
             box-shadow:
-                0 1px 2px rgba(15, 23, 42, 0.04),
-                0 8px 18px rgba(15, 23, 42, 0.08) !important;
-            animation: role-tab-selected 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+                0 1px 4px rgba(0,0,0,0.06),
+                0 4px 8px rgba(0,0,0,0.04) !important;
+            transform: none !important;
+            border-color: rgba(255,255,255,0.60) !important;
         }}
 
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button[kind="primary"]:hover {{
-            background: #ffffff !important;
+        [data-testid="stRadio"] label:has(input[type="radio"]):hover::after {{
+            left: 140% !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked),
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked):hover {{
+            background: transparent !important;
+            border-color: transparent !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            animation: none !important;
+        }}
+
+        [data-testid="stRadio"] label:first-child:has(input[type="radio"]:checked) {{
+            border-radius: 20px 0 0 20px !important;
+        }}
+
+        [data-testid="stRadio"] label:last-child:has(input[type="radio"]:checked) {{
+            border-radius: 0 20px 20px 0 !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked):hover {{
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }}
+
+        @keyframes tab-pill-settle {{
+            0%   {{ filter: brightness(1.08); }}
+            100% {{ filter: brightness(1); }}
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]:checked)::after {{
+            inset: 0 !important;
+            left: auto !important;
+            width: 100% !important;
+            border-radius: inherit !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            animation: none !important;
+            z-index: -1 !important;
+        }}
+
+        [data-testid="stRadio"] input[type="radio"] {{
+            position: absolute !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            pointer-events: none !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]) > div:first-child {{
+            display: none !important;
+        }}
+
+        [data-testid="stRadio"] label:has(input[type="radio"]) p,
+        [data-testid="stRadio"] label:has(input[type="radio"]) span,
+        [data-testid="stRadio"] label:has(input[type="radio"]) div {{
+            color: inherit !important;
+            font-size: 14px !important;
+            font-weight: inherit !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+        }}
+
+        /* ── Role Tab Switch ── */
+        [data-testid="stButtonGroup"] {{
+            width: 100% !important;
+            min-height: 52px !important;
+            margin: 8px 0 22px !important;
+            padding: 4px !important;
+            border-radius: 20px !important;
+            background: linear-gradient(135deg, #e2e5ec 0%, #eaedf4 100%) !important;
             box-shadow:
-                0 1px 2px rgba(15, 23, 42, 0.05),
-                0 10px 20px rgba(15, 23, 42, 0.10) !important;
-            transform: translateY(-1px) scale(1.018) !important;
+                inset 0 1px 3px rgba(0,0,0,0.10),
+                inset 0 -1px 0 rgba(255,255,255,0.70),
+                0 1px 0 rgba(255,255,255,0.85) !important;
+            box-sizing: border-box !important;
+            position: relative !important;
+            overflow: hidden !important;
         }}
 
-        @keyframes role-tab-selected {{
-            0% {{
-                transform: scale(0.96);
-            }}
-            70% {{
-                transform: scale(1.018);
-            }}
-            100% {{
-                transform: scale(1);
-            }}
+        [data-testid="stButtonGroup"] [data-baseweb="button-group"] {{
+            width: 100% !important;
+            height: 44px !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0 !important;
+            position: relative !important;
+        }}
+
+        /* base button style */
+        [data-testid="stButtonGroup"] button {{
+            width: 100% !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            border: 1.5px solid transparent !important;
+            border-radius: 16px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: #6b7280 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            letter-spacing: 0.01em !important;
+            cursor: pointer !important;
+            position: relative !important;
+            overflow: hidden !important;
+            transition:
+                color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease,
+                background 240ms ease !important;
+            transform: scale(1) !important;
+            z-index: 1 !important;
+        }}
+
+        /* ripple pseudo-element */
+        [data-testid="stButtonGroup"] button::before {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 50% !important;
+            width: 0 !important;
+            height: 0 !important;
+            border-radius: 50% !important;
+            background: rgba(6, 133, 133, 0.18) !important;
+            transform: translate(-50%, -50%) !important;
+            transition:
+                width 400ms ease,
+                height 400ms ease,
+                opacity 400ms ease !important;
+            opacity: 0 !important;
+            z-index: 0 !important;
+        }}
+
+        [data-testid="stButtonGroup"] button:active::before {{
+            width: 220px !important;
+            height: 220px !important;
+            opacity: 1 !important;
+            transition:
+                width 0ms,
+                height 0ms,
+                opacity 0ms !important;
+        }}
+
+        /* shimmer sweep on hover (inactive) */
+        [data-testid="stButtonGroup"] button::after {{
+            content: "" !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 60% !important;
+            height: 100% !important;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.32) 50%,
+                transparent 100%
+            ) !important;
+            transition: left 500ms ease !important;
+            pointer-events: none !important;
+            z-index: 0 !important;
+        }}
+
+        [data-testid="stButtonGroup"] button:hover::after {{
+            left: 140% !important;
+        }}
+
+        /* hover state (inactive) */
+        [data-testid="stButtonGroup"] button:hover {{
+            color: #1f2937 !important;
+            background: rgba(255, 255, 255, 0.40) !important;
+            box-shadow:
+                0 1px 4px rgba(0,0,0,0.06),
+                0 4px 8px rgba(0,0,0,0.04) !important;
+            transform: scale(1.02) !important;
+            border-color: rgba(255,255,255,0.60) !important;
+        }}
+
+        [data-testid="stButtonGroup"] button:active {{
+            transform: scale(0.97) !important;
+        }}
+
+        /* ACTIVE / SELECTED button */
+        [data-testid="stButtonGroup"] button[aria-checked="true"],
+        [data-testid="stButtonGroup"] button[aria-pressed="true"],
+        [data-testid="stButtonGroup"] button[aria-selected="true"] {{
+            background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
+            border-color: #068585 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow:
+                0 2px 8px rgba(6, 133, 133, 0.18),
+                0 8px 22px rgba(6, 133, 133, 0.16),
+                0 1px 2px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.22) !important;
+            transform: scale(1.03) translateY(-1px) !important;
+            animation: tab-pill-pop 320ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
+            z-index: 2 !important;
+        }}
+
+        @keyframes tab-pill-pop {{
+            0%   {{ opacity: 0.6; transform: scale(0.95) translateY(2px); }}
+            55%  {{ transform: scale(1.05) translateY(-2px); }}
+            100% {{ opacity: 1;  transform: scale(1.03) translateY(-1px); }}
+        }}
+
+        /* glow pulse on active */
+        [data-testid="stButtonGroup"] button[aria-checked="true"]::after,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"]::after,
+        [data-testid="stButtonGroup"] button[aria-selected="true"]::after {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 !important;
+            left: auto !important;
+            width: 100% !important;
+            border-radius: 16px !important;
+            background: transparent !important;
+            box-shadow: 0 0 0 0 rgba(6, 133, 133, 0.30) !important;
+            animation: tab-glow-pulse 2.4s ease-in-out infinite !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+        }}
+
+        @keyframes tab-glow-pulse {{
+            0%   {{ box-shadow: 0 0 0 0   rgba(6, 133, 133, 0.28); }}
+            50%  {{ box-shadow: 0 0 0 6px rgba(6, 133, 133, 0.00); }}
+            100% {{ box-shadow: 0 0 0 0   rgba(6, 133, 133, 0.28); }}
+        }}
+
+        /* active + hover: stay lifted, add extra glow */
+        [data-testid="stButtonGroup"] button[aria-checked="true"]:hover,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"]:hover,
+        [data-testid="stButtonGroup"] button[aria-selected="true"]:hover {{
+            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 4px 14px rgba(6, 133, 133, 0.28),
+                0 12px 30px rgba(6, 133, 133, 0.22),
+                inset 0 1px 0 rgba(255,255,255,0.26) !important;
+            transform: scale(1.04) translateY(-2px) !important;
+            border-color: #04747a !important;
+        }}
+
+        /* Strong override for Streamlit/BaseWeb segmented controls. */
+        [data-testid="stButtonGroup"] label:has(input:checked),
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"],
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"],
+        [data-testid="stButtonGroup"] button[aria-checked="true"],
+        [data-testid="stButtonGroup"] button[aria-pressed="true"],
+        [data-testid="stButtonGroup"] button[aria-selected="true"],
+        [data-testid="stSegmentedControl"] label:has(input:checked),
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"],
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"],
+        [data-testid="stSegmentedControl"] button[aria-checked="true"],
+        [data-testid="stSegmentedControl"] button[aria-pressed="true"],
+        [data-testid="stSegmentedControl"] button[aria-selected="true"] {{
+            background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
+            border-color: #068585 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow:
+                0 2px 8px rgba(6, 133, 133, 0.18),
+                0 8px 22px rgba(6, 133, 133, 0.16),
+                0 1px 2px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.22) !important;
+            transform: scale(1.03) translateY(-1px) !important;
+        }}
+
+        [data-testid="stButtonGroup"] label:has(input:checked) *,
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] *,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"] *,
+        [data-testid="stButtonGroup"] button[aria-checked="true"] *,
+        [data-testid="stButtonGroup"] button[aria-pressed="true"] *,
+        [data-testid="stButtonGroup"] button[aria-selected="true"] *,
+        [data-testid="stSegmentedControl"] label:has(input:checked) *,
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] *,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"] *,
+        [data-testid="stSegmentedControl"] button[aria-checked="true"] *,
+        [data-testid="stSegmentedControl"] button[aria-pressed="true"] *,
+        [data-testid="stSegmentedControl"] button[aria-selected="true"] * {{
+            color: #ffffff !important;
+        }}
+
+        [data-testid="stButtonGroup"] label:has(input:checked) > div,
+        [data-testid="stButtonGroup"] label:has(input:checked) > span,
+        [data-testid="stButtonGroup"] label:has(input:checked) [data-baseweb],
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] > div,
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"] > span,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"] > div,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"] > span,
+        [data-testid="stSegmentedControl"] label:has(input:checked) > div,
+        [data-testid="stSegmentedControl"] label:has(input:checked) > span,
+        [data-testid="stSegmentedControl"] label:has(input:checked) [data-baseweb],
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] > div,
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] > span,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"] > div,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"] > span {{
+            background: transparent !important;
+            color: #ffffff !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }}
+
+        [data-testid="stButtonGroup"] label:has(input:checked):hover,
+        [data-testid="stButtonGroup"] [role="radio"][aria-checked="true"]:hover,
+        [data-testid="stButtonGroup"] [role="tab"][aria-selected="true"]:hover,
+        [data-testid="stSegmentedControl"] label:has(input:checked):hover,
+        [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"]:hover,
+        [data-testid="stSegmentedControl"] [role="tab"][aria-selected="true"]:hover {{
+            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
+            border-color: #04747a !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 4px 14px rgba(6, 133, 133, 0.28),
+                0 12px 30px rgba(6, 133, 133, 0.22),
+                inset 0 1px 0 rgba(255,255,255,0.26) !important;
+            transform: scale(1.04) translateY(-2px) !important;
         }}
 
         div[data-testid="stButton"] > button {{
@@ -542,18 +904,6 @@ def inject_shared_css() -> None:
                 transform 180ms ease !important;
         }}
 
-        div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] > button:hover {{
-            transform: translateY(-2px) scale(1.012);
-        }}
-
-        div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] > button:active {{
-            transform: translateY(0) scale(0.985);
-        }}
-
-        div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] > button[kind="primary"]:hover {{
-            box-shadow: 0 16px 30px rgba(6, 133, 133, 0.24) !important;
-        }}
-
         div[data-testid="stButton"] > button[kind="secondary"] {{
             border: 1px solid #e5e7eb !important;
             background: #f3f4f6 !important;
@@ -566,20 +916,6 @@ def inject_shared_css() -> None:
             background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
             color: #ffffff !important;
             box-shadow: 0 12px 24px rgba(6, 133, 133, 0.18) !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] > button[kind="primary"]:not([disabled]):hover {{
-            border-color: #04747a !important;
-            background: linear-gradient(180deg, #0f9ca0 0%, #056a71 100%) !important;
-            box-shadow:
-                0 2px 6px rgba(6, 133, 133, 0.12),
-                0 16px 30px rgba(6, 133, 133, 0.26) !important;
-            transform: translateY(-2px) scale(1.012) !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] > button[kind="primary"]:not([disabled]):active {{
-            transform: translateY(0) scale(0.985) !important;
-            box-shadow: 0 8px 18px rgba(6, 133, 133, 0.18) !important;
         }}
 
         .auth-form-top-gap {{
@@ -819,7 +1155,7 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
         div[data-testid="stFormSubmitButton"] {{
             width: 100% !important;
             display: block !important;
-            margin-top: 18px !important;
+            margin-top: 12px !important;
         }}
 
         div[data-testid="stFormSubmitButton"] > button {{
@@ -833,6 +1169,49 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
             font-size: 16px !important;
             font-weight: 700 !important;
             box-shadow: 0 12px 24px rgba(6, 133, 133, 0.18) !important;
+            position: relative !important;
+            overflow: hidden !important;
+            transform-origin: center !important;
+            transition:
+                background 180ms ease,
+                border-color 180ms ease,
+                box-shadow 220ms ease,
+                transform 180ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }}
+
+        div[data-testid="stFormSubmitButton"] > button::before {{
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 auto 0 -70% !important;
+            width: 48% !important;
+            height: 100% !important;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.34) 48%,
+                transparent 100%
+            ) !important;
+            transform: skewX(-18deg) !important;
+            transition: left 540ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+            pointer-events: none !important;
+        }}
+
+        div[data-testid="stFormSubmitButton"] > button:hover {{
+            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
+            border-color: #04747a !important;
+            box-shadow:
+                0 2px 6px rgba(6, 133, 133, 0.14),
+                0 18px 32px rgba(6, 133, 133, 0.28) !important;
+            transform: translateY(-2px) scale(1.012) !important;
+        }}
+
+        div[data-testid="stFormSubmitButton"] > button:hover::before {{
+            left: 120% !important;
+        }}
+
+        div[data-testid="stFormSubmitButton"] > button:active {{
+            transform: translateY(0) scale(0.985) !important;
+            box-shadow: 0 8px 18px rgba(6, 133, 133, 0.18) !important;
         }}
 
         .info-box {{
@@ -880,8 +1259,8 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
         .error-alert {{
             position: relative;
             width: 100%;
-            margin-top: 18px !important;
-            padding: 14px 16px 14px 18px !important;
+            margin-top: 12px !important;
+            padding: 12px 14px 12px 16px !important;
             background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%) !important;
             border: 1px solid #f3c8c8 !important;
             border-left: 4px solid #dc2626 !important;
@@ -962,167 +1341,6 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
             }}
         }}
 
-        @keyframes panel-button-hover-pop {{
-            0% {{
-                transform: translateY(0) scale(1);
-            }}
-            65% {{
-                transform: translateY(-3px) scale(1.018);
-            }}
-            100% {{
-                transform: translateY(-2px) scale(1.012);
-            }}
-        }}
-
-        @keyframes panel-button-press {{
-            0% {{
-                transform: translateY(-2px) scale(1.012);
-            }}
-            100% {{
-                transform: translateY(0) scale(0.982);
-            }}
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] {{
-            transform-origin: center;
-            transition:
-                transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-                filter 180ms ease !important;
-            will-change: transform;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"]:hover {{
-            transform: translateY(-3px) scale(1.012) !important;
-            filter: brightness(1.02);
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"]:active {{
-            transform: translateY(0) scale(0.985) !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button [data-testid="stMarkdownContainer"],
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button [data-testid="stMarkdownContainer"] p {{
-            transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"]:hover > button [data-testid="stMarkdownContainer"],
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"]:hover > button [data-testid="stMarkdownContainer"] p {{
-            transform: scale(1.018) !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] {{
-            transform-origin: center;
-            transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-            will-change: transform;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"]:hover {{
-            transform: translateY(-2px) scale(1.018) !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"]:active {{
-            transform: translateY(0) scale(0.985) !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button [data-testid="stMarkdownContainer"],
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button [data-testid="stMarkdownContainer"] p {{
-            transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"]:hover > button [data-testid="stMarkdownContainer"],
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"]:hover > button [data-testid="stMarkdownContainer"] p {{
-            transform: scale(1.025) !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button:not([disabled]):hover {{
-            animation: panel-button-hover-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
-            transition:
-                background 180ms ease,
-                border-color 180ms ease,
-                box-shadow 180ms ease,
-                color 180ms ease !important;
-            will-change: transform;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button:not([disabled]):active {{
-            animation: panel-button-press 120ms ease-out both !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button[kind="primary"]:not([disabled]):hover {{
-            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
-            border-color: #04747a !important;
-            box-shadow:
-                0 2px 6px rgba(6, 133, 133, 0.14),
-                0 18px 32px rgba(6, 133, 133, 0.28) !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button[kind="secondary"]:not([disabled]):hover {{
-            background: #eef2f7 !important;
-            border-color: #cbd5e1 !important;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08) !important;
-            color: #0f172a !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button:not([disabled]):hover {{
-            animation: panel-button-hover-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
-        }}
-
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button:not([disabled]):active {{
-            animation: panel-button-press 120ms ease-out both !important;
-        }}
-
-        @keyframes button-shine-sweep {{
-            0% {{
-                transform: translateX(-135%) skewX(-18deg);
-                opacity: 0;
-            }}
-            18% {{
-                opacity: 0.9;
-            }}
-            100% {{
-                transform: translateX(135%) skewX(-18deg);
-                opacity: 0;
-            }}
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button,
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button {{
-            position: relative !important;
-            overflow: hidden !important;
-            isolation: isolate;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button::after,
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button::after {{
-            content: "";
-            position: absolute;
-            z-index: 1;
-            top: -35%;
-            left: 0;
-            width: 44%;
-            height: 170%;
-            pointer-events: none;
-            opacity: 0;
-            transform: translateX(-135%) skewX(-18deg);
-            background: linear-gradient(
-                90deg,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.72) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button:hover::after,
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button:hover::after {{
-            animation: button-shine-sweep 720ms ease-out both !important;
-        }}
-
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.sign-in-button-anchor) div[data-testid="stButton"] > button [data-testid="stMarkdownContainer"],
-        [data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) .role-toggle-start):has(> div[data-testid="column"]:nth-child(2) .role-toggle-end) div[data-testid="stButton"] > button [data-testid="stMarkdownContainer"] {{
-            position: relative;
-            z-index: 2;
-        }}
-
         @media (prefers-reduced-motion: reduce) {{
             .error-alert,
             .left-panel,
@@ -1137,135 +1355,6 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
                 transform: none !important;
                 will-change: auto;
             }}
-        }}
-
-        .animated-role-buttons,
-        .animated-sign-in-button {{
-            display: none !important;
-        }}
-
-        @keyframes targeted-button-hover {{
-            0% {{
-                transform: translateY(0) scale(1);
-            }}
-            100% {{
-                transform: translateY(-3px) scale(1.025);
-            }}
-        }}
-
-        @keyframes targeted-button-press {{
-            0% {{
-                transform: translateY(-3px) scale(1.025);
-            }}
-            100% {{
-                transform: translateY(0) scale(0.975);
-            }}
-        }}
-
-        div[data-testid="stElementContainer"]:has(.animated-role-buttons) + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"],
-        div[data-testid="stElementContainer"]:has(.animated-sign-in-button) + div[data-testid="stButton"] {{
-            transform-origin: center center !important;
-            transition:
-                transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-                filter 180ms ease !important;
-            will-change: transform;
-        }}
-
-        div[data-testid="stElementContainer"]:has(.animated-role-buttons) + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"]:hover,
-        div[data-testid="stElementContainer"]:has(.animated-sign-in-button) + div[data-testid="stButton"]:hover {{
-            animation: targeted-button-hover 180ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
-            filter: brightness(1.03);
-        }}
-
-        div[data-testid="stElementContainer"]:has(.animated-role-buttons) + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"]:active,
-        div[data-testid="stElementContainer"]:has(.animated-sign-in-button) + div[data-testid="stButton"]:active {{
-            animation: targeted-button-press 110ms ease-out both !important;
-        }}
-
-        div[data-testid="stElementContainer"]:has(.animated-role-buttons) + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] > button,
-        div[data-testid="stElementContainer"]:has(.animated-sign-in-button) + div[data-testid="stButton"] > button {{
-            transition:
-                background 180ms ease,
-                border-color 180ms ease,
-                box-shadow 180ms ease,
-                color 180ms ease !important;
-        }}
-
-        div[data-testid="stElementContainer"]:has(.animated-role-buttons) + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"]:hover > button,
-        div[data-testid="stElementContainer"]:has(.animated-sign-in-button) + div[data-testid="stButton"]:hover > button {{
-            box-shadow:
-                0 2px 6px rgba(15, 23, 42, 0.08),
-                0 14px 28px rgba(15, 23, 42, 0.12) !important;
-        }}
-
-        div[data-testid="stElementContainer"]:has(.animated-sign-in-button) + div[data-testid="stButton"]:hover > button[kind="primary"] {{
-            background: linear-gradient(180deg, #12a3a6 0%, #066f76 100%) !important;
-            border-color: #04747a !important;
-            box-shadow:
-                0 2px 6px rgba(6, 133, 133, 0.14),
-                0 18px 32px rgba(6, 133, 133, 0.28) !important;
-        }}
-
-        bottom-link-wrap {{
-            margin-top: 22px;
-            text-align: center;
-        }}
-
-        .bottom-link {{
-            color: #068585 !important;
-            text-decoration: none !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            transition:
-                color 160ms ease,
-                transform 160ms ease,
-                text-decoration-color 160ms ease !important;
-        }}
-
-        .bottom-link:hover {{
-            color: #0a7e85 !important;
-            text-decoration: none !important;
-            transform: translateY(-1px);
-        }}
-
-        .bottom-login-link-wrap {{
-            margin-top: 14px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }}
-
-        .bottom-login-link-wrap [data-testid="stButton"] {{
-            margin: 0 !important;
-            width: auto !important;
-        }}
-
-        .bottom-login-link-wrap [data-testid="stButton"] > button[kind="tertiary"] {{
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #068585 !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            min-height: auto !important;
-            height: auto !important;
-            width: auto !important;
-            line-height: 1.2 !important;
-            text-decoration: none !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }}
-
-        .bottom-login-link-wrap [data-testid="stButton"] > button[kind="tertiary"]:hover {{
-            background: transparent !important;
-            order: none !important;
-            box-shadow: none !important;
-            color: #0a7e85 !important;
-            text-decoration: underline !important;
-            transform: translateY(-1px) !important;
         }}
 
         div[data-testid="stButton"] {{
@@ -1300,8 +1389,7 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
         }}
 
         div[data-testid="stButton"] > button[kind="tertiary"]:hover,
-        .bottom-login-link-wrap [data-testid="stButton"]:hover,
-        .bottom-login-link-wrap [data-testid="stButton"] > button[kind="tertiary"]:hover {{
+        div[data-testid="stButton"]:has(> button[kind="tertiary"]):hover {{
             transform: none !important;
             filter: none !important;
             box-shadow: none !important;
@@ -1348,32 +1436,16 @@ def render_auth_header(title: str, subtitle: str) -> None:
 
 
 def render_role_selector(role_options: list[str], selected_role: str) -> str:
-    next_role = selected_role
-    left_col, right_col = st.columns(2, gap="small")
+    selected_index = role_options.index(selected_role)
 
-    with left_col:
-        st.markdown('<span class="role-toggle-start"></span>', unsafe_allow_html=True)
-        role = role_options[0]
-        if st.button(
-            role,
-            key=f"role_select_{role}",
-            type="primary" if selected_role == role else "secondary",
-            use_container_width=True,
-        ):
-            next_role = role
-
-    with right_col:
-        st.markdown('<span class="role-toggle-end"></span>', unsafe_allow_html=True)
-        role = role_options[1]
-        if st.button(
-            role,
-            key=f"role_select_{role}",
-            type="primary" if selected_role == role else "secondary",
-            use_container_width=True,
-        ):
-            next_role = role
-
-    return next_role
+    return st.radio(
+        "Role",
+        role_options,
+        index=selected_index,
+        key="login_role_selector",
+        label_visibility="collapsed",
+        horizontal=True,
+    )
 
 
 def show_error(message: str, title: str = "Periksa kembali") -> None:
