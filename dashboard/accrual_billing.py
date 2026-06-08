@@ -201,7 +201,7 @@ def page_accrual_billing():
     .ab-top-divider {
         position: relative;
         height: 2px;
-        margin: 18px 0 18px;
+        margin: 6px 0 12px;
         border-radius: 999px;
         background: linear-gradient(90deg, rgba(99,102,241,0), rgba(99,102,241,0.50), rgba(6,182,212,0.58), rgba(16,185,129,0.52), rgba(16,185,129,0));
         box-shadow: 0 8px 24px rgba(6,182,212,0.14);
@@ -297,6 +297,42 @@ def page_accrual_billing():
         border-radius: inherit;
         height: 6px;
     }
+    [data-testid="stAlert"] {
+        background: rgba(254, 243, 199, 0.92) !important;
+        border: 1px solid rgba(245, 158, 11, 0.28) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 6px 18px rgba(245, 158, 11, 0.08) !important;
+    }
+    [data-testid="stAlert"] *,
+    [data-testid="stAlert"] p,
+    [data-testid="stAlert"] div {
+        color: #713f12 !important;
+        -webkit-text-fill-color: #713f12 !important;
+        opacity: 1 !important;
+        font-weight: 650 !important;
+    }
+    [data-testid="stAlert"] svg {
+        color: #d97706 !important;
+        fill: #d97706 !important;
+        opacity: 1 !important;
+    }
+    [data-testid="stMain"] [data-testid="stSelectbox"],
+    [data-testid="stMain"] div[data-testid="stButton"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    [data-testid="stMain"] [data-testid="stSelectbox"] > div > div,
+    [data-testid="stMain"] div[data-testid="stButton"] > button {
+        min-height: 48px !important;
+        height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    [data-testid="stMain"] div[data-testid="stButton"] > button {
+        justify-content: center !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -304,7 +340,7 @@ def page_accrual_billing():
     n1, n3 = st.columns([4, 6])
     with n1:
         st.markdown('<h2 style="margin:0;font-size:19px;font-weight:800;'
-                    'color:#0f172a;padding-top:6px;">Accrual & Billing</h2>',
+                    'color:#0f172a;padding-top:0;">Accrual & Billing</h2>',
                     unsafe_allow_html=True)
     with n3:
         initial = st.session_state.get("user_name", "Admin")[0].upper()
@@ -312,7 +348,7 @@ def page_accrual_billing():
         uemail  = st.session_state.get("user_email", "injourneyairports@mail.com")
         st.markdown(f"""
         <div style="display:flex;align-items:center;justify-content:flex-end;
-                    gap:12px;padding-top:4px;">
+                    gap:12px;padding-top:0;">
             <div style="width:34px;height:34px;border-radius:50%;
                         background:rgba(255,255,255,0.72);
                         border:1px solid rgba(255,255,255,0.95);
@@ -443,7 +479,6 @@ def page_accrual_billing():
         f_status = st.selectbox("", ["Semua Status","SUCCESS","RESERVED","FAILED"],
                                 key="ab_status", label_visibility="collapsed")
     with fc3:
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         st.button("Refresh", key="btn_refresh", use_container_width=True)
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)

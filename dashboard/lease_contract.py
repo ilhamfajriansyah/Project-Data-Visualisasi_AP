@@ -35,7 +35,7 @@ body:has(.lc-page-marker) .stApp {
     background: linear-gradient(135deg, #f7fafc 0%, #eef5f7 50%, #f8fbfa 100%) !important;
 }
 body:has(.lc-page-marker) .block-container {
-    padding-top: 18px !important;
+    padding-top: 2px !important;
 }
 body:has(.lc-page-marker) [data-testid="stMain"] div[data-testid="stButton"] > button,
 body:has(.lc-page-marker) [data-testid="stMain"] div[data-testid="stDownloadButton"] > button {
@@ -63,18 +63,18 @@ body:has(.lc-page-marker) [data-testid="stMain"] div[data-testid="stDownloadButt
 
 /* ── PAGE HEADER ── */
 .lc-header-title {
-    padding-top: 4px;
+    padding-top: 0;
 }
 .lc-header-title h1 {
     margin: 0;
-    font-size: 22px;
-    line-height: 1.15;
-    font-weight: 850;
-    color: #111827;
+    font-size: 19px;
+    line-height: 1.2;
+    font-weight: 800;
+    color: #0f172a;
 }
 .lc-header-title p {
-    margin: 4px 0 0;
-    font-size: 12px;
+    margin: 2px 0 0;
+    font-size: 11px;
     color: #7f8a98;
     font-weight: 500;
 }

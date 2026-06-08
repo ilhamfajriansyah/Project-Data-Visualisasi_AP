@@ -195,7 +195,7 @@ def page_revenue_sharing():
     .rs-top-divider {
         position: relative;
         height: 2px;
-        margin: 18px 0 18px;
+        margin: 6px 0 12px;
         border-radius: 999px;
         background: linear-gradient(90deg, rgba(99,102,241,0), rgba(99,102,241,0.50), rgba(6,182,212,0.58), rgba(16,185,129,0.52), rgba(16,185,129,0));
         box-shadow: 0 8px 24px rgba(6,182,212,0.14);
@@ -298,7 +298,7 @@ def page_revenue_sharing():
     n1, n3 = st.columns([4, 6])
     with n1:
         st.markdown('<h2 style="margin:0;font-size:19px;font-weight:800;'
-                    'color:#0f172a;padding-top:6px;">Revenue Sharing</h2>',
+                    'color:#0f172a;padding-top:0;">Revenue Sharing</h2>',
                     unsafe_allow_html=True)
     with n3:
         initial = st.session_state.get("user_name","Admin")[0].upper()
@@ -306,7 +306,7 @@ def page_revenue_sharing():
         uemail  = st.session_state.get("user_email","injourneyairports@mail.com")
         st.markdown(f"""
         <div style="display:flex;align-items:center;justify-content:flex-end;
-                    gap:12px;padding-top:4px;">
+                    gap:12px;padding-top:0;">
             <div style="width:34px;height:34px;border-radius:50%;
                         background:rgba(255,255,255,0.72);
                         border:1px solid rgba(255,255,255,0.95);

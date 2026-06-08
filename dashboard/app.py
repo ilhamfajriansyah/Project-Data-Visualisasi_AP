@@ -3,14 +3,16 @@ from .revenue_sharing import page_revenue_sharing
 from .room_database import render_room_database
 from .lease_contract import render_lease_contract
 from .import_manager import render_import_manager
+from .Data_verification import render_data_verification
 from .dashboard_style import DASHBOARD_CSS
-from login.access_control import Role, get_access_mode_label, get_current_role, init_auth_state, is_authenticated, logout_user
+from login.access_control import Role, get_current_role, init_auth_state, is_authenticated, logout_user
 from .shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from sqlalchemy import create_engine
+from html import escape
 import os
 from dotenv import load_dotenv
 import numpy as np
@@ -22,6 +24,165 @@ load_dotenv()
 # ─────────────────────────────────────────────
 def inject_dashboard_css():
     st.markdown(f"<style>{DASHBOARD_CSS}</style>", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .ap-top-actions {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        gap: 14px;
+        padding-top: 2px;
+        position: relative;
+        overflow: visible;
+    }
+    .ap-top-bell {
+        width: 34px;
+        height: 34px;
+        margin-top: 7px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.78);
+        border: 1px solid rgba(255,255,255,0.96);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        box-shadow: 0 2px 8px rgba(99,102,241,0.08);
+    }
+    .ap-profile-details {
+        position: relative;
+        overflow: visible;
+    }
+    .ap-profile-details > summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        user-select: none;
+        outline: none;
+    }
+    .ap-profile-details > summary::-webkit-details-marker {
+        display: none;
+    }
+    .ap-profile-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background:
+            radial-gradient(circle at 50% 34%, #1f2937 0 5px, transparent 6px),
+            radial-gradient(ellipse at 50% 78%, #1f2937 0 11px, transparent 12px),
+            #ffffff;
+        border: 1px solid rgba(226,232,240,0.95);
+        box-shadow: 0 4px 14px rgba(15,23,42,0.10);
+        flex: 0 0 auto;
+    }
+    .ap-profile-menu {
+        position: absolute;
+        right: 0;
+        top: 54px;
+        z-index: 9999;
+        width: 210px;
+        padding: 8px 0;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.98);
+        border: 1px solid rgba(226,232,240,0.96);
+        box-shadow: 0 16px 34px rgba(15,23,42,0.14);
+        overflow: hidden;
+    }
+    .ap-profile-menu-item {
+        height: 46px;
+        padding: 0 20px;
+        color: #334155 !important;
+        text-decoration: none !important;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .ap-profile-menu-item:hover {
+        background: rgba(99,102,241,0.08);
+        color: #4f46e5 !important;
+    }
+    .ap-profile-menu-icon {
+        width: 18px;
+        color: #64748b;
+        text-align: center;
+        font-size: 16px;
+    }
+    #MainMenu,
+    footer,
+    header,
+    [data-testid="stHeader"] {
+        display: none !important;
+        height: 0 !important;
+        visibility: hidden !important;
+    }
+    .block-container {
+        padding-top: 2px !important;
+    }
+    [data-testid="stSidebarContent"] {
+        padding: 0 !important;
+    }
+    [data-testid="stSidebarContent"] > div,
+    [data-testid="stSidebarContent"] > div:first-child,
+    [data-testid="stSidebarContent"] [data-testid="stVerticalBlock"],
+    [data-testid="stSidebarContent"] [data-testid="stVerticalBlock"] > div:first-child {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    [data-testid="stSidebar"] .element-container:first-child {
+        margin-top: 0 !important;
+    }
+    .ap-brand {
+        margin-top: -2px !important;
+        padding: 6px 14px 10px !important;
+    }
+    .ap-brand-mini {
+        margin-top: -2px !important;
+        padding: 6px 0 8px !important;
+    }
+    .ap-logo {
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 11px !important;
+    }
+    .ap-brand-name {
+        font-size: 10.2px !important;
+        line-height: 1.2 !important;
+    }
+    .ap-brand-sub {
+        font-size: 8.6px !important;
+        margin-top: 2px !important;
+    }
+    .nad-top-divider {
+        margin: 6px 0 12px !important;
+    }
+    h2[style*="padding-top:6px"],
+    .lc-header-title,
+    .page-header,
+    .im-manager-surface {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    .ap-top-actions {
+        align-items: center;
+        padding-top: 0;
+        min-height: 40px;
+    }
+    .ap-top-bell {
+        margin-top: 0;
+    }
+    @media (max-width: 900px) {
+        .block-container {
+            padding-top: 2px !important;
+        }
+        .ap-brand {
+            padding-top: 5px !important;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # SESSION STATE
@@ -35,7 +196,6 @@ ROLE_MENUS = {
         "Lease Contract",
         "Import Manager",
         "Data Verification",
-        "Traffic Monitor",
     ],
     Role.ADMIN: [
         "Overview",
@@ -43,8 +203,8 @@ ROLE_MENUS = {
         "Accrual & Billing",
         "Room Database",
         "Lease Contract",
+        "Import Manager",
         "Data Verification",
-        "Traffic Monitor",
     ],
 }
 
@@ -188,12 +348,7 @@ NAV_ICONS = {
     "Lease Contract": "📄",
     "Import Manager": "📤",
     "Data Verification": "✓",
-    "Traffic Monitor": "📈",
 }
-
-
-def _toggle_sidebar():
-    st.session_state.sidebar_minimized = not st.session_state.sidebar_minimized
 
 
 def _go_to_menu(menu_name):
@@ -203,31 +358,12 @@ def _go_to_menu(menu_name):
     st.session_state.active_menu = menu_name
 
 
-_SIDEBAR_MENU_BUTTONS = {
-    "tb_sidebar_home_mini": "Overview",
-    "tb_sidebar_import_mini": "Import Manager",
-    "tb_sidebar_home": "Overview",
-    "tb_sidebar_import": "Import Manager",
-}
-_SIDEBAR_TOGGLE_BUTTONS = {"tb_sidebar_expand", "tb_sidebar_collapse"}
-
 if not hasattr(st, "_ap_original_button"):
     st._ap_original_button = st.button
 
 
 def _ap_button(*args, **kwargs):
     key = kwargs.get("key")
-
-    if key in _SIDEBAR_TOGGLE_BUTTONS:
-        kwargs.setdefault("on_click", _toggle_sidebar)
-        st._ap_original_button(*args, **kwargs)
-        return False
-
-    if key in _SIDEBAR_MENU_BUTTONS:
-        kwargs.setdefault("on_click", _go_to_menu)
-        kwargs.setdefault("args", (_SIDEBAR_MENU_BUTTONS[key],))
-        st._ap_original_button(*args, **kwargs)
-        return False
 
     if isinstance(key, str) and key.startswith("nav_"):
         kwargs.setdefault("on_click", _go_to_menu)
@@ -261,30 +397,6 @@ def _sidebar_brand():
     </div>""", unsafe_allow_html=True)
 
 
-def _sidebar_toolbar():
-    mini = st.session_state.sidebar_minimized
-    if mini:
-        if st.button("›", key="tb_sidebar_expand", help="Perbesar sidebar", use_container_width=True):
-            _toggle_sidebar()
-        if st.button("⌂", key="tb_sidebar_home_mini", help="Overview", use_container_width=True):
-            _go_to_menu("Overview")
-        if st.button("⇧", key="tb_sidebar_import_mini", help="Import Manager", use_container_width=True):
-            _go_to_menu("Import Manager")
-        return
-
-    st.markdown('<div class="ap-toolbar-title">TOOLBAR</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("‹", key="tb_sidebar_collapse", help="Minimize sidebar", use_container_width=True):
-            _toggle_sidebar()
-    with c2:
-        if st.button("⌂", key="tb_sidebar_home", help="Overview", use_container_width=True):
-            _go_to_menu("Overview")
-    with c3:
-        if st.button("⇧", key="tb_sidebar_import", help="Import Manager", use_container_width=True):
-            _go_to_menu("Import Manager")
-
-
 def _nav_group(label):
     if st.session_state.sidebar_minimized:
         st.markdown('<div class="nav-group-mini"></div>', unsafe_allow_html=True)
@@ -292,35 +404,10 @@ def _nav_group(label):
         st.markdown(f'<div class="nav-group">{label}</div>', unsafe_allow_html=True)
 
 
-def _sidebar_user():
-    initial = st.session_state.user_name[0].upper() if st.session_state.user_name else "U"
-    if st.session_state.sidebar_minimized:
-        st.markdown(f"""
-        <div class="ap-user ap-user-mini" title="{st.session_state.user_name}">
-            <div class="ap-avatar">{initial}</div>
-        </div>""", unsafe_allow_html=True)
-        return
-
-    st.markdown(f"""
-    <div class="ap-user">
-        <div class="ap-avatar">{initial}</div>
-        <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:700;color:#1e293b;
-                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                {st.session_state.user_name}</div>
-            <div style="font-size:10px;color:#94a3b8;">{st.session_state.user_role} - {get_access_mode_label()}</div>
-        </div>
-    </div>""", unsafe_allow_html=True)
-    if st.button("Logout", key="sidebar_logout", use_container_width=True):
-        logout_user()
-        st.rerun()
-
-
 def show_sidebar():
     with st.sidebar:
 
         _sidebar_brand()
-        _sidebar_toolbar()
 
         st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
@@ -337,14 +424,6 @@ def show_sidebar():
         _nav_group("DATA CENTER")
         _nav_sub(NAV_ICONS["Import Manager"], "Import Manager")
         _nav_sub(NAV_ICONS["Data Verification"], "Data Verification")
-
-        _nav_group("MONITOR")
-        _nav_item(NAV_ICONS["Traffic Monitor"], "Traffic Monitor")
-
-        st.markdown("<br>" * 4, unsafe_allow_html=True)
-        st.markdown("<hr>", unsafe_allow_html=True)
-
-        _sidebar_user()
 
 
 def _nav_item(icon, label):
@@ -395,7 +474,7 @@ def show_topnav(title="Non Aeronautical Dashboard", show_search=True):
     with n1:
         st.markdown(
             f'<h2 style="margin:0;font-size:19px;font-weight:800;color:#0f172a;'
-            f'padding-top:6px;">{title}</h2>',
+            f'padding-top:0;">{title}</h2>',
             unsafe_allow_html=True
         )
     if show_search:
@@ -403,30 +482,27 @@ def show_topnav(title="Non Aeronautical Dashboard", show_search=True):
             st.text_input("search", placeholder="🔍  Searching anything...",
                           label_visibility="collapsed", key="search_bar")
     with n3:
-        initial = st.session_state.user_name[0].upper() if st.session_state.user_name else "U"
+        user_name = escape(st.session_state.user_name or "User")
         st.markdown(f"""
-        <div style="display:flex;align-items:center;justify-content:flex-end;
-                    gap:12px;padding-top:4px;">
-            <div style="width:34px;height:34px;border-radius:50%;
-                        background:rgba(255,255,255,0.72);
-                        border:1px solid rgba(255,255,255,0.95);
-                        backdrop-filter:blur(10px);
-                        display:flex;align-items:center;justify-content:center;
-                        font-size:16px;box-shadow:0 2px 8px rgba(99,102,241,0.08);">🔔</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div style="background:linear-gradient(135deg,#6366f1,#ec4899);
-                            border-radius:50%;width:34px;height:34px;
-                            display:flex;align-items:center;justify-content:center;
-                            color:#fff;font-size:13px;font-weight:700;
-                            box-shadow:0 3px 12px rgba(99,102,241,0.35);">{initial}</div>
-                <div>
-                    <div style="font-size:12px;font-weight:700;color:#1e293b;">
-                        {st.session_state.user_name}</div>
-                    <div style="font-size:10px;color:#94a3b8;">
-                        {st.session_state.user_email}</div>
+        <div class="ap-top-actions">
+            <div class="ap-top-bell">🔔</div>
+            <details class="ap-profile-details">
+                <summary aria-label="Profile menu">
+                    <span class="ap-profile-avatar" title="{user_name}"></span>
+                </summary>
+                <div class="ap-profile-menu">
+                    <a class="ap-profile-menu-item" href="#settings">
+                        <span class="ap-profile-menu-icon">⚙</span>
+                        <span>Settings</span>
+                    </a>
+                    <a class="ap-profile-menu-item" href="?ap_logout=1">
+                        <span class="ap-profile-menu-icon">↪</span>
+                        <span>Logout</span>
+                    </a>
                 </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+            </details>
+        </div>
+        """, unsafe_allow_html=True)
     st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
 
 
@@ -701,13 +777,23 @@ def init_dashboard_state():
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+    st.session_state.sidebar_minimized = False
 
     if not can_access_menu(st.session_state.active_menu):
         st.session_state.active_menu = "Overview"
 
 
+def handle_logout_query():
+    if st.query_params.get("ap_logout") != "1":
+        return
+    st.query_params.clear()
+    logout_user()
+    st.rerun()
+
+
 def render_dashboard_app():
     init_dashboard_state()
+    handle_logout_query()
     inject_dashboard_css()
 
     st.markdown(
@@ -732,8 +818,8 @@ def render_dashboard_app():
         render_room_database()
     elif menu == "Lease Contract":
         render_lease_contract()
-    elif menu in ["Data Verification", "Traffic Monitor"]:
-        page_coming_soon(menu)
+    elif menu == "Data Verification":
+        render_data_verification()
     else:
         page_overview(df_raw)
 

@@ -213,6 +213,14 @@ _PAGE_CSS = """
 
 _REFINED_IMPORT_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+.stApp, .stApp * {
+    font-family: 'Poppins', sans-serif !important;
+}
+.im-manager-surface {
+    margin-top: -8px !important;
+}
 .im-page-head {
     display: grid;
     grid-template-columns: minmax(220px, 1.25fr) minmax(260px, 0.95fr) minmax(210px, 0.7fr);
@@ -221,14 +229,14 @@ _REFINED_IMPORT_CSS = """
     margin-bottom: 10px;
 }
 .im-page-title {
-    font-size: 24px;
-    font-weight: 850;
+    font-size: 19px;
+    font-weight: 800;
     color: #0f172a;
-    line-height: 1.15;
+    line-height: 1.2;
 }
 .im-page-subtitle {
-    margin-top: 4px;
-    font-size: 12px;
+    margin-top: 2px;
+    font-size: 11px;
     color: #64748b;
     font-weight: 500;
 }
@@ -239,9 +247,9 @@ _REFINED_IMPORT_CSS = """
     gap: 12px;
 }
 .im-bell {
-    width: 38px;
-    height: 38px;
-    border-radius: 14px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
     background: rgba(255,255,255,0.62);
     border: 1px solid rgba(255,255,255,0.94);
     display: flex;
@@ -259,8 +267,8 @@ _REFINED_IMPORT_CSS = """
     min-width: 0;
 }
 .im-avatar {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -287,8 +295,8 @@ _REFINED_IMPORT_CSS = """
 }
 .im-workspace {
     display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
-    gap: 18px;
+    grid-template-columns: minmax(0, 1.72fr) minmax(300px, 0.78fr);
+    gap: 22px;
     align-items: start;
 }
 .im-panel {
@@ -296,14 +304,14 @@ _REFINED_IMPORT_CSS = """
     backdrop-filter: blur(26px);
     -webkit-backdrop-filter: blur(26px);
     border: 1px solid rgba(255,255,255,0.90);
-    border-radius: 20px;
+    border-radius: 18px;
     box-shadow:
         0 8px 32px rgba(99,102,241,0.07),
         0 2px 8px rgba(0,0,0,0.025),
         inset 0 1px 0 rgba(255,255,255,1);
 }
 .im-upload-shell {
-    padding: 18px;
+    padding: 18px 18px 16px;
 }
 .im-upload-heading {
     display: flex;
@@ -333,10 +341,10 @@ _REFINED_IMPORT_CSS = """
     font-weight: 800;
 }
 .im-upload-visual {
-    border: 2px dashed rgba(99,102,241,0.30);
+    border: 2px dashed rgba(30,41,59,0.34);
     border-radius: 18px;
-    min-height: 220px;
-    padding: 34px 24px;
+    min-height: 218px;
+    padding: 32px 24px 24px;
     text-align: center;
     background:
         linear-gradient(135deg,rgba(255,255,255,0.66),rgba(255,255,255,0.42)),
@@ -347,15 +355,15 @@ _REFINED_IMPORT_CSS = """
     justify-content: center;
 }
 .im-cloud {
-    width: 62px;
-    height: 62px;
-    border-radius: 22px;
+    width: 64px;
+    height: 52px;
+    border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 13px;
-    color: #4f46e5;
-    font-size: 26px;
+    color: #334155;
+    font-size: 28px;
     font-weight: 900;
     background: rgba(255,255,255,0.74);
     border: 1px solid rgba(255,255,255,0.96);
@@ -374,15 +382,37 @@ _REFINED_IMPORT_CSS = """
     max-width: 420px;
 }
 .im-uploader-slot {
-    margin-top: 12px;
+    width: min(190px, 80%);
+    margin: -56px auto 18px;
+    position: relative;
+    z-index: 2;
 }
-.im-uploader-slot [data-testid="stFileUploader"] section {
-    min-height: 56px !important;
-    padding: 12px 16px !important;
-    border-radius: 14px !important;
+.im-uploader-slot [data-testid="stFileUploader"] section,
+.im-uploader-slot [data-testid="stFileUploadDropzone"] {
+    min-height: 42px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.im-uploader-slot [data-testid="stFileUploader"] svg,
+.im-uploader-slot [data-testid="stFileUploader"] small,
+.im-uploader-slot [data-testid="stFileUploader"] [data-testid="stFileUploadDropzoneInstructions"] {
+    display: none !important;
+}
+.im-uploader-slot [data-testid="stFileUploader"] button {
+    width: 100% !important;
+    min-height: 38px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,0.74) !important;
+    color: #334155 !important;
+    border: 1px solid rgba(255,255,255,0.96) !important;
+    box-shadow: 0 8px 22px rgba(99,102,241,0.10), inset 0 1px 0 rgba(255,255,255,1) !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
 }
 .im-file-card {
-    margin-top: 16px;
+    margin-top: 0;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -443,10 +473,16 @@ _REFINED_IMPORT_CSS = """
 .im-side-stack {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 .im-side-control {
-    padding: 16px 16px 14px;
+    padding: 14px 14px 13px;
+}
+.im-side-control-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 1fr);
+    gap: 10px;
+    align-items: end;
 }
 .im-control-title {
     font-size: 12px;
@@ -465,43 +501,38 @@ _REFINED_IMPORT_CSS = """
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 17px 18px 13px;
+    padding: 15px 16px 11px;
     border-bottom: 1px solid rgba(99,102,241,0.08);
 }
 .im-auto-badge {
-    padding: 6px 12px;
-    border-radius: 10px;
-    color: #fff;
-    background: linear-gradient(135deg,#6366f1,#06b6d4);
+    padding: 5px 10px;
+    border-radius: 999px;
+    color: #047857;
+    background: rgba(16,185,129,0.13);
+    border: 1px solid rgba(16,185,129,0.20);
     font-size: 10px;
     font-weight: 850;
     letter-spacing: 0.4px;
     white-space: nowrap;
-    box-shadow: 0 5px 14px rgba(6,182,212,0.18);
+    box-shadow: none;
 }
 .im-map-body {
-    padding: 14px 18px 17px;
-    max-height: 250px;
+    padding: 12px 16px 15px;
+    max-height: 238px;
     overflow-y: auto;
 }
 .im-map-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    margin-bottom: 10px;
+    display: block;
+    margin-bottom: 9px;
 }
 .im-map-box {
-    min-height: 74px;
+    min-height: 66px;
     border-radius: 12px;
     background: rgba(255,255,255,0.68);
     border: 1px solid rgba(255,255,255,0.92);
     box-shadow: 0 2px 10px rgba(99,102,241,0.05);
-    padding: 11px 12px;
-    border-left: 4px solid rgba(99,102,241,0.72);
-}
-.im-map-box.master {
-    border-left-color: rgba(6,182,212,0.76);
+    padding: 10px 12px;
+    border-left: 5px solid rgba(99,102,241,0.62);
 }
 .im-map-label {
     font-size: 10px;
@@ -518,13 +549,14 @@ _REFINED_IMPORT_CSS = """
     line-height: 1.35;
 }
 .im-map-arrow {
-    color: #4f46e5;
-    font-size: 17px;
+    color: #64748b;
+    font-size: 15px;
     font-weight: 900;
-    text-align: center;
+    line-height: 1;
+    margin: 2px 0;
 }
 .im-execute-wrap {
-    padding: 0 18px 18px;
+    padding: 0 16px 15px;
 }
 .im-history {
     margin-top: 18px;
@@ -560,8 +592,8 @@ _REFINED_IMPORT_CSS = """
     font-size: 10.5px;
 }
 .im-table td {
-    padding: 14px 20px;
-    font-size: 12.5px;
+    padding: 12px 20px;
+    font-size: 12px;
 }
 [data-testid="stDownloadButton"] > button {
     background: rgba(255,255,255,0.68) !important;
@@ -589,7 +621,7 @@ _REFINED_IMPORT_CSS = """
 }
 @media (max-width: 640px) {
     .im-page-title {
-        font-size: 21px;
+        font-size: 19px;
     }
     .im-upload-heading,
     .im-card-head,
@@ -717,6 +749,20 @@ def _render_pic_view():
             if uploaded:
                 st.session_state.im_file = uploaded.name
                 size_kb = round(uploaded.size / 1024)
+                try:
+                    df_imported, missing_columns = store_shared_import(uploaded, st.session_state.im_sbu)
+                    st.session_state.im_import_ready = len(missing_columns) == 0
+                    st.session_state.im_preview_rows = len(df_imported)
+                    st.session_state.im_preview_total_omzet = float(df_imported["real_omzet"].sum()) if "real_omzet" in df_imported.columns else 0
+                    st.session_state.im_preview_errors = len(missing_columns)
+                    if missing_columns:
+                        st.warning("File terbaca, tetapi ada kolom yang belum lengkap: " + ", ".join(missing_columns))
+                    else:
+                        st.success("File berhasil terbaca dan siap diverifikasi.")
+                except Exception as exc:
+                    df_imported = pd.DataFrame()
+                    st.session_state.im_import_ready = False
+                    st.error(f"Gagal membaca file: {exc}")
                 st.markdown(f"""
                 <div class="lc-file-item">
                     <div class="lc-file-icon">📊</div>
@@ -733,7 +779,7 @@ def _render_pic_view():
                     st.session_state.im_step = 1; st.rerun()
             with c2:
                 if st.button("Preview Data →", use_container_width=True, key="im_step2_next",
-                             disabled=(uploaded is None and st.session_state.im_file is None)):
+                             disabled=((uploaded is None and st.session_state.im_file is None) or not st.session_state.get("im_import_ready", False))):
                     st.session_state.im_step = 3; st.rerun()
 
         # STEP 3 — Preview
@@ -909,20 +955,16 @@ def _render_admin_view():
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # Filter Row
-    fc1, fc2, fc3, fsp = st.columns([2, 2, 2, 4])
+    fc1, fc2, fsp = st.columns([2, 2, 6])
     with fc1:
         f_pic = st.selectbox("", ["Semua PIC"] + SBU_LIST, label_visibility="collapsed", key="adm_fpic")
     with fc2:
         f_status = st.selectbox("", ["Semua Status","Success","Approve","Pending","Rejected","Failed"],
                                 label_visibility="collapsed", key="adm_fstatus")
-    with fc3:
-        f_search = st.text_input("", placeholder="🔍 Cari file...", label_visibility="collapsed", key="adm_fsearch")
-
     # Apply filter
     df = df_all.copy()
     if f_pic    != "Semua PIC":    df = df[df["PIC"] == f_pic]
     if f_status != "Semua Status": df = df[df["Status"] == f_status]
-    if f_search: df = df[df["File"].str.contains(f_search, case=False, na=False)]
     df = df.reset_index(drop=True)
 
     # Table
@@ -1027,9 +1069,9 @@ def render_import_manager():
     h1, h2 = st.columns([5, 5])
     with h1:
         st.markdown("""
-        <div style="padding-top:4px;">
-            <div style="font-size:24px;font-weight:800;color:#1e293b;">Data Import Manager</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:2px;">
+        <div style="padding-top:0;">
+            <div style="font-size:19px;font-weight:800;color:#0f172a;line-height:1.2;">Data Import Manager</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
                 Kelola unggahan data pendapatan tenant dari seluruh PIC terminal/SBU.
             </div>
         </div>""", unsafe_allow_html=True)
@@ -1038,7 +1080,7 @@ def render_import_manager():
         uname   = st.session_state.get("user_name","Admin")
         uemail  = st.session_state.get("user_email","angkasapura@mail.com")
         st.markdown(f"""
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:4px;">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:0;">
             <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.72);
                 border:1px solid rgba(255,255,255,0.95);backdrop-filter:blur(10px);
                 display:flex;align-items:center;justify-content:center;font-size:16px;">🔔</div>
@@ -1081,7 +1123,7 @@ def _render_import_page_header():
     uname = st.session_state.get("user_name", "Admin")
     uemail = st.session_state.get("user_email", "angkasapura@mail.com")
 
-    h_title, h_search, h_user = st.columns([4.4, 3.2, 2.4])
+    h_title, h_user = st.columns([7.6, 2.4])
     with h_title:
         st.markdown("""
         <div>
@@ -1089,17 +1131,10 @@ def _render_import_page_header():
             <div class="im-page-subtitle">Upload, mapping, dan pantau data pendapatan tenant.</div>
         </div>
         """, unsafe_allow_html=True)
-    with h_search:
-        st.text_input(
-            "",
-            placeholder="Searching anything...",
-            label_visibility="collapsed",
-            key="im_search_refined",
-        )
     with h_user:
         st.markdown(f"""
         <div class="im-userbar">
-            <div class="im-bell">i</div>
+            <div class="im-bell">!</div>
             <div class="im-user">
                 <div class="im-avatar">{initial}</div>
                 <div style="min-width:0;">
@@ -1188,12 +1223,10 @@ def _render_scheme_mapping():
         rows_html += dedent(f"""
         <div class="im-map-row">
             <div class="im-map-box">
-                <div class="im-map-label">Import Column</div>
+                <div class="im-map-label">Source Column</div>
                 <div class="im-map-value">{source}</div>
-            </div>
-            <div class="im-map-arrow">></div>
-            <div class="im-map-box master">
-                <div class="im-map-label">Master Data</div>
+                <div class="im-map-arrow">↓</div>
+                <div class="im-map-label">System Field</div>
                 <div class="im-map-value">{target}</div>
             </div>
         </div>
@@ -1233,16 +1266,7 @@ def _render_import_history_refined():
         "Sorong": "-",
     }
 
-    search = st.session_state.get("im_search_refined", "").strip()
-    if search:
-        mask = (
-            df_all["PIC"].str.contains(search, case=False, na=False)
-            | df_all["File"].str.contains(search, case=False, na=False)
-            | df_all["Status"].str.contains(search, case=False, na=False)
-        )
-        df = df_all[mask].reset_index(drop=True)
-    else:
-        df = df_all.reset_index(drop=True)
+    df = df_all.reset_index(drop=True)
 
     rows_html = ""
     for _, r in df.iterrows():
@@ -1261,7 +1285,7 @@ def _render_import_history_refined():
         rows_html = dedent("""
         <tr>
             <td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;">
-                Tidak ada data yang cocok dengan pencarian.
+                Belum ada data import yang tersedia.
             </td>
         </tr>
         """).strip()
@@ -1310,10 +1334,10 @@ def _render_import_workspace():
                 <div class="im-period-chip">April 2026</div>
             </div>
             <div class="im-upload-visual">
-                <div class="im-cloud">UP</div>
+                <div class="im-cloud">↑</div>
                 <div class="im-upload-title">Drag & Drop Excel or CSV File</div>
                 <div class="im-upload-copy">
-                    Maksimum ukuran file 50MB. Gunakan template standar agar mapping otomatis terbaca.
+                    Maximum file size 50MB. Only .xlsx, .xls, and .csv formats are supported.
                 </div>
             </div>
             <div class="im-uploader-slot">
@@ -1331,7 +1355,8 @@ def _render_import_workspace():
     with right:
         st.markdown('<div class="im-side-stack">', unsafe_allow_html=True)
         st.markdown('<div class="im-panel im-side-control">', unsafe_allow_html=True)
-        st.markdown('<div class="im-control-title">Active SBU</div>', unsafe_allow_html=True)
+        st.markdown('<div class="im-side-control-grid">', unsafe_allow_html=True)
+        st.markdown('<div><div class="im-control-title">Active PIC</div>', unsafe_allow_html=True)
         current_sbu = st.session_state.get("im_sbu", SBU_LIST[0])
         current_idx = SBU_LIST.index(current_sbu) if current_sbu in SBU_LIST else 0
         sbu_sel = st.selectbox(
@@ -1341,7 +1366,9 @@ def _render_import_workspace():
             label_visibility="collapsed",
             key="im_sbu_refined",
         )
+        st.markdown('</div>', unsafe_allow_html=True)
         st.session_state.im_sbu = sbu_sel
+        st.markdown('<div>', unsafe_allow_html=True)
         template_data = "Kode Ruang,Brand,Omzet,Periode\nFB-01-01,Example Brand,10000000,April 2026\n"
         st.download_button(
             "Download Template",
@@ -1351,6 +1378,8 @@ def _render_import_workspace():
             use_container_width=True,
             key="im_template_refined",
         )
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         _render_scheme_mapping()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -1362,8 +1391,10 @@ def render_import_manager():
     _init_state()
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
     st.markdown(_REFINED_IMPORT_CSS, unsafe_allow_html=True)
+    st.markdown('<div class="im-manager-surface">', unsafe_allow_html=True)
     _render_import_page_header()
     _render_import_workspace()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

@@ -199,7 +199,7 @@ _PAGE_CSS = """
     font-weight: 700;
     color: #4f46e5;
     font-size: 12.5px;
-    font-family: 'Inter', monospace;
+    font-family: 'Poppins', monospace;
 }
 .location-text { font-weight: 500; }
 .gate-text { color: #64748b; font-size: 12px; }
@@ -248,10 +248,10 @@ _PAGE_CSS = """
     margin-bottom: 4px;
 }
 .page-title-text {
-    font-size: 24px; font-weight: 800; color: #1e293b; line-height: 1.2;
+    font-size: 19px; font-weight: 800; color: #0f172a; line-height: 1.2;
 }
 .page-subtitle {
-    font-size: 12px; color: #94a3b8; margin-top: 3px;
+    font-size: 11px; color: #94a3b8; margin-top: 2px;
 }
 </style>
 """
