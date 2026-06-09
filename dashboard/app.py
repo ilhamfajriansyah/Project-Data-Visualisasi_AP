@@ -67,13 +67,35 @@ def inject_dashboard_css():
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        background:
-            radial-gradient(circle at 50% 34%, #1f2937 0 5px, transparent 6px),
-            radial-gradient(ellipse at 50% 78%, #1f2937 0 11px, transparent 12px),
-            #ffffff;
-        border: 1px solid rgba(226,232,240,0.95);
-        box-shadow: 0 4px 14px rgba(15,23,42,0.10);
+        background: #d6d6d6;
+        border: 1px solid rgba(203,213,225,0.95);
+        box-shadow: 0 4px 14px rgba(15,23,42,0.08);
         flex: 0 0 auto;
+        display: block;
+        overflow: hidden;
+        position: relative;
+    }
+    .ap-profile-avatar::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 9px;
+        width: 19px;
+        height: 19px;
+        border-radius: 50%;
+        background: #9f9f9f;
+        transform: translateX(-50%);
+    }
+    .ap-profile-avatar::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 29px;
+        width: 35px;
+        height: 25px;
+        border-radius: 50% 50% 42% 42% / 62% 62% 38% 38%;
+        background: #9f9f9f;
+        transform: translateX(-50%);
     }
     .ap-profile-menu {
         position: absolute;
