@@ -2,589 +2,510 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from datetime import datetime, date, timedelta
-from .shared_import import get_shared_import_meta, import_status_html
+
+from .enterprise_ui import (
+    ED_FONT,
+    alert_card_html,
+    alert_grid_html,
+    donut_legend_html,
+    filter_label,
+    fmt_rp_compact,
+    fmt_rp_full,
+    fmt_status_badge,
+    inject_enterprise_page_css,
+    kpi_card_html,
+    kpi_grid_html,
+    paginate_dataframe,
+    progress_bar_html,
+    section_title_html,
+    table_inner_html,
+)
+from .navigation import show_topnav
+
+AB_MONTH_OPTIONS = ["June 2026", "May 2026", "April 2026"]
+AB_TERMINAL_OPTIONS = ["Terminal 1", "Terminal 2", "All Terminal"]
+AB_STATUS_FILTER = ["All", "PAID", "SENT", "PENDING", "OVERDUE"]
+AB_DONUT_COLORS = ["#10B981", "#2563EB", "#F59E0B", "#EF4444"]
+AB_DETAIL_SORT = {
+    "Invoice ID": "Invoice ID",
+    "Due Date": "Due Date",
+    "Outstanding Balance": "Outstanding Balance",
+    "Accrual Amount": "Accrual Amount",
+}
+
 
 # ─────────────────────────────────────────────
-# DUMMY DATA
+# DATA (existing business sources preserved)
 # ─────────────────────────────────────────────
 def get_recent_activities():
     return pd.DataFrame({
         "File Name": [
             "Accrual_Jun_Ground.xlsx", "Accrual_Jun_VIP.xlsx",
             "Accrual_Jun_Ground.xlsx", "Accrual_Jun_Ground.xlsx",
-            "Accrual_Jun_VIP.xlsx",   "Accrual_Jun_VIP.xlsx",
+            "Accrual_Jun_VIP.xlsx", "Accrual_Jun_VIP.xlsx",
         ],
         "Tenant/SBU": [
-            "Terminal 1","Terminal 2","Terminal 1",
-            "Terminal 1","Terminal 2","Terminal 2"
+            "Terminal 1", "Terminal 2", "Terminal 1",
+            "Terminal 1", "Terminal 2", "Terminal 2",
         ],
         "Date": [
-            "28 Jun 2026","28 Jun 2026","28 Jun 2026",
-            "28 Jun 2026","28 Jun 2026","28 Jun 2026"
+            "28 Jun 2026", "28 Jun 2026", "28 Jun 2026",
+            "28 Jun 2026", "28 Jun 2026", "28 Jun 2026",
         ],
         "Status": [
-            "SUCCESS","RESERVED","SUCCESS",
-            "SUCCESS","RESERVED","RESERVED"
+            "SUCCESS", "RESERVED", "SUCCESS",
+            "SUCCESS", "RESERVED", "RESERVED",
         ],
     })
 
-def fmt_status_badge(status):
-    colors = {
-        "SUCCESS":  ("rgba(16,185,129,0.12)", "#059669", "rgba(16,185,129,0.24)"),
-        "RESERVED": ("rgba(99,102,241,0.12)", "#4f46e5", "rgba(99,102,241,0.24)"),
-        "FAILED":   ("rgba(244,63,94,0.11)", "#e11d48", "rgba(244,63,94,0.22)"),
-        "OVERDUE":  ("rgba(244,63,94,0.11)", "#e11d48", "rgba(244,63,94,0.22)"),
-        "PAID":     ("rgba(16,185,129,0.12)", "#059669", "rgba(16,185,129,0.24)"),
-        "PENDING":  ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
+
+def get_billing_kpis():
+    return {
+        "total_accrual": 21_100_000_000,
+        "invoice_issued": 18_500_000_000,
+        "amount_collected": 15_200_000_000,
+        "outstanding": 3_300_000_000,
+        "accrual_mom": 8.4,
+        "invoice_mom": 6.1,
+        "collected_mom": 12.5,
+        "outstanding_mom": -4.2,
+        "invoice_count": 90,
     }
-    bg, fg, border = colors.get(status, ("rgba(148,163,184,0.12)", "#64748b", "rgba(148,163,184,0.22)"))
-    return (
-        f'<span style="background:{bg};color:{fg};padding:3px 10px;'
-        f'border:1px solid {border};border-radius:999px;font-size:11px;'
-        f'font-weight:700;letter-spacing:0.2px;">{status}</span>'
+
+
+def get_accrual_trend_data():
+    return pd.DataFrame({
+        "Bulan": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        "Accrual Amount": [14.2, 15.8, 16.5, 17.9, 19.4, 21.1],
+        "Invoice Amount": [12.5, 13.6, 14.8, 15.9, 17.2, 18.5],
+        "Collected Amount": [10.2, 11.4, 12.1, 13.5, 14.0, 15.2],
+    })
+
+
+def get_invoice_status_distribution():
+    return pd.DataFrame({
+        "Status": ["Paid", "Sent", "Pending", "Overdue"],
+        "Amount": [9_600_000_000, 3_700_000_000, 3_300_000_000, 1_900_000_000],
+    })
+
+
+def _base_invoices():
+    return pd.DataFrame({
+        "Invoice ID": ["INV-2026-001", "INV-2026-002", "INV-2026-003", "INV-2026-004", "INV-2026-005"],
+        "Tenant": ["Ground Handling", "PSC", "VIP Services", "Commercial Area", "Cargo Area"],
+        "Invoice Date": ["01 Jun 2026", "03 Jun 2026", "05 Jun 2026", "08 Jun 2026", "10 Jun 2026"],
+        "Due Date": ["15 Jul 2026", "20 Jul 2026", "25 Jul 2026", "30 Jul 2026", "05 Aug 2026"],
+        "Amount": [8_470_000_000, 6_400_000_000, 2_730_000_000, 1_950_000_000, 8_470_000_000],
+        "Status": ["PAID", "SENT", "OVERDUE", "PENDING", "PENDING"],
+    })
+
+
+@st.cache_data(show_spinner=False)
+def get_recent_billing_activities():
+    df = _base_invoices().copy()
+    extras = []
+    tenants = ["Ground Handling", "PSC", "VIP Services", "Commercial Area", "Cargo Area", "Parking Area"]
+    statuses = ["PAID", "SENT", "PENDING", "OVERDUE"]
+    for i in range(6, 21):
+        extras.append({
+            "Invoice ID": f"INV-2026-{i:03d}",
+            "Tenant": tenants[i % len(tenants)],
+            "Invoice Date": f"{(i % 28) + 1:02d} Jun 2026",
+            "Due Date": f"{(i % 28) + 1:02d} Jul 2026",
+            "Amount": np.random.default_rng(i).integers(500_000_000, 4_000_000_000),
+            "Status": statuses[i % len(statuses)],
+        })
+    return pd.concat([df, pd.DataFrame(extras)], ignore_index=True)
+
+
+def get_top_outstanding_tenants():
+    return [
+        {"tenant": "PT BUDI PUTRA BOGAJAYA", "amount": 1_200_000_000, "aging": "> 90 days", "progress": 18, "color": "#DC2626"},
+        {"tenant": "PT DEWATAAGUNG WIBAWA", "amount": 800_000_000, "aging": "61–90 days", "progress": 42, "color": "#EA580C"},
+        {"tenant": "PT PERTAMINA PATRA", "amount": 1_300_000_000, "aging": "> 90 days", "progress": 12, "color": "#DC2626"},
+        {"tenant": "PT MAPAN SEJAHTERA", "amount": 620_000_000, "aging": "31–60 days", "progress": 58, "color": "#F59E0B"},
+        {"tenant": "PT NUSANTARA RETAIL", "amount": 480_000_000, "aging": "0–30 days", "progress": 76, "color": "#059669"},
+    ]
+
+
+@st.cache_data(show_spinner=False)
+def get_accrual_billing_detail():
+    rng = np.random.default_rng(24)
+    base = _base_invoices()
+    contracts = ["LC-2024-001", "LC-2024-014", "LC-2025-008", "LC-2025-019", "LC-2026-003"]
+    rows = []
+    for i in range(128):
+        ref = base.iloc[i % len(base)]
+        accrual = float(ref["Amount"])
+        invoice = accrual * rng.uniform(0.92, 1.0)
+        status = ref["Status"]
+        if status == "PAID":
+            collected = invoice
+        elif status == "OVERDUE":
+            collected = invoice * rng.uniform(0.1, 0.4)
+        else:
+            collected = invoice * rng.uniform(0.45, 0.85)
+        outstanding = max(invoice - collected, 0)
+        rows.append({
+            "Invoice ID": f"INV-2026-{i + 1:03d}",
+            "Tenant": ref["Tenant"],
+            "Contract No.": contracts[i % len(contracts)],
+            "Accrual Amount": accrual,
+            "Invoice Amount": invoice,
+            "Amount Collected": collected,
+            "Outstanding Balance": outstanding,
+            "Due Date": ref["Due Date"],
+            "Billing Status": status,
+        })
+    return pd.DataFrame(rows)
+
+
+def _filter_select_label(value):
+    return "Filter" if value == "All" else value
+
+
+def _trend_figure(df_trend):
+    fig = go.Figure()
+    series = [
+        ("Accrual Amount", "#7C3AED"),
+        ("Invoice Amount", "#2563EB"),
+        ("Collected Amount", "#059669"),
+    ]
+    for col, color in series:
+        fig.add_trace(go.Scatter(
+            x=df_trend["Bulan"],
+            y=df_trend[col],
+            mode="lines+markers",
+            name=col,
+            line=dict(color=color, width=2.5),
+            marker=dict(size=6, color="#ffffff", line=dict(color=color, width=2)),
+        ))
+    fig.update_layout(
+        autosize=True,
+        height=320,
+        margin=dict(t=16, b=8, l=8, r=8),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        hovermode="x unified",
+        font=dict(family=ED_FONT, size=11, color="#475569"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(showgrid=False, tickfont=dict(size=11, color="#64748B"), fixedrange=True),
+        yaxis=dict(
+            title=dict(text="Rp Miliar", font=dict(size=11, color="#64748B")),
+            showgrid=True,
+            gridcolor="#E2E8F0",
+            zeroline=False,
+            tickfont=dict(size=11, color="#64748B"),
+            fixedrange=True,
+        ),
     )
+    return fig
+
+
+def _donut_figure(dist_df, total):
+    fig = go.Figure(data=[go.Pie(
+        labels=dist_df["Status"],
+        values=dist_df["Amount"],
+        hole=0.62,
+        sort=False,
+        marker=dict(colors=AB_DONUT_COLORS, line=dict(color="#ffffff", width=2)),
+        textinfo="none",
+        hovertemplate="%{label}<br>%{value:,.0f}<extra></extra>",
+    )])
+    fig.update_layout(
+        height=280,
+        margin=dict(t=10, b=10, l=10, r=10),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        showlegend=False,
+        annotations=[dict(
+            text=f"<b>{fmt_rp_compact(total)}</b><br><span style='font-size:11px;color:#64748B'>Total Invoice</span>",
+            x=0.5, y=0.5, font=dict(size=13, color="#0F172A", family=ED_FONT), showarrow=False,
+        )],
+    )
+    return fig
+
+
+def _outstanding_list_html(items):
+    rows = []
+    for item in items:
+        rows.append(
+            f'<div class="ed-outstanding-row">'
+            f'<div class="ed-outstanding-head">'
+            f'<p class="ed-outstanding-name">{item["tenant"][:32]}</p>'
+            f'<span class="ed-outstanding-amt">{fmt_rp_compact(item["amount"])}</span>'
+            f"</div>"
+            f'<div class="ed-outstanding-meta">'
+            f'<span>{item["aging"]}</span>'
+            f'<span>Collection progress</span>'
+            f"</div>"
+            f'{progress_bar_html(item["progress"], item["color"])}'
+            f"</div>"
+        )
+    return "".join(rows)
+
+
+def _apply_detail_formatting(df):
+    view = df.copy()
+    view["Accrual Amount"] = view["Accrual Amount"].apply(fmt_rp_full)
+    view["Invoice Amount"] = view["Invoice Amount"].apply(fmt_rp_full)
+    view["Amount Collected"] = view["Amount Collected"].apply(
+        lambda v: f'<span class="ed-positive">{fmt_rp_full(v)}</span>'
+    )
+    view["Outstanding Balance"] = view.apply(
+        lambda r: (
+            f'<span class="ed-negative">{fmt_rp_full(r["Outstanding Balance"])}</span>'
+            if r["_outstanding_raw"] > 0
+            else f'<span style="color:#64748B;">{fmt_rp_full(r["Outstanding Balance"])}</span>'
+        ),
+        axis=1,
+    )
+    view["Billing Status"] = view["Billing Status"].apply(fmt_status_badge)
+    view = view.drop(columns=["_outstanding_raw"])
+    view["Invoice ID"] = view["Invoice ID"].apply(
+        lambda v: f'<span style="color:#2563EB;font-weight:700;">{v}</span>'
+    )
+    return view
 
 
 # ══════════════════════════════════════════════
 # PAGE: ACCRUAL & BILLING
 # ══════════════════════════════════════════════
 def page_accrual_billing():
+    st.markdown('<div class="overview-page-marker ab-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+    inject_enterprise_page_css("ab-page-marker", extra_css="""
+    body:has(.ab-page-marker) div[data-testid="stHorizontalBlock"]:has(.ab-trend-card):has(.ab-donut-card) {
+        align-items: stretch !important;
+    }
+    body:has(.ab-page-marker) div[data-testid="stVerticalBlock"]:has(.ab-trend-card),
+    body:has(.ab-page-marker) div[data-testid="stVerticalBlock"]:has(.ab-donut-card) {
+        min-height: 100% !important;
+    }
+    body:has(.ab-page-marker) .ed-positive { color: #059669; font-weight: 700; }
+    body:has(.ab-page-marker) .ed-negative { color: #DC2626; font-weight: 700; }
+    """)
+    show_topnav(
+        "Accrual & Billing",
+        subtitle="Monitor accrual, invoice, and collection performance",
+        show_search=False,
+    )
 
-    st.markdown("""
-    <style>
-    .ab-card {
-        background: rgba(255, 255, 255, 0.56);
-        border-radius: 10px;
-        padding: 18px 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        border: 1px solid #e8eaed;
-        margin-bottom: 14px;
-    }
-    .ab-kpi-label { font-size:12px; font-weight:600; color:#5f6368; margin:0 0 8px 0; }
-    .ab-kpi-value { font-size:28px; font-weight:800; color:#202124; margin:0 0 6px 0; }
-    .ab-kpi-sub   { font-size:11px; color:#9aa0a6; margin:0; }
-    .ab-kpi-alert { font-size:28px; font-weight:800; color:#c5221f; margin:0 0 6px 0; }
-    .ab-section-title { font-size:15px; font-weight:700; color:#202124; margin:0 0 14px 0; }
+    for key in ["ab_detail_page", "ab_recent_page", "ab_filter_status", "ab_detail_sort"]:
+        if key not in st.session_state:
+            st.session_state[key] = 1 if key.endswith("_page") else ("All" if key == "ab_filter_status" else "Due Date")
 
-    /* ── FIX: teks file uploader wajib hitam ── */
-    [data-testid="stFileUploader"] * {
-        color: #202124 !important;
-    }
-    [data-testid="stFileUploader"] section {
-        border: 2px dashed #9ca3af !important;
-        border-radius: 10px !important;
-        background: #f8f9fa !important;
-        padding: 20px !important;
-    }
-    [data-testid="stFileUploader"] section span,
-    [data-testid="stFileUploader"] section p,
-    [data-testid="stFileUploader"] section small,
-    [data-testid="stFileUploader"] section div {
-        color: #202124 !important;
-        opacity: 1 !important;
-    }
-    [data-testid="stFileUploader"] section svg {
-        fill: #202124 !important;
-        color: #202124 !important;
-        opacity: 1 !important;
-    }
-    [data-testid="stFileUploadDropzone"] span { color: #202124 !important; opacity:1 !important; }
-    [data-testid="stFileUploadDropzone"] small { color: #5f6368 !important; opacity:1 !important; }
-    [data-testid="stFileUploadDropzone"] p { color: #202124 !important; opacity:1 !important; }
-
-    .ab-tbl-header {
-        display: grid;
-        grid-template-columns: 2.5fr 1fr 1fr 1fr 1fr;
-        font-size:12px; font-weight:600; color:#5f6368;
-        padding:8px 8px; background:#f8f9fa;
-        border-radius:6px; margin-bottom:4px;
-    }
-    .ab-tbl-row {
-        display: grid;
-        grid-template-columns: 2.5fr 1fr 1fr 1fr 1fr;
-        font-size:12px; color:#202124;
-        padding:9px 8px;
-        border-bottom:1px solid #f1f3f4;
-        align-items:center;
-    }
-    .ab-invoice-row {
-        display:flex; justify-content:space-between;
-        align-items:center; padding:12px 0;
-        border-bottom:1px solid #f1f3f4; font-size:13px;
-    }
-    .ab-invoice-label { color:#5f6368; font-weight:500; }
-    .ab-invoice-value { color:#202124; font-weight:700; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <style>
-    .ab-card {
-        background: rgba(255, 255, 255, 0.56) !important;
-        backdrop-filter: blur(26px);
-        -webkit-backdrop-filter: blur(26px);
-        border-radius: 20px !important;
-        padding: 20px 22px !important;
-        box-shadow:
-            0 8px 32px rgba(99,102,241,0.07),
-            0 2px 8px rgba(15,23,42,0.025),
-            inset 0 1px 0 rgba(255,255,255,1) !important;
-        border: 1px solid rgba(255,255,255,0.90) !important;
-        margin-bottom: 14px;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .ab-card:hover {
-        transform: translateY(-1px);
-        box-shadow:
-            0 14px 42px rgba(99,102,241,0.11),
-            0 2px 8px rgba(15,23,42,0.03),
-            inset 0 1px 0 rgba(255,255,255,1) !important;
-    }
-    .ab-kpi-card {
-        min-height: 126px;
-        overflow: hidden;
-        position: relative;
-    }
-    .ab-kpi-card::before {
-        content: "";
-        position: absolute;
-        left: 16px;
-        right: 16px;
-        top: 0;
-        height: 3px;
-        border-radius: 0 0 999px 999px;
-        background: var(--accent, linear-gradient(135deg,#6366f1,#06b6d4));
-        opacity: 0.9;
-    }
-    .ab-kpi-label {
-        font-size: 9.5px !important;
-        font-weight: 800 !important;
-        color: #94a3b8 !important;
-        letter-spacing: 0.6px;
-        text-transform: uppercase;
-        margin: 3px 0 8px 0 !important;
-    }
-    .ab-kpi-value,
-    .ab-kpi-alert {
-        font-size: 23px !important;
-        line-height: 1.15;
-        font-weight: 850 !important;
-        margin: 0 0 7px 0 !important;
-        background: var(--accent, linear-gradient(135deg,#4f46e5,#0891b2));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .ab-kpi-alert {
-        background: linear-gradient(135deg,#e11d48,#f97316);
-        -webkit-background-clip: text;
-        background-clip: text;
-    }
-    .ab-kpi-sub {
-        font-size: 10.5px !important;
-        color: #64748b !important;
-        font-weight: 600;
-        margin: 0 !important;
-    }
-    .ab-section-title {
-        font-size: 13px !important;
-        font-weight: 800 !important;
-        color: #1e293b !important;
-        margin: 0 0 3px 0 !important;
-    }
-    .ab-section-sub {
-        font-size: 11px;
-        color: #94a3b8;
-        margin: 0 0 14px 0;
-    }
-    .ab-top-divider {
-        position: relative;
-        height: 2px;
-        margin: 6px 0 12px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, rgba(99,102,241,0), rgba(99,102,241,0.50), rgba(6,182,212,0.58), rgba(16,185,129,0.52), rgba(16,185,129,0));
-        box-shadow: 0 8px 24px rgba(6,182,212,0.14);
-    }
-    [data-testid="stFileUploader"] * {
-        color: #1e293b !important;
-        opacity: 1 !important;
-    }
-    [data-testid="stFileUploader"] section {
-        border: 2px dashed rgba(99,102,241,0.28) !important;
-        border-radius: 16px !important;
-        background: rgba(255,255,255,0.62) !important;
-        backdrop-filter: blur(12px) !important;
-        padding: 20px !important;
-    }
-    [data-testid="stFileUploader"] section svg,
-    [data-testid="stFileUploadDropzone"] svg {
-        fill: #6366f1 !important;
-        color: #6366f1 !important;
-        opacity: 1 !important;
-    }
-    [data-testid="stFileUploadDropzone"] small { color: #94a3b8 !important; opacity:1 !important; }
-    .ab-tbl-header,
-    .ab-detail-header {
-        display: grid;
-        grid-template-columns: 2.5fr 1fr 1fr 1fr 1fr;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        color: #64748b !important;
-        letter-spacing: 0.45px;
-        text-transform: uppercase;
-        padding: 10px 12px !important;
-        background: rgba(99,102,241,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.86);
-        border-radius: 12px !important;
-        margin-bottom: 7px;
-    }
-    .ab-tbl-row,
-    .ab-detail-row {
-        display: grid;
-        grid-template-columns: 2.5fr 1fr 1fr 1fr 1fr;
-        font-size: 12px !important;
-        color: #334155 !important;
-        padding: 10px 12px !important;
-        border: 1px solid rgba(255,255,255,0.78);
-        border-radius: 12px;
-        background: rgba(255,255,255,0.42);
-        align-items: center;
-        margin-bottom: 6px;
-        box-shadow: 0 2px 8px rgba(99,102,241,0.04);
-    }
-    .ab-detail-header,
-    .ab-detail-row {
-        grid-template-columns: 1.2fr 1.5fr 1fr 1fr 1fr;
-    }
-    .ab-invoice-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 11px 13px !important;
-        border: 1px solid rgba(255,255,255,0.78) !important;
-        border-radius: 12px;
-        background: rgba(255,255,255,0.40);
-        margin-top: 7px;
-        font-size: 13px;
-    }
-    .ab-invoice-label { color:#64748b !important; font-weight:600 !important; }
-    .ab-invoice-value { color:#1e293b !important; font-weight:800 !important; }
-    .ab-alert-item {
-        background: rgba(255,255,255,0.48);
-        border: 1px solid rgba(255,255,255,0.82);
-        border-radius: 16px;
-        padding: 14px 16px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 10px rgba(244,63,94,0.05);
-    }
-    .ab-alert-total {
-        background: linear-gradient(135deg, rgba(244,63,94,0.12), rgba(249,115,22,0.10));
-        border: 1px solid rgba(244,63,94,0.22);
-        border-radius: 14px;
-        padding: 13px 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .ab-progress-track {
-        background: rgba(148,163,184,0.18);
-        border-radius: 999px;
-        height: 6px;
-        overflow: hidden;
-    }
-    .ab-progress-bar {
-        border-radius: inherit;
-        height: 6px;
-    }
-    [data-testid="stAlert"] {
-        background: rgba(254, 243, 199, 0.92) !important;
-        border: 1px solid rgba(245, 158, 11, 0.28) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 6px 18px rgba(245, 158, 11, 0.08) !important;
-    }
-    [data-testid="stAlert"] *,
-    [data-testid="stAlert"] p,
-    [data-testid="stAlert"] div {
-        color: #713f12 !important;
-        -webkit-text-fill-color: #713f12 !important;
-        opacity: 1 !important;
-        font-weight: 650 !important;
-    }
-    [data-testid="stAlert"] svg {
-        color: #d97706 !important;
-        fill: #d97706 !important;
-        opacity: 1 !important;
-    }
-    [data-testid="stMain"] [data-testid="stSelectbox"],
-    [data-testid="stMain"] div[data-testid="stButton"] {
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-    }
-    [data-testid="stMain"] [data-testid="stSelectbox"] > div > div,
-    [data-testid="stMain"] div[data-testid="stButton"] > button {
-        min-height: 48px !important;
-        height: 48px !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    [data-testid="stMain"] div[data-testid="stButton"] > button {
-        justify-content: center !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ── TOP NAVBAR ──
-    n1, n3 = st.columns([4, 6])
-    with n1:
-        st.markdown('<h2 style="margin:0;font-size:19px;font-weight:800;'
-                    'color:#0f172a;padding-top:0;">Accrual & Billing</h2>',
-                    unsafe_allow_html=True)
-    with n3:
-        initial = st.session_state.get("user_name", "Admin")[0].upper()
-        uname   = st.session_state.get("user_name", "Admin")
-        uemail  = st.session_state.get("user_email", "injourneyairports@mail.com")
-        st.markdown(f"""
-        <div style="display:flex;align-items:center;justify-content:flex-end;
-                    gap:12px;padding-top:0;">
-            <div style="width:34px;height:34px;border-radius:50%;
-                        background:rgba(255,255,255,0.72);
-                        border:1px solid rgba(255,255,255,0.95);
-                        backdrop-filter:blur(10px);
-                        display:flex;align-items:center;justify-content:center;
-                        color:#6366f1;font-size:16px;font-weight:800;
-                        box-shadow:0 2px 8px rgba(99,102,241,0.08);">!</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div style="background:linear-gradient(135deg,#6366f1,#ec4899);
-                            border-radius:50%;width:34px;height:34px;
-                            display:flex;align-items:center;justify-content:center;
-                            color:#fff;font-size:13px;font-weight:700;
-                            box-shadow:0 3px 12px rgba(99,102,241,0.35);">{initial}</div>
-                <div>
-                    <div style="font-size:12px;font-weight:700;color:#1e293b;">{uname}</div>
-                    <div style="font-size:10px;color:#94a3b8;">{uemail}</div>
-                </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="ab-top-divider"></div>', unsafe_allow_html=True)
-
-    # ── ROW 1: 4 KPI CARDS ──
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown("""
-        <div class="ab-card ab-kpi-card" style="--accent:linear-gradient(135deg,#4f46e5,#6366f1);">
-            <p class="ab-kpi-label">Total Accrued Revenue</p>
-            <p class="ab-kpi-value">Rp 21.1B</p>
-            <p class="ab-kpi-sub">Current month accrual base</p>
-        </div>""", unsafe_allow_html=True)
-    with k2:
-        st.markdown("""
-        <div class="ab-card ab-kpi-card" style="--accent:linear-gradient(135deg,#0891b2,#06b6d4);">
-            <p class="ab-kpi-label">Invoice Generated</p>
-            <p class="ab-kpi-value">Rp 18.5B</p>
-            <p class="ab-kpi-sub">90 invoices issued</p>
-        </div>""", unsafe_allow_html=True)
-    with k3:
-        st.markdown("""
-        <div class="ab-card ab-kpi-card" style="--accent:linear-gradient(135deg,#059669,#10b981);">
-            <p class="ab-kpi-label">Total Payments Received</p>
-            <p class="ab-kpi-value">Rp 15.2B</p>
-            <p class="ab-kpi-sub" style="color:#059669;">+3.2% of current month</p>
-        </div>""", unsafe_allow_html=True)
-    with k4:
-        st.markdown("""
-        <div class="ab-card ab-kpi-card" style="--accent:linear-gradient(135deg,#e11d48,#f97316);">
-            <p class="ab-kpi-label">Overdue Receivables</p>
-            <p class="ab-kpi-alert">Rp 3.3B</p>
-            <p class="ab-kpi-sub">15 Alarms</p>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-    # ── ROW 2: Upload + Chart ──
-    col_left, col_right = st.columns([1, 1])
-
-    with col_left:
-        st.markdown('<div class="ab-card">', unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-title">Accrual & Invoice Processing</p>',
-                    unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-sub">Upload batch revenue, validate, and generate billing runs</p>',
-                    unsafe_allow_html=True)
-
+    pf1, pf2, pf3 = st.columns([1.35, 1.35, 3.3])
+    with pf1:
+        st.markdown(filter_label("Month"), unsafe_allow_html=True)
+        st.selectbox("Month", AB_MONTH_OPTIONS, key="ab_month", label_visibility="collapsed")
+    with pf2:
+        st.markdown(filter_label("Terminal"), unsafe_allow_html=True)
+        st.selectbox("Terminal", AB_TERMINAL_OPTIONS, key="ab_terminal", label_visibility="collapsed")
+    with pf3:
         st.markdown(
-            import_status_html("", "ab-section-title", "ab-section-sub"),
+            '<div style="height:52px;display:flex;align-items:end;justify-content:flex-end;'
+            f'color:#64748B;font-size:12px;font-weight:500;font-family:{ED_FONT};">'
+            "Data terakhir diperbarui: 12 Jun 2026 10:42 WIB</div>",
             unsafe_allow_html=True,
         )
 
-        if st.button("Process Files", key="btn_process", use_container_width=True):
-            if get_shared_import_meta():
-                with st.spinner("Memproses file..."):
-                    import time; time.sleep(1)
-                st.success("Data dari Import Manager berhasil diproses.")
-            else:
-                st.warning("Upload file terlebih dahulu di halaman Import Manager.")
+    kpis = get_billing_kpis()
+    st.markdown(
+        kpi_grid_html(
+            kpi_card_html("Total Accrual", fmt_rp_compact(kpis["total_accrual"]), f"{kpis['accrual_mom']:.1f}%", True, "#7C3AED", "Σ"),
+            kpi_card_html("Invoice Issued", fmt_rp_compact(kpis["invoice_issued"]), f"{kpis['invoice_mom']:.1f}%", True, "#2563EB", "▤"),
+            kpi_card_html("Amount Collected", fmt_rp_compact(kpis["amount_collected"]), f"{kpis['collected_mom']:.1f}%", True, "#059669", "₵"),
+            kpi_card_html("Outstanding Amount", fmt_rp_compact(kpis["outstanding"]), f"{abs(kpis['outstanding_mom']):.1f}%", False, "#DC2626", "!"),
+        ),
+        unsafe_allow_html=True,
+    )
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    with col_right:
-        st.markdown('<div class="ab-card">', unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-title">Invoice Status Breakdown</p>',
-                    unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-sub">Sent, overdue, and paid invoices by value</p>',
-                    unsafe_allow_html=True)
+    trend_col, donut_col = st.columns([3, 2], gap="small")
+    trend_df = get_accrual_trend_data()
+    dist_df = get_invoice_status_distribution()
+    total_invoice = dist_df["Amount"].sum()
 
-        fig_bar = go.Figure(go.Bar(
-            x=["Sent", "Overdue", "Paid"],
-            y=[66, 120, 30],
-            marker_color=["#6366f1", "#f43f5e", "#10b981"],
-            marker_line_color="rgba(255,255,255,0.86)",
-            marker_line_width=1.5,
-            text=["66M", "120M", "30M"],
-            textposition="outside",
-            textfont=dict(size=11, color="#475569"),
-        ))
-        fig_bar.update_layout(
-            height=220, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(t=20,b=0,l=0,r=0),
-            xaxis=dict(showgrid=False, tickfont=dict(size=12, color="#64748b")),
-            yaxis=dict(showgrid=False, visible=False),
-            bargap=0.45,
+    with trend_col:
+        st.markdown('<div class="ed-card-marker ab-trend-card"></div>', unsafe_allow_html=True)
+        th1, th2 = st.columns([3.2, 1])
+        with th1:
+            st.markdown(section_title_html("Accrual vs Collection Trend", "Monthly accrual, invoice, and collection in Rp billion"), unsafe_allow_html=True)
+        with th2:
+            st.selectbox("Trend period", ["Monthly"], key="ab_trend_period", label_visibility="collapsed")
+        st.plotly_chart(_trend_figure(trend_df), width="stretch", config={"displayModeBar": False})
+
+    with donut_col:
+        st.markdown('<div class="ed-card-marker ab-donut-card"></div>', unsafe_allow_html=True)
+        st.markdown(section_title_html("Invoice Status Distribution", "Breakdown of invoice value by status"), unsafe_allow_html=True)
+        chart_slot, legend_slot = st.columns([1.05, 1], gap="small")
+        with chart_slot:
+            st.plotly_chart(_donut_figure(dist_df, total_invoice), width="stretch", config={"displayModeBar": False})
+        with legend_slot:
+            st.markdown(
+                donut_legend_html(dist_df["Status"].tolist(), dist_df["Amount"].tolist(), AB_DONUT_COLORS, total_invoice),
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="ed-card-marker ab-alerts-card"></div>', unsafe_allow_html=True)
+        st.markdown(section_title_html("Billing Alerts", "Actionable billing and collection exceptions"), unsafe_allow_html=True)
+        st.markdown(
+            alert_grid_html(
+                alert_card_html("critical", "!", "12 invoices overdue", "Total outstanding Rp 1.9B requires immediate follow-up"),
+                alert_card_html("warning", "₵", "Rp 3.3B outstanding balance", "16 tenants with open receivables"),
+                alert_card_html("info", "◷", "5 invoices due this week", "Total Rp 780M expected for collection"),
+                alert_card_html("positive", "↑", "Collection rate increased 8%", "Collected amount trending above prior month"),
+            ),
+            unsafe_allow_html=True,
         )
-        st.plotly_chart(fig_bar, use_container_width=True,
-                        config={"displayModeBar": False})
 
-        for label, value in [("Sent","Rp 18.5B"),("Overdue","Rp 3.8B"),("Paid","Rp 15.2B")]:
-            st.markdown(f"""
-            <div class="ab-invoice-row">
-                <span class="ab-invoice-label">{label}</span>
-                <span class="ab-invoice-value">{value}</span>
-            </div>""", unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    recent_col, outstanding_col = st.columns([13, 7], gap="small")
 
-    # ── ROW 3: Recent Activities ──
-    st.markdown('<div class="ab-card">', unsafe_allow_html=True)
-    st.markdown('<p class="ab-section-title">Recent Activities</p>', unsafe_allow_html=True)
-    st.markdown('<p class="ab-section-sub">Latest batch processing status by terminal</p>',
-                unsafe_allow_html=True)
+    with recent_col:
+        st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
+        rh1, rh2 = st.columns([3.2, 1])
+        with rh1:
+            st.markdown(section_title_html("Recent Billing Activities", "Latest invoice activity and status updates"), unsafe_allow_html=True)
+        with rh2:
+            st.markdown('<div class="ed-card-action">View All</div>', unsafe_allow_html=True)
 
-    fc1, fc2, fc3 = st.columns([2, 2, 2])
-    with fc1:
-        f_tenant = st.selectbox("", ["Semua Terminal","Terminal 1","Terminal 2"],
-                                key="ab_tenant", label_visibility="collapsed")
-    with fc2:
-        f_status = st.selectbox("", ["Semua Status","SUCCESS","RESERVED","FAILED"],
-                                key="ab_status", label_visibility="collapsed")
-    with fc3:
-        st.button("Refresh", key="btn_refresh", use_container_width=True)
+        recent_df = get_recent_billing_activities()
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        recent_view, recent_total, recent_pages, r_first, r_last = paginate_dataframe(
+            recent_df, st.session_state.ab_recent_page, 5
+        )
+        recent_display = recent_view.copy()
+        recent_display["Amount"] = recent_display["Amount"].apply(fmt_rp_compact)
+        recent_display["Status"] = recent_display["Status"].apply(fmt_status_badge)
+        recent_display["Invoice ID"] = recent_display["Invoice ID"].apply(
+            lambda v: f'<span style="color:#2563EB;font-weight:700;">{v}</span>'
+        )
+        recent_align = {"Amount": "right", "Status": "center"}
+        st.markdown(table_inner_html(recent_display, col_align=recent_align), unsafe_allow_html=True)
 
-    df_act = get_recent_activities()
-    if f_tenant != "Semua Terminal": df_act = df_act[df_act["Tenant/SBU"] == f_tenant]
-    if f_status != "Semua Status":   df_act = df_act[df_act["Status"]     == f_status]
+        st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        rpa, rpb, rpc, rpd = st.columns([6.6, 0.28, 0.68, 0.28], gap="small")
+        with rpa:
+            st.markdown(f'<div class="ed-pagination-info">{r_first}–{r_last} dari {recent_total} data</div>', unsafe_allow_html=True)
+        with rpb:
+            if st.button("‹", key="ab_recent_prev", disabled=st.session_state.ab_recent_page <= 1):
+                st.session_state.ab_recent_page -= 1
+                st.rerun()
+        with rpc:
+            st.markdown(f'<div class="ed-pagination-label">Page {st.session_state.ab_recent_page} / {recent_pages}</div>', unsafe_allow_html=True)
+        with rpd:
+            if st.button("›", key="ab_recent_next", disabled=st.session_state.ab_recent_page >= recent_pages):
+                st.session_state.ab_recent_page += 1
+                st.rerun()
 
-    st.markdown("""
-    <div class="ab-tbl-header">
-        <span>File Name</span><span>Tenant/SBU</span>
-        <span>Date</span><span>Status</span><span>Action</span>
-    </div>""", unsafe_allow_html=True)
+    with outstanding_col:
+        st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
+        st.markdown(section_title_html("Top Outstanding Tenant", "Highest open balances with aging and collection progress"), unsafe_allow_html=True)
+        st.markdown(_outstanding_list_html(get_top_outstanding_tenants()), unsafe_allow_html=True)
 
-    for _, row in df_act.iterrows():
-        badge = fmt_status_badge(row["Status"])
-        st.markdown(f"""
-        <div class="ab-tbl-row">
-            <span>{row['File Name']}</span>
-            <span style="color:#5f6368;">{row['Tenant/SBU']}</span>
-            <span style="color:#5f6368;">{row['Date']}</span>
-            <span>{badge}</span>
-            <span style="display:flex;gap:10px;font-size:15px;">
-                <span title="View"  style="cursor:pointer;">👁️</span>
-                <span title="Edit"  style="cursor:pointer;">✏️</span>
-                <span title="Check" style="cursor:pointer;color:#1e7e34;">✔️</span>
-            </span>
-        </div>""", unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="ed-card-marker ab-detail-card"></div>', unsafe_allow_html=True)
+        dh1, ds, df_btn, dsrt, dex, dpp = st.columns([2.4, 2.1, 0.95, 1.05, 0.78, 0.72], vertical_alignment="center")
+        with dh1:
+            st.markdown(section_title_html("Accrual & Billing Detail", "Complete accrual, invoice, and collection records"), unsafe_allow_html=True)
+        with ds:
+            search_query = st.text_input(
+                "Search",
+                placeholder="Search invoice ID, tenant...",
+                key="ab_detail_search",
+                label_visibility="collapsed",
+                on_change=lambda: st.session_state.update({"ab_detail_page": 1}),
+            )
+        with df_btn:
+            st.selectbox(
+                "Billing Status",
+                AB_STATUS_FILTER,
+                key="ab_filter_status",
+                label_visibility="collapsed",
+                format_func=_filter_select_label,
+                on_change=lambda: st.session_state.update({"ab_detail_page": 1}),
+            )
+        with dsrt:
+            st.selectbox(
+                "Sort by",
+                list(AB_DETAIL_SORT.keys()),
+                key="ab_detail_sort",
+                label_visibility="collapsed",
+                on_change=lambda: st.session_state.update({"ab_detail_page": 1}),
+            )
 
-    # ── ROW 4: Detail Invoice + Overdue Tracker ──
-    col_inv, col_ov = st.columns([1, 1])
+        detail_df = get_accrual_billing_detail()
+        if search_query:
+            q = search_query.lower().strip()
+            detail_df = detail_df[
+                detail_df["Invoice ID"].astype(str).str.lower().str.contains(q, na=False)
+                | detail_df["Tenant"].astype(str).str.lower().str.contains(q, na=False)
+                | detail_df["Contract No."].astype(str).str.lower().str.contains(q, na=False)
+            ]
+        if st.session_state.ab_filter_status != "All":
+            detail_df = detail_df[detail_df["Billing Status"] == st.session_state.ab_filter_status]
 
-    with col_inv:
-        st.markdown('<div class="ab-card">', unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-title">Detail Invoice</p>', unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-sub">Open billing items by tenant and due date</p>',
-                    unsafe_allow_html=True)
+        sort_col = AB_DETAIL_SORT[st.session_state.ab_detail_sort]
+        ascending = sort_col in ("Invoice ID", "Due Date")
+        detail_df = detail_df.sort_values(sort_col, ascending=ascending)
 
-        invoices = pd.DataFrame({
-            "Invoice ID": ["INV-2026-001","INV-2026-002","INV-2026-003","INV-2026-004","INV-2026-005"],
-            "Tenant":     ["Ground Handling","PSC","VIP Services","Commercial Area","Cargo Area"],
-            "Amount":     ["Rp 8.47B","Rp 6.4B","Rp 2.73B","Rp 1.95B","Rp 8.47B"],
-            "Due Date":   ["15 Jul 2026","20 Jul 2026","25 Jul 2026","30 Jul 2026","05 Aug 2026"],
-            "Status":     ["PAID","PAID","OVERDUE","PENDING","PENDING"],
-        })
+        export_df = detail_df.copy()
+        with dex:
+            st.download_button(
+                "Export",
+                data=export_df.to_csv(index=False).encode("utf-8"),
+                file_name="accrual_billing_detail.csv",
+                mime="text/csv",
+                key="ab_detail_export",
+                width="stretch",
+            )
+        with dpp:
+            rows_per_page = st.selectbox("Rows per page", [5, 10, 25, 50], index=1, key="ab_rows_per_page", label_visibility="collapsed")
 
-        st.markdown("""
-        <div class="ab-detail-header">
-            <span>Invoice ID</span><span>Tenant</span>
-            <span>Amount</span><span>Due Date</span><span>Status</span>
-        </div>""", unsafe_allow_html=True)
+        detail_slice, total_rows, total_pages, first_item, last_item = paginate_dataframe(
+            detail_df, st.session_state.ab_detail_page, rows_per_page
+        )
+        detail_slice = detail_slice.copy()
+        detail_slice["_outstanding_raw"] = detail_slice["Outstanding Balance"]
+        detail_view = _apply_detail_formatting(detail_slice)
+        detail_align = {
+            "Accrual Amount": "right",
+            "Invoice Amount": "right",
+            "Amount Collected": "right",
+            "Outstanding Balance": "right",
+            "Billing Status": "center",
+        }
+        st.markdown(table_inner_html(detail_view, col_align=detail_align), unsafe_allow_html=True)
 
-        for _, row in invoices.iterrows():
-            badge = fmt_status_badge(row["Status"])
-            st.markdown(f"""
-            <div class="ab-detail-row">
-                <span style="color:#4f46e5;font-weight:700;">{row['Invoice ID']}</span>
-                <span>{row['Tenant']}</span><span>{row['Amount']}</span>
-                <span style="color:#64748b;">{row['Due Date']}</span>
-                <span>{badge}</span>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col_ov:
-        st.markdown('<div class="ab-card">', unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-title">Overdue Tracker</p>', unsafe_allow_html=True)
-        st.markdown('<p class="ab-section-sub">Aging risk by tenant with collection progress</p>',
-                    unsafe_allow_html=True)
-
-        for name, amount, due, days in [
-            ("PT BUDI PUTRA BOGAJAYA", "Rp 1.2B", "15 Jun 2026", 13),
-            ("PT DEWATAAGUNG WIBAWA",  "Rp 0.8B", "20 Jun 2026",  8),
-            ("PT PERTAMINA PATRA",     "Rp 1.3B", "10 Jun 2026", 18),
-        ]:
-            pct   = min(days / 30 * 100, 100)
-            color = "#e11d48" if days > 15 else "#f59e0b"
-            st.markdown(f"""
-            <div class="ab-alert-item">
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:12px;font-weight:700;color:#1e293b;">{name[:28]}</span>
-                    <span style="font-size:13px;font-weight:800;color:#e11d48;">{amount}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:11px;color:#94a3b8;">Due: {due}</span>
-                    <span style="font-size:11px;font-weight:700;color:{color};">
-                        {days} hari terlambat</span>
-                </div>
-                <div class="ab-progress-track">
-                    <div class="ab-progress-bar" style="background:{color};width:{pct}%;"></div>
-                </div>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="ab-alert-total">
-            <span style="font-size:13px;font-weight:800;color:#e11d48;">Total Overdue</span>
-            <span style="font-size:16px;font-weight:850;color:#e11d48;">Rp 3.3B</span>
-        </div>""", unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        pa, pb, pc, pd_ = st.columns([6.6, 0.28, 0.68, 0.28], gap="small")
+        with pa:
+            st.markdown(f'<div class="ed-pagination-info">{first_item}–{last_item} dari {total_rows} data</div>', unsafe_allow_html=True)
+        with pb:
+            if st.button("‹", key="ab_detail_prev", disabled=st.session_state.ab_detail_page <= 1):
+                st.session_state.ab_detail_page -= 1
+                st.rerun()
+        with pc:
+            st.markdown(f'<div class="ed-pagination-label">Page {st.session_state.ab_detail_page} / {total_pages}</div>', unsafe_allow_html=True)
+        with pd_:
+            if st.button("›", key="ab_detail_next", disabled=st.session_state.ab_detail_page >= total_pages):
+                st.session_state.ab_detail_page += 1
+                st.rerun()
 
 
 if __name__ == "__main__":
-    if "user_name"  not in st.session_state: st.session_state.user_name  = "Admin"
-    if "user_email" not in st.session_state: st.session_state.user_email = "injourneyairports@mail.com"
-    if "user_role"  not in st.session_state: st.session_state.user_role  = "Admin"
+    if "user_name" not in st.session_state:
+        st.session_state.user_name = "Admin"
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = "injourneyairports@mail.com"
+    if "user_role" not in st.session_state:
+        st.session_state.user_role = "Admin"
     page_accrual_billing()

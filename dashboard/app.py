@@ -1,3 +1,4 @@
+from .navigation import show_topnav
 from .accrual_billing import page_accrual_billing
 from .revenue_sharing import page_revenue_sharing
 from .room_database import render_room_database
@@ -19,6 +20,8 @@ from dotenv import load_dotenv
 import numpy as np
 
 load_dotenv()
+
+OVERVIEW_FONT_FAMILY = "Poppins, sans-serif"
 
 # ─────────────────────────────────────────────
 # LOAD CSS
@@ -317,6 +320,7 @@ def inject_dashboard_css():
         border-collapse: collapse;
         font-size: 13px;
         color: #1e293b;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .overview-light-table thead {
@@ -379,9 +383,27 @@ def inject_dashboard_css():
         background: #F8FAFC !important;
     }
 
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    .main,
+    section.main {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
     .block-container {
         max-width: 100% !important;
-        padding: 18px 28px 34px !important;
+        padding: 0 28px 34px !important;
+        margin-top: 0 !important;
+    }
+
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stAppViewContainer"] .block-container,
+    section.main > div,
+    .main > div {
+        padding-top: 0 !important;
+        padding-bottom: 34px !important;
+        margin-top: 0 !important;
     }
 
     [data-testid="stSidebar"] {
@@ -395,11 +417,19 @@ def inject_dashboard_css():
 
     [data-testid="stSidebarContent"] {
         background: #ffffff !important;
+        padding-top: 0 !important;
+    }
+
+    [data-testid="stSidebarUserContent"],
+    [data-testid="stSidebarContent"] > div,
+    [data-testid="stSidebarContent"] [data-testid="stVerticalBlock"] {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
     }
 
     .ap-brand {
         margin: 0 !important;
-        padding: 20px 24px 22px !important;
+        padding: 2px 24px 10px !important;
         border-bottom: 1px solid #E5E7EB !important;
     }
 
@@ -435,14 +465,53 @@ def inject_dashboard_css():
 
     .nav-active {
         margin: 4px 16px !important;
-        padding: 12px 14px !important;
+        padding: 12px 14px 12px 11px !important;
         border-radius: 10px !important;
         background: #EFF6FF !important;
         border: 1px solid #DBEAFE !important;
+        border-left: 3px solid #6366F1 !important;
         box-shadow: none !important;
         color: #2563EB !important;
         font-size: 13px !important;
         font-weight: 700 !important;
+    }
+
+    .ap-sidebar-footer {
+        margin-top: auto;
+        padding: 16px 20px 18px;
+        border-top: 1px solid #E2E8F0;
+        background: #ffffff;
+    }
+
+    .ap-sidebar-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .ap-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #10B981;
+        flex: 0 0 8px;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+    }
+
+    .ap-sidebar-sync {
+        margin-top: 6px;
+        color: #94A3B8;
+        font-size: 10px;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        min-height: 100% !important;
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] {
@@ -470,7 +539,7 @@ def inject_dashboard_css():
 
     .nad-top-divider {
         height: 1px !important;
-        margin: 14px 0 18px !important;
+        margin: 8px 0 14px !important;
         background: #E5E7EB !important;
         box-shadow: none !important;
     }
@@ -535,11 +604,172 @@ def inject_dashboard_css():
         margin: 0 0 6px 2px;
         color: #64748B;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .overview-filter-spacer {
         height: 2px;
+    }
+
+    .overview-page-marker {
+        display: none;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] > div > div {
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        padding-right: 10px !important;
+        min-height: 40px !important;
+        overflow: visible !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] > div > div::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] div[data-baseweb="select"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        padding: 0 4px 0 10px !important;
+        min-height: 38px !important;
+        box-sizing: border-box !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        display: flex !important;
+        align-items: center !important;
+        line-height: 1.25 !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div:first-child {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"],
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
+        display: flex !important;
+        align-items: center !important;
+        margin: 0 !important;
+        line-height: 1.25 !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] svg {
+        opacity: 1 !important;
+        color: #64748B !important;
+        fill: #64748B !important;
+        width: 14px !important;
+        height: 14px !important;
+        flex: 0 0 14px !important;
+        align-self: center !important;
+        margin: 0 !important;
+        position: static !important;
+        transform: none !important;
+    }
+
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] div[data-baseweb="select"] span,
+    body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: nowrap !important;
+        max-width: none !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) {
+        align-items: stretch !important;
+        display: flex !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-self: stretch !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 100% !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .overview-trend-card),
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .overview-alert-card) {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        padding: 16px !important;
+        margin: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) > div[data-testid="stElementContainer"] {
+        margin-bottom: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) > div[data-testid="stElementContainer"]:last-child {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(.overview-trend-card) > div[data-testid="stElementContainer"]:has([data-testid="stPlotlyChart"]) {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(.overview-trend-card) [data-testid="stPlotlyChart"] {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(.overview-trend-card) [data-testid="stPlotlyChart"] > div,
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(.overview-trend-card) [data-testid="stPlotlyChart"] .js-plotly-plot {
+        height: 100% !important;
+        min-height: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-trend-card):has(.overview-alert-card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(.overview-alert-card) .ed-alert-list {
+        flex: 1 1 auto !important;
+        margin-bottom: 0 !important;
+        min-height: 0 !important;
+    }
+    
+    /* Ratakan selectbox rows ke tengah vertikal baris header detail */
+    div[data-testid="stHorizontalBlock"]:has(.ed-table-card) 
+    [data-testid="stSelectbox"] {
+        margin-top: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.ed-table-card) 
+    [data-testid="stSelectbox"] > label {
+        display: none !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.ed-table-card) 
+    [data-testid="stSelectbox"] > div {
+        margin-top: 0 !important;
     }
 
     .overview-kpi-card {
@@ -563,7 +793,8 @@ def inject_dashboard_css():
         justify-content: center;
         border-radius: 999px;
         font-size: 18px;
-        font-weight: 900;
+        font-weight: 800;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .overview-kpi-copy {
@@ -573,25 +804,28 @@ def inject_dashboard_css():
     .overview-kpi-label {
         color: #475569;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.3px;
         text-transform: uppercase;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .overview-kpi-value {
         margin-top: 7px;
         color: #0F172A;
-        font-size: 27px;
-        font-weight: 900;
+        font-size: 26px;
+        font-weight: 800;
         line-height: 1.05;
         letter-spacing: 0 !important;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .overview-kpi-delta {
         margin-top: 10px;
         color: #64748B;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .overview-kpi-delta strong {
@@ -605,7 +839,9 @@ def inject_dashboard_css():
         font-size: 11px;
     }
 
-    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) {
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker):not(
+        :has(div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] .ed-card-marker)
+    ) {
         position: relative;
         overflow: hidden;
         padding: 16px;
@@ -615,7 +851,9 @@ def inject_dashboard_css():
         box-shadow: 0 1px 2px rgba(15,23,42,0.04);
     }
 
-    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker)
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker):not(
+        :has(div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] .ed-card-marker)
+    )
     > div[data-testid="stElementContainer"]:has(.ed-card-marker) {
         display: none;
     }
@@ -627,22 +865,25 @@ def inject_dashboard_css():
     .ed-section-title {
         margin: 0;
         color: #0F172A;
-        font-size: 16px;
-        font-weight: 900;
+        font-size: 15px;
+        font-weight: 700;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-section-sub {
         margin: 3px 0 0;
         color: #64748B;
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-card-action {
         text-align: right;
         color: #2563EB;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 700;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-alert-list {
@@ -650,6 +891,8 @@ def inject_dashboard_css():
         flex-direction: column;
         gap: 10px;
         margin-top: 12px;
+        margin-bottom: 14px;
+        flex: 1 1 auto;
     }
 
     .ed-alert-item {
@@ -677,22 +920,24 @@ def inject_dashboard_css():
         margin: 0;
         color: #0F172A;
         font-size: 12.5px;
-        font-weight: 850;
+        font-weight: 700;
         line-height: 1.35;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-alert-sub {
         margin: 4px 0 0;
         color: #64748B;
         font-size: 11.5px;
-        font-weight: 600;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-table-card {
         border: 1px solid #E2E8F0;
-        border-radius: 12px;
+        border-radius: 16px;
         background: #ffffff;
-        box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
         overflow: hidden;
     }
 
@@ -701,71 +946,209 @@ def inject_dashboard_css():
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 16px 18px 8px;
+        padding: 18px 18px 14px;
+    }
+
+    .ed-table-head-stack {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 18px 12px;
+    }
+
+    .ed-table-head-copy {
+        min-width: 0;
     }
 
     .ed-table-title {
         margin: 0;
         color: #0F172A;
-        font-size: 16px;
-        font-weight: 900;
+        font-size: 15px;
+        font-weight: 700;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .ed-table-subtitle {
+        margin: 4px 0 0;
+        color: #64748B;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-table-link {
         color: #2563EB;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .ed-table-link-with-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        padding-top: 2px;
+    }
+
+    .ed-view-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        color: #2563EB;
+        font-size: 13px;
+        line-height: 1;
     }
 
     .ed-table-scroll {
         width: 100%;
         overflow-x: auto;
+        padding: 0 14px 14px;
+        box-sizing: border-box;
     }
 
     .ed-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         color: #0F172A;
         font-size: 12px;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .ed-table thead tr {
+        background: transparent;
     }
 
     .ed-table th {
-        padding: 10px 18px;
-        background: #F8FAFC;
-        border-top: 1px solid #F1F5F9;
-        border-bottom: 1px solid #E2E8F0;
-        color: #475569;
+        padding: 10px 14px;
+        background: #F3F0FF;
+        border: none;
+        color: #64748B;
         font-size: 11px;
-        font-weight: 850;
+        font-weight: 600;
         text-align: left;
         white-space: nowrap;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .ed-table th:first-child {
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+    }
+
+    .ed-table th:last-child {
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+
+    .ed-table th.ed-th-right,
+    .ed-table td.ed-td-right {
+        text-align: right;
+    }
+
+    .ed-table th.ed-th-center,
+    .ed-table td.ed-td-center {
+        text-align: center;
     }
 
     .ed-table td {
-        padding: 12px 18px;
+        padding: 11px 14px;
         border-bottom: 1px solid #F1F5F9;
         color: #0F172A;
         font-size: 12px;
-        font-weight: 650;
+        font-weight: 500;
         white-space: nowrap;
+        font-family: 'Poppins', sans-serif !important;
+        background: #ffffff;
     }
 
-    .ed-table tbody tr:hover {
-        background: #F8FAFC;
+    .ed-table tbody tr:hover td {
+        background: #FAFAFF;
     }
 
     .ed-table tbody tr:last-child td {
         border-bottom: none;
     }
 
+    .ed-value-blue {
+        color: #2563EB;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .ed-rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        margin-right: 8px;
+        vertical-align: middle;
+        flex: 0 0 22px;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .ed-rank-badge.rank-1 {
+        background: #F97316;
+        color: #ffffff;
+    }
+
+    .ed-rank-badge.rank-2 {
+        background: #94A3B8;
+        color: #ffffff;
+    }
+
+    .ed-rank-badge.rank-3 {
+        background: #B45309;
+        color: #ffffff;
+    }
+
+    .ed-tenant-with-rank {
+        display: inline-flex;
+        align-items: center;
+        gap: 0;
+    }
+
+    .ed-table-card.ed-table-best3 .ed-table tbody td {
+        padding-top: 25px;
+        padding-bottom: 25px;
+        vertical-align: middle;
+    }
+
+    .ed-table-card.ed-table-best3 .ed-table tbody tr:hover td {
+        background: #FAFAFF;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-top-tables-marker) .ed-table-scroll {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.overview-top-tables-marker) .ed-table tbody {
+        vertical-align: top;
+    }
+
     .ed-positive {
         color: #059669;
-        font-weight: 850;
+        font-weight: 700;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-negative {
         color: #DC2626;
-        font-weight: 850;
+        font-weight: 700;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-pagination {
@@ -777,7 +1160,8 @@ def inject_dashboard_css():
         border-top: 1px solid #F1F5F9;
         color: #64748B;
         font-size: 12px;
-        font-weight: 650;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ed-chip-row {
@@ -787,34 +1171,412 @@ def inject_dashboard_css():
         gap: 8px;
     }
 
-    [data-testid="stSelectbox"] > div > div,
-    .stTextInput > div > div > input {
+    [data-testid="stSelectbox"] > div > div {
         min-height: 40px !important;
+        height: 40px !important;
         border-radius: 8px !important;
         border: 1px solid #CBD5E1 !important;
         background: #ffffff !important;
         box-shadow: none !important;
-        color: #0F172A !important;
-        font-size: 13px !important;
-        font-weight: 650 !important;
+        outline: none !important;
+        transition: border-color 0.15s ease, background-color 0.15s ease !important;
     }
 
-    .stTextInput > div > div > input::placeholder {
+    [data-testid="stSelectbox"] div[data-baseweb="select"],
+    [data-testid="stSelectbox"] div[data-baseweb="select"] span,
+    [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"],
+    [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        font-family: 'Poppins', sans-serif !important;
+        color: #0F172A !important;
+    }
+
+    [data-testid="stTextInput"] [data-baseweb="input"] {
+        min-height: 40px !important;
+        height: 40px !important;
+        border-radius: 8px !important;
+        border: 1px solid #CBD5E1 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        outline: none !important;
+        overflow: hidden !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: border-color 0.15s ease, background-color 0.15s ease !important;
+    }
+
+    [data-testid="stTextInput"] [data-baseweb="input"] > div {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .stTextInput > div > div > input,
+    [data-testid="stTextInput"] input {
+        min-height: 38px !important;
+        height: 38px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+        color: #0F172A !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        font-family: 'Poppins', sans-serif !important;
+        padding: 0 12px !important;
+    }
+
+    [data-testid="stSelectbox"] > div > div:hover,
+    [data-testid="stSelectbox"] > div > div:focus-within,
+    [data-testid="stTextInput"] [data-baseweb="input"]:hover,
+    [data-testid="stTextInput"] [data-baseweb="input"]:focus-within {
+        border-color: #94A3B8 !important;
+        background: #F8FAFC !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    .stTextInput > div > div > input:focus,
+    .stTextInput > div > div > input:hover,
+    [data-testid="stTextInput"] input:focus,
+    [data-testid="stTextInput"] input:hover {
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        background: transparent !important;
+    }
+
+    .stTextInput > div > div > input::placeholder,
+    [data-testid="stTextInput"] input::placeholder {
         color: #94A3B8 !important;
+    }
+
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    div[data-baseweb="popover"] div[data-baseweb="menu"],
+    div[data-baseweb="popover"] ul[role="listbox"] {
+        z-index: 999999 !important;
+    }
+
+    div[data-baseweb="menu"],
+    div[data-baseweb="menu"] > div,
+    div[data-baseweb="popover"] > div,
+    div[data-baseweb="popover"] div[data-baseweb="menu"],
+    div[data-baseweb="popover"] div[data-baseweb="menu"] > div,
+    div[data-baseweb="popover"] ul,
+    div[data-baseweb="popover"] ul[role="listbox"] {
+        background: #ffffff !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12) !important;
+        overflow: hidden !important;
+    }
+
+    div[data-baseweb="menu"] ul,
+    div[data-baseweb="menu"] [role="listbox"],
+    div[data-baseweb="popover"] ul,
+    div[data-baseweb="popover"] [role="listbox"] {
+        margin: 0 !important;
+        padding: 4px !important;
+        background: #ffffff !important;
+        border-radius: 8px !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    div[data-baseweb="menu"] li,
+    div[data-baseweb="menu"] [role="option"],
+    div[data-baseweb="popover"] li,
+    div[data-baseweb="popover"] [role="option"],
+    div[data-baseweb="popover"] [data-baseweb="menu"] li {
+        min-height: 48px !important;
+        height: 48px !important;
+        padding: 0 20px !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+        background: #ffffff !important;
+        color: #0F172A !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        line-height: 1.25 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    div[data-baseweb="menu"] li *,
+    div[data-baseweb="menu"] [role="option"] *,
+    div[data-baseweb="popover"] li *,
+    div[data-baseweb="popover"] [role="option"] * {
+        background: transparent !important;
+        color: inherit !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        line-height: inherit !important;
+    }
+
+    div[data-baseweb="menu"] li > div,
+    div[data-baseweb="menu"] [role="option"] > div,
+    div[data-baseweb="popover"] li > div,
+    div[data-baseweb="popover"] [role="option"] > div {
+        min-height: 0 !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    div[data-baseweb="menu"] li > div > div,
+    div[data-baseweb="menu"] [role="option"] > div > div,
+    div[data-baseweb="popover"] li > div > div,
+    div[data-baseweb="popover"] [role="option"] > div > div,
+    div[data-baseweb="menu"] [data-testid="stMarkdownContainer"],
+    div[data-baseweb="popover"] [data-testid="stMarkdownContainer"],
+    div[data-baseweb="menu"] [data-testid="stMarkdownContainer"] p,
+    div[data-baseweb="popover"] [data-testid="stMarkdownContainer"] p {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        display: flex !important;
+        align-items: center !important;
+        line-height: 1.25 !important;
+    }
+
+    div[data-baseweb="menu"] li:hover,
+    div[data-baseweb="menu"] [role="option"]:hover,
+    div[data-baseweb="menu"] [role="option"][aria-selected="true"],
+    div[data-baseweb="menu"] [aria-selected="true"],
+    div[data-baseweb="popover"] li:hover,
+    div[data-baseweb="popover"] [role="option"]:hover,
+    div[data-baseweb="popover"] [role="option"][aria-selected="true"],
+    div[data-baseweb="popover"] [aria-selected="true"] {
+        background: #EFF6FF !important;
+        color: #1D4ED8 !important;
     }
 
     div[data-testid="stButton"] > button,
     div[data-testid="stDownloadButton"] > button {
-        min-height: 38px !important;
-        height: 38px !important;
+        min-height: 40px !important;
+        height: 40px !important;
         padding: 0 14px !important;
         border-radius: 8px !important;
         border: 1px solid #CBD5E1 !important;
         background: #ffffff !important;
-        color: #334155 !important;
+        color: #0F172A !important;
         box-shadow: none !important;
-        font-size: 12px !important;
-        font-weight: 800 !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        font-family: 'Poppins', sans-serif !important;
+        transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease !important;
+    }
+
+    div[data-testid="stDownloadButton"] > button p,
+    div[data-testid="stButton"] > button p {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        font-family: 'Poppins', sans-serif !important;
+        color: #0F172A !important;
+    }
+
+    .ed-pagination-info {
+        display: flex;
+        align-items: center;
+        height: 44px;
+        padding: 0 4px;
+        color: #64748B;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
+        border-top: 1px solid #F1F5F9;
+    }
+
+    .overview-detail-pagination-footer-marker {
+        display: none;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker) {
+        display: none;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type {
+        align-items: center !important;
+        gap: 2px !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(2),
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(3),
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(4) {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(2) {
+        width: 32px !important;
+        max-width: 32px !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(4) {
+        width: 32px !important;
+        max-width: 32px !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(3) {
+        width: max-content !important;
+        max-width: max-content !important;
+        flex: 0 0 max-content !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    > div[data-testid="column"]:nth-child(3) .ed-pagination-label {
+        justify-content: center;
+        padding: 0 2px;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 0 !important;
+        border-top: 1px solid #F1F5F9 !important;
+        height: 44px !important;
+        width: 32px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] > button {
+        height: 30px !important;
+        min-height: 30px !important;
+        width: 30px !important;
+        min-width: 30px !important;
+        max-width: 30px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+        border: 1px solid #E2E8F0 !important;
+        background: #ffffff !important;
+        color: #334155 !important;
+        font-size: 18px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
+        box-shadow: none !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] > button:hover:not(:disabled) {
+        background: #F1F5F9 !important;
+        border-color: #CBD5E1 !important;
+        color: #0F172A !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.overview-detail-pagination-footer-marker)
+    > div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] > button:disabled {
+        opacity: 0.3 !important;
+    }
+
+    .ed-pagination-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+        padding: 0 2px;
+        color: #0F172A;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
+        white-space: nowrap;
+        border-top: 1px solid #F1F5F9;
+    }
+
+    /* Reset semua button dulu */
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] > .ed-card-marker)
+    div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 0 !important;
+        border-top: 1px solid #F1F5F9 !important;
+        height: 44px !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] > .ed-card-marker)
+    div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] > button {
+        height: 30px !important;
+        min-height: 30px !important;
+        width: 30px !important;
+        min-width: 0 !important;
+        max-width: 30px !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        border-radius: 6px !important;
+        border: 1px solid #E2E8F0 !important;
+        background: #ffffff !important;
+        color: #334155 !important;
+        font-size: 18px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
+        box-shadow: none !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] > .ed-card-marker)
+    div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] > button:hover:not(:disabled) {
+        background: #F1F5F9 !important;
+        border-color: #CBD5E1 !important;
+        color: #0F172A !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] > .ed-card-marker)
+    div[data-testid="stHorizontalBlock"]:last-of-type
+    div[data-testid="stButton"] > button:disabled {
+        opacity: 0.3 !important;
+    }
+                
+    .overview-kpi-card,
+    .overview-kpi-card *,
+    .overview-light-table-wrap,
+    .overview-light-table-wrap *,
+    .ed-table-card,
+    .ed-table-card *,
+    div[data-testid="stVerticalBlock"]:has(.ed-card-marker),
+    div[data-testid="stVerticalBlock"]:has(.ed-card-marker) * {
+        font-family: 'Poppins', sans-serif !important;
     }
 
     div[data-testid="stButton"] > button:hover,
@@ -1011,8 +1773,15 @@ def _light_table_html(df, extra_class=""):
     """).strip()
 
 
-def _ed_card_marker(container):
-    container.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
+def _ed_card_marker(container, extra_class: str = "") -> None:
+    marker_class = "ed-card-marker"
+    if extra_class:
+        marker_class = f"{marker_class} {extra_class}"
+    container.markdown(f'<div class="{marker_class}"></div>', unsafe_allow_html=True)
+
+
+def _overview_filter_label(label: str) -> str:
+    return f'<p class="overview-filter-label">{escape(label)}</p>'
 
 
 def _fmt_rp_compact(value):
@@ -1066,28 +1835,58 @@ def _alert_item_html(icon, accent, title, subtitle):
     """).strip()
 
 
-def _enterprise_table_html(df, title=None, link_label=None, table_class=""):
-    header_html = "".join(f"<th>{escape(str(col))}</th>" for col in df.columns)
+def _rank_badge_html(rank: int) -> str:
+    return f'<span class="ed-rank-badge rank-{rank}">{rank}</span>'
+
+
+def _table_col_class(col_name: str, col_align: dict | None, prefix: str = "ed-th") -> str:
+    align = (col_align or {}).get(str(col_name), "left")
+    return f'{prefix}-{align}'
+
+
+def _enterprise_table_html(df, title=None, link_label=None, table_class="", col_align=None, subtitle=None, show_eye_icon=False):
+    col_align = col_align or {}
+    header_html = "".join(
+        f'<th class="{_table_col_class(col, col_align, "ed-th")}">{escape(str(col))}</th>'
+        for col in df.columns
+    )
     rows_html = ""
     for _, row in df.iterrows():
         cells = []
-        for value in row:
+        for col, value in zip(df.columns, row):
             text = str(value)
-            if text.startswith("<span "):
-                cells.append(f"<td>{text}</td>")
+            td_class = _table_col_class(col, col_align, "ed-td")
+            if text.startswith("<span ") or text.startswith('<span class="ed-rank-badge'):
+                cells.append(f'<td class="{td_class}">{text}</td>')
+            elif text.startswith('<span class="ed-tenant-with-rank"') or text.startswith("<div "):
+                cells.append(f'<td class="{td_class}">{text}</td>')
             else:
-                cells.append(f"<td>{escape(text)}</td>")
+                cells.append(f'<td class="{td_class}">{escape(text)}</td>')
         rows_html += f"<tr>{''.join(cells)}</tr>"
 
     head_html = ""
     if title:
-        link_html = f'<span class="ed-table-link">{escape(link_label)}</span>' if link_label else ""
-        head_html = dedent(f"""
-        <div class="ed-table-head">
-            <p class="ed-table-title">{escape(title)}</p>
-            {link_html}
-        </div>
-        """).strip()
+        link_html = ""
+        if link_label:
+            eye_html = '<span class="ed-view-icon">👁</span>' if show_eye_icon else ""
+            link_html = f'<span class="ed-table-link ed-table-link-with-icon">{eye_html}{escape(link_label)}</span>'
+        if subtitle:
+            head_html = dedent(f"""
+            <div class="ed-table-head-stack">
+                <div class="ed-table-head-copy">
+                    <p class="ed-table-title">{escape(title)}</p>
+                    <p class="ed-table-subtitle">{escape(subtitle)}</p>
+                </div>
+                {link_html}
+            </div>
+            """).strip()
+        else:
+            head_html = dedent(f"""
+            <div class="ed-table-head">
+                <p class="ed-table-title">{escape(title)}</p>
+                {link_html}
+            </div>
+            """).strip()
 
     return dedent(f"""
     <div class="ed-table-card {table_class}">
@@ -1102,17 +1901,22 @@ def _enterprise_table_html(df, title=None, link_label=None, table_class=""):
     """).strip()
 
 
-def _enterprise_table_inner_html(df):
-    header_html = "".join(f"<th>{escape(str(col))}</th>" for col in df.columns)
+def _enterprise_table_inner_html(df, col_align=None):
+    col_align = col_align or {}
+    header_html = "".join(
+        f'<th class="{_table_col_class(col, col_align, "ed-th")}">{escape(str(col))}</th>'
+        for col in df.columns
+    )
     rows_html = ""
     for _, row in df.iterrows():
         cells = []
-        for value in row:
+        for col, value in zip(df.columns, row):
             text = str(value)
+            td_class = _table_col_class(col, col_align, "ed-td")
             if text.startswith("<span "):
-                cells.append(f"<td>{text}</td>")
+                cells.append(f'<td class="{td_class}">{text}</td>')
             else:
-                cells.append(f"<td>{escape(text)}</td>")
+                cells.append(f'<td class="{td_class}">{escape(text)}</td>')
         rows_html += f"<tr>{''.join(cells)}</tr>"
     return dedent(f"""
     <div class="ed-table-scroll">
@@ -1199,6 +2003,25 @@ def _nav_group(label):
         st.markdown(f'<div class="nav-group">{label}</div>', unsafe_allow_html=True)
 
 
+def _sidebar_footer():
+    if st.session_state.sidebar_minimized:
+        st.markdown(
+            '<div class="ap-sidebar-footer" style="text-align:center;padding:12px 0;">'
+            '<span class="ap-status-dot"></span></div>',
+            unsafe_allow_html=True,
+        )
+        return
+    st.markdown("""
+    <div class="ap-sidebar-footer">
+        <div class="ap-sidebar-status">
+            <span class="ap-status-dot"></span>
+            <span>System Status: Database Connected</span>
+        </div>
+        <div class="ap-sidebar-sync">Last Sync: 12 Jun 2026 10:42 AM</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def show_sidebar():
     with st.sidebar:
 
@@ -1206,19 +2029,23 @@ def show_sidebar():
 
         st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
+        _nav_group("DASHBOARD")
         _nav_item(NAV_ICONS["Overview"], "Overview")
 
-        _nav_group("FINANCIAL")
+        _nav_group("REVENUE MANAGEMENT")
         _nav_sub(NAV_ICONS["Revenue Sharing"], "Revenue Sharing")
         _nav_sub(NAV_ICONS["Accrual & Billing"], "Accrual & Billing")
 
-        _nav_group("SPACE MGMT")
+        _nav_group("ASSET & LEASING")
         _nav_sub(NAV_ICONS["Room Database"], "Room Database")
         _nav_sub(NAV_ICONS["Lease Contract"], "Lease Contract")
 
-        _nav_group("DATA CENTER")
+        _nav_group("DATA OPERATIONS")
         _nav_sub(NAV_ICONS["Import Manager"], "Import Manager")
         _nav_sub(NAV_ICONS["Data Verification"], "Data Verification")
+
+        st.markdown('<div style="flex:1;min-height:24px;"></div>', unsafe_allow_html=True)
+        _sidebar_footer()
 
 
 def _nav_item(icon, label):
@@ -1258,58 +2085,10 @@ def _nav_sub(icon, label):
 
 
 # ══════════════════════════════════════════════
-# TOP NAVBAR
-# ══════════════════════════════════════════════
-def show_topnav(title="Non Aeronautical Dashboard", show_search=True):
-    if show_search:
-        n1, n2, n3 = st.columns([3, 4, 3])
-    else:
-        n1, n3 = st.columns([4, 6])
-        n2 = None
-    with n1:
-        st.markdown(
-            f'<h2 style="margin:0;font-size:19px;font-weight:800;color:#0f172a;'
-            f'padding-top:0;">{title}</h2>',
-            unsafe_allow_html=True
-        )
-    if show_search:
-        with n2:
-            st.text_input("search", placeholder="🔍  Searching anything...",
-                          label_visibility="collapsed", key="search_bar")
-    with n3:
-        user_name = escape(st.session_state.user_name or "User")
-        role_label = "Admin" if get_current_role() == Role.ADMIN else "Analyst"
-        st.markdown(f"""
-        <div class="ap-top-actions">
-            <div class="ap-top-bell">🔔</div>
-            <details class="ap-profile-details">
-                <summary aria-label="Profile menu">
-                    <span class="ap-profile-avatar" title="{user_name}"></span>
-                    <span class="ap-user-meta">
-                        <span>{user_name}</span>
-                        <span class="ap-user-role">{role_label}</span>
-                    </span>
-                </summary>
-                <div class="ap-profile-menu">
-                    <a class="ap-profile-menu-item" href="#settings">
-                        <span class="ap-profile-menu-icon">⚙</span>
-                        <span>Settings</span>
-                    </a>
-                    <a class="ap-profile-menu-item" href="?ap_logout=1">
-                        <span class="ap-profile-menu-icon">↪</span>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </details>
-        </div>
-        """, unsafe_allow_html=True)
-    st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════
 # PAGE: OVERVIEW
 # ══════════════════════════════════════════════
 def page_overview(df_raw):
+    st.markdown('<div class="overview-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     show_topnav("Overview", show_search=False)
 
     for key in ["show_all_rev", "show_all_best", "show_all_detail", "overview_detail_page"]:
@@ -1327,17 +2106,21 @@ def page_overview(df_raw):
     if st.session_state.get("f_masa") not in month_options:
         st.session_state.f_masa = month_options[0]
 
-    f1, f2, f3, f4 = st.columns([1.35, 1.05, 1.45, 3.3])
+    f1, f2, f3, f4 = st.columns([1.45, 1.35, 1.55, 2.65])
     with f1:
-        sel_terminal = st.selectbox("Terminal", terminal_options, key="f_terminal")
+        st.markdown(_overview_filter_label("Terminal"), unsafe_allow_html=True)
+        sel_terminal = st.selectbox("Terminal", terminal_options, key="f_terminal", label_visibility="collapsed")
     with f2:
-        sel_tahun = st.selectbox("Tahun", year_options, key="f_tahun")
+        st.markdown(_overview_filter_label("Tahun"), unsafe_allow_html=True)
+        sel_tahun = st.selectbox("Tahun", year_options, key="f_tahun", label_visibility="collapsed")
     with f3:
-        sel_masa = st.selectbox("Bulan", month_options, key="f_masa")
+        st.markdown(_overview_filter_label("Bulan"), unsafe_allow_html=True)
+        sel_masa = st.selectbox("Bulan", month_options, key="f_masa", label_visibility="collapsed")
     with f4:
         st.markdown(
             '<div style="height:52px;display:flex;align-items:end;justify-content:flex-end;'
-            'color:#64748B;font-size:12px;font-weight:650;">Data terakhir diperbarui: 02 Jun 2025 10:30 WIB</div>',
+            f'color:#64748B;font-size:12px;font-weight:500;font-family:{OVERVIEW_FONT_FAMILY};">'
+            'Data terakhir diperbarui: 02 Jun 2025 10:30 WIB</div>',
             unsafe_allow_html=True,
         )
 
@@ -1363,102 +2146,106 @@ def page_overview(df_raw):
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    main_left, main_right = st.columns([65, 35])
+    main_left, main_right = st.columns([65, 35], gap="small")
     with main_left:
-        trend_card = st.container()
-        with trend_card:
-            _ed_card_marker(trend_card)
-            th1, th2 = st.columns([4, 1])
-            with th1:
-                st.markdown('<p class="ed-section-title">Revenue Trend</p><p class="ed-section-sub">Monthly revenue, sharing, and contribution in Rp billion</p>', unsafe_allow_html=True)
-            with th2:
-                st.selectbox("Trend period", ["Monthly"], key="overview_trend_period", label_visibility="collapsed")
+        st.markdown('<div class="ed-card-marker overview-trend-card"></div>', unsafe_allow_html=True)
+        th1, th2 = st.columns([3.4, 1.4])
+        with th1:
+            st.markdown('<p class="ed-section-title">Revenue Trend</p><p class="ed-section-sub">Monthly revenue, sharing, and contribution in Rp billion</p>', unsafe_allow_html=True)
+        with th2:
+            st.selectbox("Trend period", ["Monthly"], key="overview_trend_period", label_visibility="collapsed")
 
-            trend = (
-                df.groupby("masa_jasa")
-                .agg(
-                    real_revenue=("real_omzet", "sum"),
-                    revenue_sharing=("pendapatan_rs", "sum"),
-                    contribution=("kontribusi", "sum"),
-                )
-                .reindex(BULAN, fill_value=0)
-                .reset_index()
-                .rename(columns={"index": "masa_jasa"})
+        trend = (
+            df.groupby("masa_jasa")
+            .agg(
+                real_revenue=("real_omzet", "sum"),
+                revenue_sharing=("pendapatan_rs", "sum"),
+                contribution=("kontribusi", "sum"),
             )
-            trend["month"] = trend["masa_jasa"].astype(str).str[:3]
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=trend["month"], y=trend["real_revenue"] / 1_000_000_000,
-                mode="lines+markers", name="Real Revenue",
-                line=dict(color="#2563EB", width=2.5), marker=dict(size=6),
-            ))
-            fig.add_trace(go.Scatter(
-                x=trend["month"], y=trend["revenue_sharing"] / 1_000_000_000,
-                mode="lines+markers", name="Revenue Sharing",
-                line=dict(color="#7C3AED", width=2.5), marker=dict(size=6),
-            ))
-            fig.add_trace(go.Scatter(
-                x=trend["month"], y=trend["contribution"] / 1_000_000_000,
-                mode="lines+markers", name="Contribution",
-                line=dict(color="#059669", width=2.5), marker=dict(size=6),
-            ))
-            fig.update_layout(
-                height=320,
-                margin=dict(t=20, b=8, l=8, r=8),
-                plot_bgcolor="#ffffff",
-                paper_bgcolor="#ffffff",
-                hovermode="x unified",
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    font=dict(size=11, color="#475569"),
+            .reindex(BULAN, fill_value=0)
+            .reset_index()
+            .rename(columns={"index": "masa_jasa"})
+        )
+        trend["month"] = trend["masa_jasa"].astype(str).str[:3]
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=trend["month"], y=trend["real_revenue"] / 1_000_000_000,
+            mode="lines+markers", name="Real Revenue",
+            line=dict(color="#2563EB", width=2.5), marker=dict(size=6),
+        ))
+        fig.add_trace(go.Scatter(
+            x=trend["month"], y=trend["revenue_sharing"] / 1_000_000_000,
+            mode="lines+markers", name="Revenue Sharing",
+            line=dict(color="#7C3AED", width=2.5), marker=dict(size=6),
+        ))
+        fig.add_trace(go.Scatter(
+            x=trend["month"], y=trend["contribution"] / 1_000_000_000,
+            mode="lines+markers", name="Contribution",
+            line=dict(color="#059669", width=2.5), marker=dict(size=6),
+        ))
+        fig.update_layout(
+            autosize=True,
+            height=388,
+            margin=dict(t=20, b=8, l=8, r=8),
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#ffffff",
+            hovermode="x unified",
+            font=dict(family=OVERVIEW_FONT_FAMILY, size=11, color="#475569"),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                font=dict(family=OVERVIEW_FONT_FAMILY, size=11, color="#475569"),
+            ),
+            xaxis=dict(
+                showgrid=False,
+                tickfont=dict(family=OVERVIEW_FONT_FAMILY, size=11, color="#64748B"),
+                fixedrange=True,
+            ),
+            yaxis=dict(
+                title=dict(
+                    text="Rp Miliar",
+                    font=dict(family=OVERVIEW_FONT_FAMILY, size=11, color="#64748B"),
                 ),
-                xaxis=dict(showgrid=False, tickfont=dict(size=11, color="#64748B"), fixedrange=True),
-                yaxis=dict(
-                    title=dict(text="Rp Miliar", font=dict(size=11, color="#64748B")),
-                    showgrid=True,
-                    gridcolor="#E2E8F0",
-                    zeroline=False,
-                    tickfont=dict(size=11, color="#64748B"),
-                    fixedrange=True,
-                ),
-            )
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                showgrid=True,
+                gridcolor="#E2E8F0",
+                zeroline=False,
+                tickfont=dict(family=OVERVIEW_FONT_FAMILY, size=11, color="#64748B"),
+                fixedrange=True,
+            ),
+        )
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
     with main_right:
-        alert_card = st.container()
-        with alert_card:
-            _ed_card_marker(alert_card)
-            ah1, ah2 = st.columns([3, 1])
-            with ah1:
-                st.markdown('<p class="ed-section-title">Alert & Insight</p><p class="ed-section-sub">Highlights requiring analyst attention</p>', unsafe_allow_html=True)
-            with ah2:
-                st.markdown('<div class="ed-card-action">Lihat semua</div>', unsafe_allow_html=True)
+        st.markdown('<div class="ed-card-marker overview-alert-card"></div>', unsafe_allow_html=True)
+        ah1, ah2 = st.columns([3, 1])
+        with ah1:
+            st.markdown('<p class="ed-section-title">Alert & Insight</p><p class="ed-section-sub">Highlights requiring analyst attention</p>', unsafe_allow_html=True)
+        with ah2:
+            st.markdown('<div class="ed-card-action">Lihat semua</div>', unsafe_allow_html=True)
 
-            trend_nonzero = trend[trend["real_revenue"] > 0]
-            if len(trend_nonzero) >= 2:
-                current_rev = trend_nonzero.iloc[-1]["real_revenue"]
-                prev_rev = trend_nonzero.iloc[-2]["real_revenue"]
-                rev_change = ((current_rev - prev_rev) / prev_rev * 100) if prev_rev else 0
-            else:
-                rev_change = 0
-            low_acv = int((df["acv"] < 80).sum()) if not df.empty else 0
-            terminal_sum = df.groupby("terminal")["kontribusi"].sum()
-            top_terminal = terminal_sum.idxmax() if len(terminal_sum) else "Terminal 1"
-            top_terminal_share = int((terminal_sum.max() / terminal_sum.sum()) * 100) if terminal_sum.sum() else 0
-            alerts = [
-                _alert_item_html("!", "#DC2626", f"Revenue {'turun' if rev_change < 0 else 'naik'} {abs(rev_change):.1f}% dibanding periode lalu", f"Realisasi periode aktif: {_fmt_rp_compact(real_revenue)}"),
-                _alert_item_html("A", "#EA580C", f"{low_acv} tenant memiliki ACV < 80%", "Perlu perhatian untuk potensi risiko"),
-                _alert_item_html("i", "#2563EB", f"{top_terminal} menyumbang {top_terminal_share}% kontribusi", "Monitor perubahan komposisi terminal"),
-            ]
-            st.markdown(f'<div class="ed-alert-list">{"".join(alerts)}</div>', unsafe_allow_html=True)
+        trend_nonzero = trend[trend["real_revenue"] > 0]
+        if len(trend_nonzero) >= 2:
+            current_rev = trend_nonzero.iloc[-1]["real_revenue"]
+            prev_rev = trend_nonzero.iloc[-2]["real_revenue"]
+            rev_change = ((current_rev - prev_rev) / prev_rev * 100) if prev_rev else 0
+        else:
+            rev_change = 0
+        low_acv = int((df["acv"] < 80).sum()) if not df.empty else 0
+        terminal_sum = df.groupby("terminal")["kontribusi"].sum()
+        top_terminal = terminal_sum.idxmax() if len(terminal_sum) else "Terminal 1"
+        top_terminal_share = int((terminal_sum.max() / terminal_sum.sum()) * 100) if terminal_sum.sum() else 0
+        alerts = [
+            _alert_item_html("!", "#DC2626", f"Revenue {'turun' if rev_change < 0 else 'naik'} {abs(rev_change):.1f}% dibanding periode lalu", f"Realisasi periode aktif: {_fmt_rp_compact(real_revenue)}"),
+            _alert_item_html("A", "#EA580C", f"{low_acv} tenant memiliki ACV < 80%", "Perlu perhatian untuk potensi risiko"),
+            _alert_item_html("i", "#2563EB", f"{top_terminal} menyumbang {top_terminal_share}% kontribusi", "Monitor perubahan komposisi terminal"),
+        ]
+        st.markdown(f'<div class="ed-alert-list">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    top_rev, top_acv = st.columns(2)
     tenant_summary = (
         df.groupby(["perusahaan", "brand"])
         .agg(real_revenue=("real_omzet", "sum"), acv=("acv", "mean"), contribution=("kontribusi", "sum"))
@@ -1467,38 +2254,96 @@ def page_overview(df_raw):
     if tenant_summary.empty:
         tenant_summary = pd.DataFrame(columns=["perusahaan", "brand", "real_revenue", "acv", "contribution"])
 
-    with top_rev:
-        df_top_rev = tenant_summary.sort_values("real_revenue", ascending=False).head(5).copy()
-        df_top_rev.insert(0, "#", range(1, len(df_top_rev) + 1))
-        df_top_rev["Real Revenue"] = df_top_rev["real_revenue"].apply(_fmt_rp_compact)
-        df_top_rev["ACV"] = df_top_rev["acv"].apply(lambda x: f"{x:.1f}%")
-        df_top_rev = df_top_rev[["#", "perusahaan", "brand", "Real Revenue", "ACV"]]
-        df_top_rev.columns = ["#", "Tenant", "Brand", "Real Revenue", "ACV"]
-        st.markdown(_enterprise_table_html(df_top_rev, "Top Revenue Tenant", "Lihat semua"), unsafe_allow_html=True)
+    # Render kedua tabel sebagai satu HTML block agar tinggi sejajar
+    rev_sqm_source = (
+        df.groupby(["perusahaan", "brand", "kode_ruang"], as_index=False)
+        .agg(rev_sqm=("rev_sqm", "mean"))
+        .sort_values("rev_sqm", ascending=False)
+        .head(5)
+    )
 
-    with top_acv:
-        df_top_acv = tenant_summary.sort_values("acv", ascending=False).head(5).copy()
-        df_top_acv.insert(0, "#", range(1, len(df_top_acv) + 1))
-        df_top_acv["ACV"] = df_top_acv["acv"].apply(lambda x: f"{x:.1f}%")
-        df_top_acv["Contribution"] = df_top_acv["contribution"].apply(_fmt_rp_compact)
-        df_top_acv = df_top_acv[["#", "perusahaan", "brand", "ACV", "Contribution"]]
-        df_top_acv.columns = ["#", "Tenant", "Brand", "ACV", "Contribution"]
-        st.markdown(_enterprise_table_html(df_top_acv, "Top ACV Tenant", "Lihat semua"), unsafe_allow_html=True)
+    df_best3 = tenant_summary.sort_values("acv", ascending=False).head(3).copy()
+
+    # Build rows HTML untuk Revenue Per Sqm
+    rev_rows = ""
+    for _, row in rev_sqm_source.iterrows():
+        rev_val = f'<span class="ed-value-blue">{escape(_fmt_rp_compact(row["rev_sqm"]))}</span>'
+        rev_rows += f"""<tr>
+            <td>{escape(str(row["perusahaan"]))}</td>
+            <td>{escape(str(row["brand"]))}</td>
+            <td>{escape(str(row["kode_ruang"]))}</td>
+            <td class="ed-td-right">{rev_val}</td>
+        </tr>"""
+
+    # Build rows HTML untuk Best 3
+    best_rows = ""
+    for i, (_, row) in enumerate(df_best3.iterrows()):
+        badge = f'<span class="ed-rank-badge rank-{i+1}">{i+1}</span>'
+        acv_val = f'<span class="ed-positive">{row["acv"]:.1f}%</span>'
+        best_rows += f"""<tr>
+            <td><span class="ed-tenant-with-rank">{badge}{escape(str(row["perusahaan"]))}</span></td>
+            <td class="ed-td-center">{escape(str(row["brand"]))}</td>
+            <td class="ed-td-right">{acv_val}</td>
+        </tr>"""
+
+    st.markdown(f"""
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
+        <div class="ed-table-card" style="display:flex;flex-direction:column;">
+            <div class="ed-table-head">
+                <p class="ed-table-title">Revenue Per Sqm</p>
+                <span class="ed-table-link">View All</span>
+            </div>
+            <div class="ed-table-scroll" style="flex:1;">
+                <table class="ed-table">
+                    <thead><tr>
+                        <th>Tenant</th>
+                        <th>Brand</th>
+                        <th>Kode Ruang</th>
+                        <th class="ed-th-right">Rev/Sqm</th>
+                    </tr></thead>
+                    <tbody>{rev_rows}</tbody>
+                </table>
+            </div>
+        </div>
+        <div class="ed-table-card ed-table-best3" style="display:flex;flex-direction:column;">
+            <div class="ed-table-head">
+                <p class="ed-table-title">Best 3 Achievement</p>
+                <span class="ed-table-link">View All</span>
+            </div>
+            <div class="ed-table-scroll" style="flex:1;">
+                <table class="ed-table">
+                    <thead><tr>
+                        <th>Tenant</th>
+                        <th class="ed-th-center">Brand</th>
+                        <th class="ed-th-right">ACT%</th>
+                    </tr></thead>
+                    <tbody>{best_rows}</tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:
         _ed_card_marker(detail_card)
-        dh1, ds, dfb, dex, dpp = st.columns([4.2, 1.9, 0.8, 0.8, 0.9])
+        dh1, ds, dex, dpp = st.columns([3.85, 2.85, 0.78, 0.72], vertical_alignment="center")
         with dh1:
-            st.markdown('<p class="ed-section-title">Detail Revenue Tenant</p><p class="ed-section-sub">Detailed tenant performance for the active filter context</p>', unsafe_allow_html=True)
+            st.markdown(
+                '<p class="ed-section-title">Detail Revenue Tenant</p>'
+                '<p class="ed-section-sub">Data lengkap seluruh tenant aktif</p>',
+                unsafe_allow_html=True,
+            )
         with ds:
-            search_query = st.text_input("Search tenant", placeholder="Cari tenant atau brand...", key="overview_detail_search", label_visibility="collapsed")
-        with dfb:
-            if st.button("Filter", key="overview_detail_filter", width="stretch"):
-                st.session_state.overview_detail_page = 1
-                st.rerun()
+            search_query = st.text_input(
+                "Search tenant",
+                placeholder="Cari tenant atau brand...",
+                key="overview_detail_search",
+                label_visibility="collapsed",
+                on_change=lambda: st.session_state.update({"overview_detail_page": 1}),
+            )
 
         detail_df = df[["perusahaan", "brand", "kode_ruang", "min_omzet", "real_omzet", "kontribusi", "acv"]].copy()
         if search_query:
@@ -1510,6 +2355,7 @@ def page_overview(df_raw):
             ]
 
         export_df = detail_df.copy()
+
         with dex:
             st.download_button(
                 "Export",
@@ -1540,21 +2386,36 @@ def page_overview(df_raw):
         detail_view["ACV"] = detail_view["acv"].apply(lambda x: f"{x:.1f}%")
         detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "Kontribusi", "Ach %", "ACV"]]
         detail_view.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "Kontribusi", "Ach %", "ACV"]
-        st.markdown(_enterprise_table_inner_html(detail_view), unsafe_allow_html=True)
+        detail_col_align = {
+            "Min Omzet": "right",
+            "Real Omzet": "right",
+            "Kontribusi": "right",
+            "Ach %": "right",
+            "ACV": "right",
+        }
+        st.markdown(_enterprise_table_inner_html(detail_view, col_align=detail_col_align), unsafe_allow_html=True)
 
-        p1, p2, p3, p4 = st.columns([4, 0.7, 0.9, 0.7])
-        with p1:
-            first_item = 0 if total_rows == 0 else start_idx + 1
-            last_item = min(end_idx, total_rows)
-            st.markdown(f'<div class="ed-pagination">{first_item} - {last_item} dari {total_rows} data</div>', unsafe_allow_html=True)
-        with p2:
-            if st.button("<", key="overview_prev_page", width="stretch", disabled=st.session_state.overview_detail_page <= 1):
+        first_item = 0 if total_rows == 0 else start_idx + 1
+        last_item = min(end_idx, total_rows)
+
+        st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        pa, pb, pc, pd_ = st.columns([6.6, 0.28, 0.68, 0.28], gap="small")
+        with pa:
+            st.markdown(
+                f'<div class="ed-pagination-info">{first_item}–{last_item} dari {total_rows} data</div>',
+                unsafe_allow_html=True
+            )
+        with pb:
+            if st.button("‹", key="overview_prev_page", disabled=st.session_state.overview_detail_page <= 1):
                 st.session_state.overview_detail_page -= 1
                 st.rerun()
-        with p3:
-            st.markdown(f'<div class="ed-pagination" style="justify-content:center;">Page {st.session_state.overview_detail_page} / {total_pages}</div>', unsafe_allow_html=True)
-        with p4:
-            if st.button(">", key="overview_next_page", width="stretch", disabled=st.session_state.overview_detail_page >= total_pages):
+        with pc:
+            st.markdown(
+                f'<div class="ed-pagination-label">Page {st.session_state.overview_detail_page} / {total_pages}</div>',
+                unsafe_allow_html=True
+            )
+        with pd_:
+            if st.button("›", key="overview_next_page", disabled=st.session_state.overview_detail_page >= total_pages):
                 st.session_state.overview_detail_page += 1
                 st.rerun()
 
