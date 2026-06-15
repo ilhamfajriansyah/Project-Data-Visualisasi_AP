@@ -139,7 +139,10 @@ def inject_dashboard_css():
     #MainMenu,
     footer,
     header,
-    [data-testid="stHeader"] {
+    [data-testid="stHeader"],
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="stSidebarHeader"],
+    [data-testid="collapsedControl"] {
         display: none !important;
         height: 0 !important;
         visibility: hidden !important;
@@ -161,12 +164,14 @@ def inject_dashboard_css():
         margin-top: 0 !important;
     }
     .ap-brand {
-        margin-top: -2px !important;
-        padding: 6px 14px 10px !important;
+        margin-top: 20px !important;
+        padding: 10px 14px 16px !important;
+        margin-bottom: 35px !important;
     }
     .ap-brand-mini {
-        margin-top: -2px !important;
-        padding: 6px 0 8px !important;
+        margin-top: 20px !important;
+        padding: 10px 0 12px !important;
+        margin-bottom: 35px !important;
     }
     .ap-logo {
         width: 34px !important;
@@ -417,7 +422,7 @@ def inject_dashboard_css():
 
     [data-testid="stSidebarContent"] {
         background: #ffffff !important;
-        padding-top: 0 !important;
+        padding-top: 24px !important;
     }
 
     [data-testid="stSidebarUserContent"],
@@ -426,61 +431,217 @@ def inject_dashboard_css():
         padding-top: 0 !important;
         margin-top: 0 !important;
     }
-
     .ap-brand {
         margin: 0 !important;
-        padding: 2px 24px 10px !important;
+        padding: 10px 24px 16px !important;
         border-bottom: 1px solid #E5E7EB !important;
     }
 
     .ap-logo {
         width: 42px !important;
         height: 42px !important;
-        border-radius: 10px !important;
-        background: #2563EB !important;
-        box-shadow: none !important;
-        font-size: 13px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%) !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     .ap-brand-name {
         color: #0F172A !important;
-        font-size: 12px !important;
+        font-size: 15px !important;
         font-weight: 800 !important;
-        letter-spacing: 0 !important;
+        letter-spacing: -0.2px !important;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .ap-brand-sub {
-        color: #64748B !important;
-        font-size: 10px !important;
-        font-weight: 700 !important;
-        letter-spacing: 1.6px !important;
+        color: #6366F1 !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0px !important;
+        margin-top: 1px !important;
+        font-family: 'Poppins', sans-serif !important;
     }
 
-    .nav-group {
+    .ap-toolbar-title {
         padding: 22px 24px 8px !important;
         color: #94A3B8 !important;
         font-size: 10px !important;
         letter-spacing: 1.2px !important;
     }
 
+    .nav-category-header {
+        font-size: 10px !important;
+        font-weight: 800 !important;
+        color: #94A3B8 !important;
+        letter-spacing: 1.2px !important;
+        text-transform: uppercase !important;
+        margin: 20px 24px 10px !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .nav-group {
+        display: none !important;
+    }
+
+    .nav-row,
     .nav-active {
-        margin: 4px 16px !important;
-        padding: 12px 14px 12px 11px !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 16px 8px !important;
+        padding: 6px 12px;
+        border-radius: 10px;
+        color: #64748B;
+        font-size: 13.5px;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
+        line-height: 1.2;
+        box-sizing: border-box !important;
+        height: 44px !important;
+        position: relative;
+    }
+
+    .nav-icon-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        transition: none !important;
+    }
+
+    .nav-icon-box svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+    }
+
+    .nav-label {
+        white-space: nowrap;
+        color: inherit;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .nav-overlay {
+        pointer-events: none;
+        position: relative;
+        z-index: 1;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+    }
+
+    .nav-active {
+        margin: 0 16px 8px !important;
+        padding: 6px 12px !important;
         border-radius: 10px !important;
-        background: #EFF6FF !important;
-        border: 1px solid #DBEAFE !important;
-        border-left: 3px solid #6366F1 !important;
+        background: #F5F3FF !important;
+        border: 1px solid #DDD6FE !important;
         box-shadow: none !important;
-        color: #2563EB !important;
-        font-size: 13px !important;
+        color: #7C3AED !important;
         font-weight: 700 !important;
     }
 
+    .nav-active .nav-icon-box {
+        background-color: #EDE9FE !important;
+        color: #7C3AED !important;
+    }
+
+    .nav-row .nav-icon-box {
+        background-color: #F8FAFC !important;
+        color: #64748B !important;
+        border: 1px solid #F1F5F9 !important;
+    }
+
+    .nav-indicator-pill {
+        position: absolute;
+        left: 0;
+        top: 8px;
+        bottom: 8px;
+        width: 3.5px;
+        background: linear-gradient(180deg, #A78BFA 0%, #7C3AED 100%);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .nav-chevron {
+        margin-left: auto;
+        color: #A78BFA;
+        display: flex;
+        align-items: center;
+        opacity: 0.8;
+    }
+
+    .nav-badge {
+        margin-left: auto;
+        background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+        color: #ffffff;
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 2.5px 8.5px;
+        border-radius: 20px;
+        box-shadow: 0 2.5px 7px rgba(6, 182, 212, 0.25);
+    }
+
+    [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
+        margin-bottom: -44px !important;
+        position: relative;
+        z-index: 2;
+    }
+
+    [data-testid="stSidebar"] div[data-testid="stButton"] {
+        margin: 0 16px 8px !important;
+        padding: 0 !important;
+        height: 44px !important;
+    }
+
+    [data-testid="stSidebar"] div[data-testid="stButton"] > button {
+        height: 44px !important;
+        min-height: 44px !important;
+        opacity: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        transition: none !important;
+        width: 100% !important;
+    }
+
+    /* Hover effects */
+    [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]):hover + div[data-testid="stElementContainer"] .nav-row.nav-overlay {
+        background: rgba(241, 245, 249, 0.5) !important;
+        color: #1E293B !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]):hover + div[data-testid="stElementContainer"] .nav-row.nav-overlay .nav-icon-box {
+        background-color: #E2E8F0 !important;
+        color: #1E293B !important;
+        transform: scale(1.04);
+    }
+
     .ap-sidebar-footer {
-        margin-top: auto;
-        padding: 16px 20px 18px;
-        border-top: 1px solid #E2E8F0;
-        background: #ffffff;
+        margin: 0 16px 2px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        text-align: center !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: #94A3B8 !important;
+        font-family: 'Poppins', sans-serif !important;
+        letter-spacing: 0.3px !important;
+        line-height: 1.35 !important;
+        white-space: normal !important;
+    }
+
+    .ap-sidebar-spacer {
+        height: calc(100vh - 532px) !important;
+        min-height: 20px !important;
     }
 
     .ap-sidebar-status {
@@ -512,6 +673,7 @@ def inject_dashboard_css():
 
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
         min-height: 100% !important;
+        gap: 0px !important;
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] {
@@ -533,8 +695,12 @@ def inject_dashboard_css():
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
-        background: #F1F5F9 !important;
-        color: #2563EB !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        color: transparent !important;
+        opacity: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
     }
 
     .nad-top-divider {
@@ -1606,20 +1772,20 @@ ROLE_MENUS = {
     Role.USER: [
         "Overview",
         "Revenue Sharing",
-        "Accrual & Billing",
-        "Room Database",
         "Lease Contract",
+        "Traffic Monitor",
         "Import Manager",
         "Data Verification",
+        "Settings",
     ],
     Role.ADMIN: [
         "Overview",
         "Revenue Sharing",
-        "Accrual & Billing",
-        "Room Database",
         "Lease Contract",
+        "Traffic Monitor",
         "Import Manager",
         "Data Verification",
+        "Settings",
     ],
 }
 
@@ -1939,14 +2105,52 @@ def _overview_section_strip():
     st.markdown('<div class="overview-section-card-strip"></div>', unsafe_allow_html=True)
 
 
+def _nav_icon(*paths: str) -> str:
+    inner = "".join(paths)
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+        'width="18" height="18" fill="none" stroke="currentColor" '
+        'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+        f'aria-hidden="true">{inner}</svg>'
+    )
+
+
 NAV_ICONS = {
-    "Overview": "📊",
-    "Revenue Sharing": "💰",
-    "Accrual & Billing": "🧾",
-    "Room Database": "🏢",
-    "Lease Contract": "📄",
-    "Import Manager": "📤",
-    "Data Verification": "✓",
+    "Overview": _nav_icon(
+        '<rect x="3" y="3" width="7" height="7" rx="1.5"/>',
+        '<rect x="14" y="3" width="7" height="7" rx="1.5"/>',
+        '<rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+        '<rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    ),
+    "Revenue Sharing": _nav_icon(
+        '<circle cx="18" cy="5" r="3"/>',
+        '<circle cx="6" cy="12" r="3"/>',
+        '<circle cx="18" cy="19" r="3"/>',
+        '<line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>',
+        '<line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+    ),
+    "Lease Contract": _nav_icon(
+        '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>',
+        '<polyline points="14 2 14 8 20 8"/>',
+        '<path d="M10 16h4"/>',
+        '<path d="m8 12.5 4-4a1.5 1.5 0 0 1 2 2l-4 4-2 0z"/>',
+    ),
+    "Traffic Monitor": _nav_icon(
+        '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+    ),
+    "Import Manager": _nav_icon(
+        '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+        '<polyline points="17 8 12 3 7 8"/>',
+        '<line x1="12" y1="3" x2="12" y2="15"/>',
+    ),
+    "Data Verification": _nav_icon(
+        '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+        '<path d="m9 12 2 2 4-4"/>',
+    ),
+    "Settings": _nav_icon(
+        '<circle cx="12" cy="12" r="3"/>',
+        '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    ),
 }
 
 
@@ -1976,21 +2180,32 @@ def _ap_button(*args, **kwargs):
 st.button = _ap_button
 
 
+def _sidebar_brand_logo_svg():
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+        'width="22" height="22" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'style="color: #ffffff;">'
+        '<path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 1 0-3-3L13 8 4.8 6.2c-.5-.1-1 .1-1.2.5l-.3.3c-.2.3-.2.7 0 1l6.7 4.1L6 16.2c-.3.3-.4.8-.2 1.1l.3.3c.3.2.8.1 1.1-.2l4.1-4.1 4.1 6.7c.3.2.7.2 1 0l.3-.3c.4-.2.6-.7.5-1.2z"/>'
+        '</svg>'
+    )
+
+
 def _sidebar_brand():
     if st.session_state.sidebar_minimized:
-        st.markdown("""
+        st.markdown(f"""
         <div class="ap-brand ap-brand-mini">
-            <div class="ap-logo">IA</div>
+            <div class="ap-logo">{_sidebar_brand_logo_svg()}</div>
         </div>""", unsafe_allow_html=True)
         return
 
-    st.markdown("""
+    st.markdown(f"""
     <div class="ap-brand">
-        <div style="display:flex;align-items:center;gap:10px;">
-            <div class="ap-logo">IA</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div class="ap-logo">{_sidebar_brand_logo_svg()}</div>
             <div class="ap-brand-copy">
-                <div class="ap-brand-name">INJOURNEY AIRPORTS</div>
-                <div class="ap-brand-sub">NON AERO SYSTEM</div>
+                <div class="ap-brand-name">AirportBI</div>
+                <div class="ap-brand-sub">Commercial Suite</div>
             </div>
         </div>
     </div>""", unsafe_allow_html=True)
@@ -2006,18 +2221,14 @@ def _nav_group(label):
 def _sidebar_footer():
     if st.session_state.sidebar_minimized:
         st.markdown(
-            '<div class="ap-sidebar-footer" style="text-align:center;padding:12px 0;">'
-            '<span class="ap-status-dot"></span></div>',
+            '<div class="ap-sidebar-footer" style="font-size: 12px !important;">'
+            '© 2026</div>',
             unsafe_allow_html=True,
         )
         return
     st.markdown("""
     <div class="ap-sidebar-footer">
-        <div class="ap-sidebar-status">
-            <span class="ap-status-dot"></span>
-            <span>System Status: Database Connected</span>
-        </div>
-        <div class="ap-sidebar-sync">Last Sync: 12 Jun 2026 10:42 AM</div>
+        © 2026 INJOURNEY AIRPORTS. ALL RIGHTS RESERVED.
     </div>
     """, unsafe_allow_html=True)
 
@@ -2027,61 +2238,64 @@ def show_sidebar():
 
         _sidebar_brand()
 
-        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        st.markdown('<div class="nav-category-header">NAVIGATION</div>', unsafe_allow_html=True)
 
-        _nav_group("DASHBOARD")
-        _nav_item(NAV_ICONS["Overview"], "Overview")
+        menu_items = [
+            "Overview",
+            "Revenue Sharing",
+            "Lease Contract",
+            "Traffic Monitor",
+            "Import Manager",
+            "Data Verification",
+            "Settings",
+        ]
+        for label in menu_items:
+            _nav_row(NAV_ICONS[label], label)
 
-        _nav_group("REVENUE MANAGEMENT")
-        _nav_sub(NAV_ICONS["Revenue Sharing"], "Revenue Sharing")
-        _nav_sub(NAV_ICONS["Accrual & Billing"], "Accrual & Billing")
-
-        _nav_group("ASSET & LEASING")
-        _nav_sub(NAV_ICONS["Room Database"], "Room Database")
-        _nav_sub(NAV_ICONS["Lease Contract"], "Lease Contract")
-
-        _nav_group("DATA OPERATIONS")
-        _nav_sub(NAV_ICONS["Import Manager"], "Import Manager")
-        _nav_sub(NAV_ICONS["Data Verification"], "Data Verification")
-
-        st.markdown('<div style="flex:1;min-height:24px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="ap-sidebar-spacer"></div>', unsafe_allow_html=True)
         _sidebar_footer()
 
 
-def _nav_item(icon, label):
+def _nav_row(icon, label):
     if not can_access_menu(label):
         return
 
     mini = st.session_state.sidebar_minimized
     is_active = st.session_state.active_menu == label
+    label_html = "" if mini else f'<span class="nav-label">{escape(label)}</span>'
+
+    st.button(" ", key=f"nav_{label}", help=label if mini else None, use_container_width=True)
+
     if is_active:
-        st.markdown(f"""
-        <div class="nav-active" title="{label}">
-            <span class="nav-icon">{icon}</span>
-            <span class="nav-label">{'' if mini else label}</span>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="nav-active nav-overlay" title="{escape(label)}">
+                <span class="nav-indicator-pill"></span>
+                <span class="nav-icon-box">{icon}</span>
+                {label_html}
+                {"" if mini else '<span class="nav-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>'}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-        button_label = icon if mini else f"{icon}  {label}"
-        if st.button(button_label, key=f"nav_{label}", help=label if mini else None, use_container_width=True):
-            _go_to_menu(label)
+        st.markdown(
+            f"""
+            <div class="nav-row nav-overlay" title="{escape(label)}">
+                <span class="nav-icon-box">{icon}</span>
+                {label_html}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def _nav_item(icon, label):
+    _nav_row(icon, label)
 
 
 def _nav_sub(icon, label):
-    if not can_access_menu(label):
-        return
-
-    mini = st.session_state.sidebar_minimized
-    is_active = st.session_state.active_menu == label
-    if is_active:
-        st.markdown(f"""
-        <div class="nav-active" title="{label}">
-            <span class="nav-icon">{icon}</span>
-            <span class="nav-label">{'' if mini else label}</span>
-        </div>""", unsafe_allow_html=True)
-    else:
-        button_label = icon if mini else f"{icon}  {label}"
-        if st.button(button_label, key=f"nav_{label}", help=label if mini else None, use_container_width=True):
-            _go_to_menu(label)
+    _nav_row(icon, label)
 
 
 # ══════════════════════════════════════════════
@@ -2510,16 +2724,16 @@ def render_dashboard_app():
         page_overview(df_raw)
     elif menu == "Revenue Sharing":
         page_revenue_sharing()
-    elif menu == "Accrual & Billing":
-        page_accrual_billing()
-    elif menu == "Import Manager":
-        render_import_manager()
-    elif menu == "Room Database":
-        render_room_database()
     elif menu == "Lease Contract":
         render_lease_contract()
+    elif menu == "Traffic Monitor":
+        page_coming_soon("Traffic Monitor")
+    elif menu == "Import Manager":
+        render_import_manager()
     elif menu == "Data Verification":
         render_data_verification()
+    elif menu == "Settings":
+        page_coming_soon("Settings")
     else:
         page_overview(df_raw)
 
