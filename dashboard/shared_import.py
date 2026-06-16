@@ -56,6 +56,12 @@ COLUMN_ALIASES = {
     "luas": "luas_sqm",
     "sqm": "luas_sqm",
     "area_sqm": "luas_sqm",
+    "traffic": "jumlah_pax",
+    "total_pax": "jumlah_pax",
+    "passenger": "jumlah_pax",
+    "passengers": "jumlah_pax",
+    "penumpang": "jumlah_pax",
+    "jumlah_penumpang": "jumlah_pax",
 }
 
 NUMERIC_COLUMNS = [
@@ -66,6 +72,7 @@ NUMERIC_COLUMNS = [
     "pendapatan_rs",
     "kontribusi",
     "luas_sqm",
+    "jumlah_pax",
 ]
 
 
