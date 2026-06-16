@@ -1,12 +1,18 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import date, datetime, timedelta
 from textwrap import dedent
 import time
 
 from .shared_import import (
+    KETENTUAN_RULES,
     get_shared_import_meta,
     store_shared_import,
+    validate_import_upload,
+    SHARED_DATA_KEY,
+    SHARED_META_KEY,
+    MAX_IMPORT_FILE_BYTES,
 )
 
 # ─────────────────────────────────────────────
@@ -37,6 +43,21 @@ def _get_admin_history() -> pd.DataFrame:
         {"PIC": "Jayapura",  "Periode": "Apr 2026", "File": "jayapura_apr.xlsx",          "Rows": 290,  "Status": "Pending",  "Anomali": 5},
         {"PIC": "Sorong",    "Periode": "Apr 2026", "File": "—",                          "Rows": 0,    "Status": "Pending",  "Anomali": 0},
     ])
+
+UPLOAD_HISTORY_DATA = [
+    {"period": "Dec 2024", "upload_date": "03 Jan 2025", "upload_time": "09:14 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1842, "tenants": 247, "file_size": "2.4 MB", "rs_total": "Rp 24.2B", "status": "Success"},
+    {"period": "Nov 2024", "upload_date": "04 Dec 2024", "upload_time": "06:52 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1836, "tenants": 244, "file_size": "2.3 MB", "rs_total": "Rp 18.9B", "status": "Success"},
+    {"period": "Oct 2024", "upload_date": "05 Nov 2024", "upload_time": "10:03 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1858, "tenants": 246, "file_size": "2.4 MB", "rs_total": "Rp 20.7B", "status": "Warning"},
+    {"period": "Sep 2024", "upload_date": "03 Oct 2024", "upload_time": "09:44 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1792, "tenants": 243, "file_size": "2.2 MB", "rs_total": "Rp 19.2B", "status": "Success"},
+    {"period": "Aug 2024", "upload_date": "04 Sep 2024", "upload_time": "11:21 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1801, "tenants": 245, "file_size": "2.3 MB", "rs_total": "Rp 18.4B", "status": "Success"},
+    {"period": "Jul 2024", "upload_date": "05 Aug 2024", "upload_time": "08:33 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1776, "tenants": 241, "file_size": "2.2 MB", "rs_total": None,        "status": "Failed"},
+    {"period": "Jun 2024", "upload_date": "03 Jul 2024", "upload_time": "09:58 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1748, "tenants": 239, "file_size": "2.1 MB", "rs_total": "Rp 17.1B", "status": "Success"},
+    {"period": "May 2024", "upload_date": "04 Jun 2024", "upload_time": "14:05 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1715, "tenants": 237, "file_size": "2.1 MB", "rs_total": "Rp 16.8B", "status": "Success"},
+    {"period": "Apr 2024", "upload_date": "03 May 2024", "upload_time": "10:30 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1690, "tenants": 235, "file_size": "2.0 MB", "rs_total": "Rp 16.2B", "status": "Success"},
+    {"period": "Mar 2024", "upload_date": "02 Apr 2024", "upload_time": "08:15 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1665, "tenants": 233, "file_size": "2.0 MB", "rs_total": "Rp 15.9B", "status": "Warning"},
+    {"period": "Feb 2024", "upload_date": "04 Mar 2024", "upload_time": "11:42 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1638, "tenants": 231, "file_size": "1.9 MB", "rs_total": "Rp 15.3B", "status": "Success"},
+    {"period": "Jan 2024", "upload_date": "02 Feb 2024", "upload_time": "09:22 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1610, "tenants": 229, "file_size": "1.9 MB", "rs_total": "Rp 14.8B", "status": "Success"},
+]
 
 def _get_belum_submit():
     return ["Manado", "Kupang", "Sorong"]
@@ -340,136 +361,435 @@ _REFINED_IMPORT_CSS = """
     font-size: 11px;
     font-weight: 800;
 }
-.im-upload-visual {
-    border: 2px dashed rgba(30,41,59,0.34);
-    border-radius: 18px;
-    min-height: 218px;
-    padding: 32px 24px 24px;
+
+/* Custom Drag & Drop visual styles */
+.im-dropzone-wrapper {
+    position: relative;
+    width: 100%;
+    margin-bottom: 14px;
+}
+.im-dropzone-visual {
+    border: 2px dashed rgba(99, 102, 241, 0.25);
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(245, 243, 255, 0.45));
+    padding: 40px 24px;
     text-align: center;
-    background:
-        linear-gradient(135deg,rgba(255,255,255,0.66),rgba(255,255,255,0.42)),
-        radial-gradient(circle at 50% 0%,rgba(99,102,241,0.08),transparent 55%);
+    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.04);
+    height: 254px !important;
+    box-sizing: border-box !important;
 }
-.im-cloud {
+.im-dropzone-wrapper:hover .im-dropzone-visual {
+    border-color: rgba(99, 102, 241, 0.6);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(245, 243, 255, 0.6));
+    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.08);
+}
+.im-dropzone-icon-box {
     width: 64px;
-    height: 52px;
-    border-radius: 24px;
+    height: 64px;
+    border-radius: 18px;
+    background: #f3f0ff;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 13px;
-    color: #334155;
-    font-size: 28px;
-    font-weight: 900;
-    background: rgba(255,255,255,0.74);
-    border: 1px solid rgba(255,255,255,0.96);
-    box-shadow: 0 8px 24px rgba(99,102,241,0.11);
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08);
 }
-.im-upload-title {
-    font-size: 16px;
-    font-weight: 850;
+.im-dropzone-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #a78bfa;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.35);
+    font-size: 18px;
+    font-weight: 700;
+}
+.im-dropzone-title {
+    font-size: 16.5px;
+    font-weight: 800;
     color: #1e293b;
     margin-bottom: 4px;
 }
-.im-upload-copy {
-    font-size: 11.5px;
-    line-height: 1.55;
+.im-dropzone-subtitle {
+    font-size: 12.5px;
     color: #64748b;
-    max-width: 420px;
+    margin-bottom: 22px;
 }
-.im-uploader-slot {
-    width: min(190px, 80%);
-    margin: -56px auto 18px;
-    position: relative;
-    z-index: 2;
+.im-dropzone-browse {
+    color: #6366f1;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
 }
-.im-uploader-slot [data-testid="stFileUploader"] section,
-.im-uploader-slot [data-testid="stFileUploadDropzone"] {
-    min-height: 42px !important;
+.im-dropzone-browse:hover {
+    text-decoration: underline;
+}
+.im-dropzone-badges {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.im-dropzone-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #f5f3ff;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    border-radius: 999px;
+    color: #6366f1;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+.badge-icon {
+    stroke: #6366f1;
+    stroke-width: 2.2;
+}
+
+/* Transparent Sibling and Class Overlay Uploader */
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) {
+    position: relative !important;
+    margin-top: -268px !important;
+    height: 254px !important;
+    z-index: 1000 !important;
+    cursor: pointer !important;
+}
+.im-refined-uploader {
+    opacity: 0 !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) *,
+.im-refined-uploader * {
+    cursor: pointer !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
+}
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploadDropzone"],
+.im-refined-uploader [data-testid="stFileUploadDropzone"],
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzone"],
+.im-refined-uploader [data-testid="stFileUploaderDropzone"] {
+    padding: 0 !important;
+    margin: 0 !important;
     border: none !important;
     background: transparent !important;
-    box-shadow: none !important;
 }
-.im-uploader-slot [data-testid="stFileUploader"] svg,
-.im-uploader-slot [data-testid="stFileUploader"] small,
-.im-uploader-slot [data-testid="stFileUploader"] [data-testid="stFileUploadDropzoneInstructions"] {
-    display: none !important;
-}
-.im-uploader-slot [data-testid="stFileUploader"] button {
-    width: 100% !important;
-    min-height: 38px !important;
-    border-radius: 999px !important;
-    background: rgba(255,255,255,0.74) !important;
-    color: #334155 !important;
-    border: 1px solid rgba(255,255,255,0.96) !important;
-    box-shadow: 0 8px 22px rgba(99,102,241,0.10), inset 0 1px 0 rgba(255,255,255,1) !important;
-    font-size: 12px !important;
-    font-weight: 800 !important;
-}
-.im-file-card {
-    margin-top: 0;
+
+
+/* Success State styling */
+.im-success-visual {
+    border: 2px solid rgba(16, 185, 129, 0.2);
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(240, 253, 244, 0.45));
+    padding: 40px 24px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.04);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-    border-radius: 16px;
-    background: rgba(255,255,255,0.72);
-    border: 1px solid rgba(255,255,255,0.94);
-    box-shadow: 0 8px 28px rgba(99,102,241,0.09);
+    justify-content: center;
+    margin-bottom: 14px;
+    animation: cardPopIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.im-file-card.is-empty {
-    border-style: dashed;
-    box-shadow: none;
-    background: rgba(255,255,255,0.44);
-}
-.im-file-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+.im-success-icon-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: #e6fcf5;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    background: linear-gradient(135deg,#059669,#10b981);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 900;
-    box-shadow: 0 6px 18px rgba(16,185,129,0.24);
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08);
 }
-.im-file-card.is-empty .im-file-icon {
-    background: linear-gradient(135deg,#94a3b8,#64748b);
-    box-shadow: none;
-}
-.im-file-name {
-    font-size: 13.5px;
-    font-weight: 800;
-    color: #1e293b;
-    overflow-wrap: anywhere;
-}
-.im-file-meta {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 2px;
-}
-.im-delete {
-    margin-left: auto;
-    width: 34px;
-    height: 34px;
+.im-success-icon {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
+    background: #10b981;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #dc2626;
-    font-size: 13px;
-    font-weight: 900;
-    background: rgba(239,68,68,0.10);
-    border: 1px solid rgba(239,68,68,0.20);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    font-size: 20px;
+    font-weight: bold;
 }
+.im-success-title {
+    font-size: 19px;
+    font-weight: 850;
+    color: #059669;
+    margin-bottom: 4px;
+}
+.im-success-subtitle {
+    font-size: 12.5px;
+    color: #64748b;
+    margin-bottom: 24px;
+}
+
+/* Progress bar container and animations */
+.im-progress-bar-container {
+    width: 100%;
+    max-width: 460px;
+    height: 10px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+@keyframes progressBarWidth {
+    0% { width: 0%; }
+    100% { width: 100%; }
+}
+@keyframes progressBarColor {
+    0% { background-color: #8b5cf6; } /* purple */
+    45% { background-color: #8b5cf6; }
+    75% { background-color: #eab308; } /* yellow */
+    100% { background-color: #10b981; } /* green */
+}
+.im-progress-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    width: 0%;
+    animation: progressBarWidth 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+               progressBarColor 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Success details and buttons slide up/fade in */
+@keyframes successDetailsFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes cardPopIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.96) translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+@keyframes failureDetailsSlideUp {
+    0% {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.im-success-details {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: successDetailsFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 2.5s both;
+}
+
+/* Stats Cards container and cards */
+.im-stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.im-stat-card {
+    flex: 1;
+    min-width: 100px;
+    border-radius: 16px;
+    padding: 14px 10px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+    transition: transform 0.2s;
+}
+.im-stat-card:hover {
+    transform: translateY(-2px);
+}
+/* Purple Stat Card: Records */
+.stat-records {
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+}
+.stat-records .stat-value {
+    color: #6366f1;
+}
+/* Green Stat Card: Valid */
+.stat-valid {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+.stat-valid .stat-value {
+    color: #10b981;
+}
+/* Yellow Stat Card: Warnings */
+.stat-warnings {
+    background: #fefbeb;
+    border: 1px solid #fef08a;
+}
+.stat-warnings .stat-value {
+    color: #d97706;
+}
+/* Green Teal Stat Card: Score */
+.stat-score {
+    background: #f0fdfa;
+    border: 1px solid #ccfbf1;
+}
+.stat-score .stat-value {
+    color: #14b8a6;
+}
+
+.stat-value {
+    font-size: 19px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+.stat-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+}
+
+/* Custom Streamlit Buttons override inside success buttons container */
+.im-success-buttons-container {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+    animation: successDetailsFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 2.5s both;
+}
+.im-success-buttons-container [data-testid="stButton"] button {
+    width: 100% !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+}
+/* Style for Col 1 button (Upload Another) */
+.im-success-buttons-container [data-testid="column"]:first-child button {
+    background: #ffffff !important;
+    color: #4f46e5 !important;
+    border: 1px solid rgba(99, 102, 241, 0.25) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.05) !important;
+}
+.im-success-buttons-container [data-testid="column"]:first-child button:hover {
+    background: #f5f3ff !important;
+    border-color: rgba(99, 102, 241, 0.4) !important;
+    transform: translateY(-1px) !important;
+}
+/* Style for Col 2 button (View Data) */
+.im-success-buttons-container [data-testid="column"]:last-child button {
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3) !important;
+}
+.im-success-buttons-container [data-testid="column"]:last-child button:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Failure State styling */
+.im-failure-visual {
+    border: 2px solid rgba(239, 68, 68, 0.2);
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(254, 242, 242, 0.45));
+    padding: 40px 24px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    animation: cardPopIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.im-failure-icon-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: #fef2f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08);
+}
+.im-failure-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    font-size: 20px;
+    font-weight: bold;
+}
+.im-failure-title {
+    font-size: 19px;
+    font-weight: 850;
+    color: #dc2626;
+    margin-bottom: 4px;
+}
+.im-failure-subtitle {
+    font-size: 12.5px;
+    color: #64748b;
+    margin-bottom: 24px;
+}
+.im-failure-details {
+    width: 100%;
+    max-width: 460px;
+    background: rgba(255, 255, 255, 0.68);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 24px;
+    text-align: left;
+    animation: failureDetailsSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.im-failure-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12.5px;
+    color: #475569;
+}
+.im-failure-detail-item:last-child {
+    margin-bottom: 0;
+}
+
 .im-side-stack {
     display: flex;
     flex-direction: column;
@@ -558,6 +878,76 @@ _REFINED_IMPORT_CSS = """
 .im-execute-wrap {
     padding: 0 16px 15px;
 }
+.im-ketentuan-card {
+    padding: 0;
+    overflow: hidden;
+}
+.im-ketentuan-head {
+    padding: 15px 16px 11px;
+    border-bottom: 1px solid rgba(99,102,241,0.08);
+}
+.im-ketentuan-body {
+    padding: 14px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.im-ketentuan-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.45;
+}
+.im-ketentuan-check {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #059669;
+    font-size: 11px;
+    font-weight: 900;
+    background: rgba(16,185,129,0.13);
+    border: 1px solid rgba(16,185,129,0.22);
+    margin-top: 1px;
+}
+.im-ketentuan-fail {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+    font-size: 11px;
+    font-weight: 900;
+    background: rgba(239,68,68,0.10);
+    border: 1px solid rgba(239,68,68,0.22);
+    margin-top: 1px;
+}
+.im-ketentuan-item.is-fail span:last-child {
+    color: #64748b;
+}
+.im-ketentuan-item.is-pass span:last-child {
+    color: #334155;
+}
+.im-info-banner {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.18);
+    color: #4338ca;
+    font-size: 11.5px;
+    font-weight: 650;
+    line-height: 1.5;
+}
 .im-history {
     margin-top: 18px;
     padding: 0;
@@ -568,8 +958,290 @@ _REFINED_IMPORT_CSS = """
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 17px 20px 13px;
+    padding: 20px 24px 16px;
     border-bottom: 1px solid rgba(99,102,241,0.08);
+}
+.im-history-head-left .im-section-title {
+    font-size: 15px;
+    font-weight: 850;
+}
+.im-history-head-left .im-section-sub {
+    margin-top: 2px;
+    font-size: 11.5px;
+}
+.im-history-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.im-btn-refresh, .im-btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+.im-btn-refresh, .im-btn-export {
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(99,102,241,0.15);
+    color: #4f46e5;
+}
+.im-btn-refresh:hover, .im-btn-export:hover {
+    background: #f5f3ff;
+    border-color: rgba(99,102,241,0.3);
+    transform: none;
+    box-shadow: none;
+}
+/* History Table Row Design */
+.im-hist-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.im-hist-table thead tr {
+    background: rgba(248,250,252,0.8);
+    border-bottom: 1px solid #f1f5f9;
+}
+.im-hist-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+}
+.im-hist-table td {
+    padding: 16px 16px;
+    font-size: 12.5px;
+    color: #334155;
+    border-bottom: 1px solid #f8fafc;
+    vertical-align: middle;
+}
+.im-hist-table tbody tr {
+    transition: background 0.15s;
+}
+.im-hist-table tbody tr:hover {
+    background: rgba(99,102,241,0.02);
+}
+.im-hist-table tbody tr:last-child td {
+    border-bottom: none;
+}
+/* Period cell with colored dot */
+.im-period-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.im-period-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.im-period-dot.dot-success { background: #10b981; }
+.im-period-dot.dot-warning { background: #f59e0b; }
+.im-period-dot.dot-failed  { background: #ef4444; }
+.im-period-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1e293b;
+}
+/* Upload date with sub-time */
+.im-date-cell {
+    line-height: 1.3;
+}
+.im-date-main {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+}
+.im-date-time {
+    font-size: 10.5px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+/* Uploader cell with avatar */
+.im-uploader-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.im-uploader-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+.im-uploader-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+}
+.im-uploader-role {
+    font-size: 10.5px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+/* Records cell */
+.im-records-val {
+    font-size: 16px;
+    font-weight: 850;
+    color: #1e293b;
+    line-height: 1.2;
+}
+.im-records-sub {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: lowercase;
+}
+/* Tenants link */
+.im-tenants-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6366f1;
+    cursor: pointer;
+}
+.im-tenants-link:hover {
+    text-decoration: underline;
+}
+/* File size */
+.im-filesize {
+    font-size: 12.5px;
+    color: #64748b;
+    font-weight: 600;
+}
+/* RS Total */
+.im-rs-total {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #1e293b;
+}
+.im-rs-empty {
+    font-size: 12.5px;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+/* Status badges with dot */
+.im-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.im-status-badge .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+.im-status-success {
+    background: rgba(16,185,129,0.10);
+    color: #059669;
+    border: 1px solid rgba(16,185,129,0.20);
+}
+.im-status-success .status-dot { background: #10b981; }
+.im-status-warning {
+    background: rgba(245,158,11,0.10);
+    color: #d97706;
+    border: 1px solid rgba(245,158,11,0.20);
+}
+.im-status-warning .status-dot { background: #f59e0b; }
+.im-status-failed {
+    background: rgba(239,68,68,0.08);
+    color: #dc2626;
+    border: 1px solid rgba(239,68,68,0.18);
+}
+.im-status-failed .status-dot { background: #ef4444; }
+/* Action buttons */
+.im-action-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.im-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f1f5f9;
+    background: #fff;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+}
+.im-action-btn:hover {
+    background: #f5f3ff;
+    color: #6366f1;
+    border-color: rgba(99,102,241,0.2);
+}
+.im-action-btn.btn-delete:hover {
+    background: #fef2f2;
+    color: #ef4444;
+    border-color: rgba(239,68,68,0.2);
+}
+/* Pagination */
+.im-pagination-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-top: 1px solid #f1f5f9;
+}
+.im-pagination-info {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+.im-pagination-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.im-pg-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.im-pg-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+.im-pg-btn.active {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+}
+.im-pg-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 .im-refresh {
     width: 32px;
@@ -653,6 +1325,7 @@ def _init_state():
         "im_confirmed":   False,
         "im_sbu":         SBU_LIST[0],
         "im_deadline":    str(DEADLINE),
+        "im_validation":  {key: False for key, _ in KETENTUAN_RULES},
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -734,41 +1407,48 @@ def _render_pic_view():
         # STEP 2 — Upload
         elif step == 2:
             st.markdown('<div class="nad-card-title">📤 Step 2 — Upload File</div>', unsafe_allow_html=True)
-            st.markdown('<div class="nad-card-sub">Unggah file Excel/CSV yang sudah diisi. Maks. 50MB.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="nad-card-sub">Unggah file Excel yang sudah diisi. Maks. 20MB.</div>', unsafe_allow_html=True)
 
             st.markdown("""
             <div class="lc-dropzone">
                 <div class="lc-drop-icon">☁️</div>
-                <div class="lc-drop-title">Drag & Drop Excel or CSV File</div>
-                <div class="lc-drop-sub">Maximum file size 50MB. Only .xlsx, .xls, .csv supported.<br>*CSV File on support non</div>
+                <div class="lc-drop-title">Drag & Drop Excel File</div>
+                <div class="lc-drop-sub">Maximum file size 20MB. Only .xlsx and .xls supported.</div>
             </div>""", unsafe_allow_html=True)
 
-            uploaded = st.file_uploader("", type=["xlsx","xls","csv"],
+            uploaded = st.file_uploader("", type=["xlsx", "xls"],
                                         label_visibility="collapsed", key="im_uploader")
 
             if uploaded:
+                validation = validate_import_upload(uploaded)
+                st.session_state.im_validation = validation
+                st.session_state.im_import_ready = all(validation.values())
                 st.session_state.im_file = uploaded.name
                 size_kb = round(uploaded.size / 1024)
-                try:
-                    df_imported, missing_columns = store_shared_import(uploaded, st.session_state.im_sbu)
-                    st.session_state.im_import_ready = len(missing_columns) == 0
-                    st.session_state.im_preview_rows = len(df_imported)
-                    st.session_state.im_preview_total_omzet = float(df_imported["real_omzet"].sum()) if "real_omzet" in df_imported.columns else 0
-                    st.session_state.im_preview_errors = len(missing_columns)
-                    if missing_columns:
-                        st.warning("File terbaca, tetapi ada kolom yang belum lengkap: " + ", ".join(missing_columns))
-                    else:
-                        st.success("File berhasil terbaca dan siap diverifikasi.")
-                except Exception as exc:
-                    df_imported = pd.DataFrame()
-                    st.session_state.im_import_ready = False
-                    st.error(f"Gagal membaca file: {exc}")
+
+                if not st.session_state.im_import_ready:
+                    st.error("File belum memenuhi semua ketentuan import.")
+                else:
+                    try:
+                        df_imported, missing_columns = store_shared_import(uploaded, st.session_state.im_sbu)
+                        st.session_state.im_preview_rows = len(df_imported)
+                        st.session_state.im_preview_total_omzet = float(df_imported["real_omzet"].sum()) if "real_omzet" in df_imported.columns else 0
+                        st.session_state.im_preview_errors = len(missing_columns)
+                        if missing_columns:
+                            st.warning("File terbaca, tetapi ada kolom yang belum lengkap: " + ", ".join(missing_columns))
+                        else:
+                            st.success("File berhasil terbaca dan siap diverifikasi.")
+                    except Exception as exc:
+                        st.session_state.im_import_ready = False
+                        st.error(f"Gagal membaca file: {exc}")
+
+                status_label = "ready" if st.session_state.im_import_ready else "invalid"
                 st.markdown(f"""
                 <div class="lc-file-item">
                     <div class="lc-file-icon">📊</div>
                     <div style="flex:1;">
                         <div class="lc-file-name">{uploaded.name}</div>
-                        <div class="lc-file-sub">{size_kb} KB · ready</div>
+                        <div class="lc-file-sub">{size_kb} KB · {status_label}</div>
                     </div>
                     <span style="font-size:18px;color:#dc2626;cursor:pointer;">🗑️</span>
                 </div>""", unsafe_allow_html=True)
@@ -831,53 +1511,9 @@ def _render_pic_view():
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── RIGHT: SBU + Scheme Mapping ──
+    # ── RIGHT: Ketentuan Import ──
     with col_scheme:
-        st.markdown('<div class="nad-card">', unsafe_allow_html=True)
-
-        # Active SBU
-        st.markdown('<div class="nad-card-title" style="margin-bottom:6px;">Active SBU</div>', unsafe_allow_html=True)
-        sbu_sel = st.selectbox("", SBU_LIST, index=SBU_LIST.index(st.session_state.im_sbu),
-                               label_visibility="collapsed", key="im_sbu_sel")
-        st.session_state.im_sbu = sbu_sel
-
-        sc1, sc2 = st.columns(2)
-        with sc1:
-            tmpl_data = "Kode Ruang,Brand,Omzet,Periode\n"
-            st.download_button("⬇️ Download Template", data=tmpl_data,
-                               file_name="template.csv", mime="text/csv",
-                               use_container_width=True, key="im_dl2")
-
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-
-        # Scheme Mapping
-        st.markdown("""
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div style="font-size:12.5px;font-weight:800;color:#1e293b;">Scheme Mapping</div>
-            <span style="background:linear-gradient(135deg,#06b6d4,#059669);color:#fff;
-                padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;">AUTO MAPPING</span>
-        </div>""", unsafe_allow_html=True)
-
-        mapping_pairs = [
-            ("Import Column\nAciourature", "Tenant Name",  "Master Data\nMaster Data"),
-            ("Import Column\nMaster Name", "Tenant Name",  "Master Data\nMaster Data"),
-            ("Import Column\nTenant ID",   "Kode Ruang",   "Master Data\nMaster Data"),
-        ]
-        for imp_col, _, master in mapping_pairs:
-            st.markdown(f"""
-            <div class="scheme-row">
-                <div class="scheme-col">{imp_col.replace(chr(10),'<br>')}</div>
-                <div class="scheme-arrow">→</div>
-                <div class="scheme-master">{master.replace(chr(10),'<br>')}</div>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        if st.button("▶ Execute Import", use_container_width=True, key="im_execute"):
-            with st.spinner("Menjalankan import..."):
-                time.sleep(1)
-            st.success("✅ Import berhasil dijalankan!")
-
-        st.markdown('</div>', unsafe_allow_html=True)
+        _render_ketentuan_import(st.session_state.get("im_validation"))
 
     # ── Import History (PIC) ──
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
@@ -1128,7 +1764,7 @@ def _render_import_page_header():
         st.markdown("""
         <div>
             <div class="im-page-title">Data Import Manager</div>
-            <div class="im-page-subtitle">Upload, mapping, dan pantau data pendapatan tenant.</div>
+            <div class="im-page-subtitle">Upload dan kelola file data dari tim integrasi.</div>
         </div>
         """, unsafe_allow_html=True)
     with h_user:
@@ -1148,9 +1784,31 @@ def _render_import_page_header():
     st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
 
 
-def _render_selected_file(uploaded):
+def _render_selected_file(uploaded, validation: dict[str, bool] | None = None):
+    validation = validation or {key: False for key, _ in KETENTUAN_RULES}
+    all_valid = uploaded is not None and all(validation.values())
+
     if uploaded:
         size_kb = max(1, round(uploaded.size / 1024))
+        st.markdown(f"""
+        <div class="im-file-card">
+            <div class="im-file-icon">XLS</div>
+            <div style="min-width:0;">
+                <div class="im-file-name">{uploaded.name}</div>
+                <div class="im-file-meta">{size_kb:,} KB</div>
+            </div>
+            <div class="im-delete">x</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if not all_valid:
+            failed = [label for key, label in KETENTUAN_RULES if not validation.get(key, False)]
+            st.error(
+                "File belum memenuhi ketentuan import. Perbaiki item yang ditandai ✗ di panel kanan."
+                + (f" ({failed[0]})" if failed else "")
+            )
+            return
+
         current_sbu = st.session_state.get("im_sbu", SBU_LIST[0])
         try:
             df_imported, missing_columns = store_shared_import(uploaded, current_sbu)
@@ -1160,17 +1818,6 @@ def _render_selected_file(uploaded):
             st.session_state.im_import_ready = False
             st.error(f"Gagal membaca file: {exc}")
             return
-
-        st.markdown(f"""
-        <div class="im-file-card">
-            <div class="im-file-icon">XLS</div>
-            <div style="min-width:0;">
-                <div class="im-file-name">{uploaded.name}</div>
-                <div class="im-file-meta">{size_kb:,} KB - {len(df_imported):,} rows terbaca</div>
-            </div>
-            <div class="im-delete">x</div>
-        </div>
-        """, unsafe_allow_html=True)
 
         if missing_columns:
             st.warning(
@@ -1200,127 +1847,191 @@ def _render_selected_file(uploaded):
     else:
         st.markdown("""
         <div class="im-file-card is-empty">
-            <div class="im-file-icon">CSV</div>
+            <div class="im-file-icon">XLS</div>
             <div style="min-width:0;">
                 <div class="im-file-name">Belum ada file dipilih</div>
-                <div class="im-file-meta">Gunakan tombol Browse File untuk memilih Excel atau CSV.</div>
+                <div class="im-file-meta">Gunakan tombol Browse Files untuk memilih file Excel (.xlsx / .xls).</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
 
-def _render_scheme_mapping():
-    mapping_pairs = [
-        ("Aciourature", "Tenant Name"),
-        ("Master Name", "Tenant Name"),
-        ("Tenant ID", "Kode Ruang"),
-        ("Brand Name", "Brand"),
-        ("Monthly Revenue", "Real Omzet"),
-    ]
+def _render_ketentuan_import(validation: dict[str, bool] | None = None):
+    validation = validation or {key: False for key, _ in KETENTUAN_RULES}
 
-    rows_html = ""
-    for source, target in mapping_pairs:
-        rows_html += dedent(f"""
-        <div class="im-map-row">
-            <div class="im-map-box">
-                <div class="im-map-label">Source Column</div>
-                <div class="im-map-value">{source}</div>
-                <div class="im-map-arrow">↓</div>
-                <div class="im-map-label">System Field</div>
-                <div class="im-map-value">{target}</div>
-            </div>
+    items_html = ""
+    for key, label in KETENTUAN_RULES:
+        passed = validation.get(key, False)
+        icon_class = "im-ketentuan-check" if passed else "im-ketentuan-fail"
+        item_class = "is-pass" if passed else "is-fail"
+        icon = "✓" if passed else "✗"
+        items_html += dedent(f"""
+        <div class="im-ketentuan-item {item_class}">
+            <span class="{icon_class}">{icon}</span>
+            <span>{label}</span>
         </div>
         """).strip()
 
     st.markdown(dedent(f"""
-    <div class="im-panel im-map-card">
-        <div class="im-card-head">
-            <div class="im-section-title">Scheme Mapping</div>
-            <div class="im-auto-badge">AUTO MAPPING</div>
+    <div class="im-panel im-ketentuan-card">
+        <div class="im-ketentuan-head">
+            <div class="im-section-title">Ketentuan Import</div>
         </div>
-        <div class="im-map-body">{rows_html}</div>
+        <div class="im-ketentuan-body">{items_html}</div>
     </div>
     """).strip(), unsafe_allow_html=True)
-
-    st.markdown('<div class="im-execute-wrap">', unsafe_allow_html=True)
-    if st.button("Execute Import", use_container_width=True, key="im_execute_refined"):
-        with st.spinner("Menjalankan import..."):
-            time.sleep(1)
-        if st.session_state.get("im_import_ready"):
-            st.success("Import berhasil dijalankan. Data sudah tersedia untuk semua dashboard.")
-        else:
-            st.warning("Import tersimpan, tetapi schema data belum lengkap untuk semua dashboard.")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def _render_import_history_refined():
-    df_all = _get_admin_history().copy()
-    uploaded_lookup = {
-        "Cikarang": "26 Apr 2026 - 14:22",
-        "Bali": "26 Apr 2026 - 14:22",
-        "Ginung": "25 Apr 2026 - 16:05",
-        "Lombok": "25 Apr 2026 - 11:40",
-        "Manado": "24 Mar 2026 - 09:35",
-        "Kupang": "24 Mar 2026 - 10:12",
-        "Jayapura": "23 Apr 2026 - 15:19",
-        "Sorong": "-",
-    }
+    data = UPLOAD_HISTORY_DATA
+    per_page = 7
+    total = len(data)
+    total_pages = max(1, (total + per_page - 1) // per_page)
 
-    df = df_all.reset_index(drop=True)
+    if "im_hist_page" not in st.session_state:
+        st.session_state.im_hist_page = 1
 
+    # Render a hidden input to sync page state from HTML pagination clicks
+    st.markdown('<div class="im-page-trigger-container" style="display:none;">', unsafe_allow_html=True)
+    page_input = st.text_input(
+        "Page Sync Trigger",
+        value=str(st.session_state.im_hist_page),
+        key="im_page_trigger_input"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if page_input and page_input.isdigit():
+        new_page = int(page_input)
+        if new_page != st.session_state.im_hist_page:
+            st.session_state.im_hist_page = new_page
+            st.rerun()
+
+    page = st.session_state.im_hist_page
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total)
+    page_data = data[start_idx:end_idx]
+
+    # Build status badge helper
+    def _hist_status(status):
+        s = status.lower()
+        if s == "success":
+            return '<span class="im-status-badge im-status-success"><span class="status-dot"></span>Success</span>'
+        elif s == "warning":
+            return '<span class="im-status-badge im-status-warning"><span class="status-dot"></span>Warning</span>'
+        elif s == "failed":
+            return '<span class="im-status-badge im-status-failed"><span class="status-dot"></span>Failed</span>'
+        return '<span class="im-status-badge im-status-success"><span class="status-dot"></span>' + status + '</span>'
+
+    # Build dot class
+    def _dot_class(status):
+        s = status.lower()
+        if s == "success": return "dot-success"
+        if s == "warning": return "dot-warning"
+        if s == "failed": return "dot-failed"
+        return "dot-success"
+
+    # Build rows
     rows_html = ""
-    for _, r in df.iterrows():
-        uploaded_at = uploaded_lookup.get(r["PIC"], "-")
-        rows_html += dedent(f"""
-        <tr>
-            <td style="font-weight:800;color:#1e293b;">{r['PIC']}</td>
-            <td style="color:#64748b;">{uploaded_at}</td>
-            <td style="font-weight:650;color:#334155;">{r['File']}</td>
-            <td style="font-weight:800;color:#1e293b;">{r['Rows']:,}</td>
-            <td>{_status_badge(r['Status'])}</td>
-        </tr>
-        """).strip()
+    for r in page_data:
+        rs_html = f'<span class="im-rs-total">{r["rs_total"]}</span>' if r["rs_total"] else '<span class="im-rs-empty">—</span>'
+        rows_html += (
+            '<tr>'
+            '<td>'
+            f'<div class="im-period-cell">'
+            f'<span class="im-period-dot {_dot_class(r["status"])}"></span>'
+            f'<span class="im-period-name">{r["period"]}</span>'
+            '</div>'
+            '</td>'
+            '<td>'
+            f'<div class="im-date-cell">'
+            f'<div class="im-date-main">{r["upload_date"]}</div>'
+            f'<div class="im-date-time">{r["upload_time"]}</div>'
+            '</div>'
+            '</td>'
+            '<td>'
+            f'<div class="im-uploader-cell">'
+            f'<div class="im-uploader-avatar" style="background:{r["color"]};">{r["initials"]}</div>'
+            '<div>'
+            f'<div class="im-uploader-name">{r["uploader"]}</div>'
+            f'<div class="im-uploader-role">{r["role"]}</div>'
+            '</div>'
+            '</div>'
+            '</td>'
+            '<td>'
+            f'<div class="im-records-val">{r["total_records"]:,}</div>'
+            '<div class="im-records-sub">rows</div>'
+            '</td>'
+            f'<td><span class="im-tenants-link">{r["tenants"]}</span></td>'
+            f'<td><span class="im-filesize">{r["file_size"]}</span></td>'
+            f'<td>{rs_html}</td>'
+            f'<td>{_hist_status(r["status"])}</td>'
+            '<td>'
+            '<div class="im-action-btns">'
+            '<div class="im-action-btn" title="View">👁</div>'
+            '<div class="im-action-btn" title="Download">⬇</div>'
+            '<div class="im-action-btn" title="Reload">↻</div>'
+            '<div class="im-action-btn btn-delete" title="Delete">🗑</div>'
+            '</div>'
+            '</td>'
+            '</tr>'
+        )
 
     if not rows_html:
-        rows_html = dedent("""
-        <tr>
-            <td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;">
-                Belum ada data import yang tersedia.
-            </td>
-        </tr>
-        """).strip()
+        rows_html = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:30px;">Belum ada data import yang tersedia.</td></tr>'
 
-    st.markdown(dedent(f"""
-    <div class="im-panel im-history">
-        <div class="im-history-head">
-            <div>
-                <div class="im-section-title">Import History</div>
-                <div class="im-section-sub">Riwayat upload data per Office/SBU.</div>
-            </div>
-            <div class="im-refresh">R</div>
-        </div>
-        <div style="overflow-x:auto;">
-            <table class="im-table">
-                <thead>
-                    <tr>
-                        <th>Office/SBU</th>
-                        <th>Uploaded Date</th>
-                        <th>Filename</th>
-                        <th>Rows Imported</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>{rows_html}</tbody>
-            </table>
-        </div>
-        <div class="im-footer">
-            <span class="im-footer-info">Showing {len(df)} entries</span>
-        </div>
-    </div>
-    """).strip(), unsafe_allow_html=True)
+    # Pagination buttons
+    pg_html = ''
+    pg_html += f'<span class="im-pg-btn {"disabled" if page <= 1 else ""}" data-page="{page - 1}">Previous</span>'
+    for p in range(1, total_pages + 1):
+        pg_html += f'<span class="im-pg-btn {"active" if p == page else ""}" data-page="{p}">{p}</span>'
+    pg_html += f'<span class="im-pg-btn {"disabled" if page >= total_pages else ""}" data-page="{page + 1}">Next</span>'
+
+    history_html = (
+        '<div class="im-panel im-history">'
+        '<div class="im-history-head">'
+        '<div class="im-history-head-left">'
+        '<div class="im-section-title">Upload History</div>'
+        '<div class="im-section-sub">All import sessions — most recent first</div>'
+        '</div>'
+        '<div class="im-history-actions">'
+        '<span class="im-btn-refresh">Refresh</span>'
+        '<span class="im-btn-export">Export Log</span>'
+        '</div>'
+        '</div>'
+        '<div style="overflow-x:auto;">'
+        '<table class="im-hist-table">'
+        '<thead><tr>'
+        '<th>Period</th>'
+        '<th>Upload Date</th>'
+        '<th>Uploaded By</th>'
+        '<th>Total Records</th>'
+        '<th>Tenants</th>'
+        '<th>File Size</th>'
+        '<th>RS Total</th>'
+        '<th>Status</th>'
+        '<th>Actions</th>'
+        '</tr></thead>'
+        f'<tbody>{rows_html}</tbody>'
+        '</table>'
+        '</div>'
+        '<div class="im-pagination-wrap">'
+        f'<span class="im-pagination-info">Showing {start_idx + 1}-{end_idx} of {total} upload sessions</span>'
+        f'<div class="im-pagination-btns">{pg_html}</div>'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(history_html, unsafe_allow_html=True)
 
 
 def _render_import_workspace():
+    # Initialize uploader reset version if not present
+    if "uploader_version" not in st.session_state:
+        st.session_state.uploader_version = 0
+
+    uploader_key = f"im_uploader_refined_{st.session_state.uploader_version}"
+
     left, right = st.columns([6.2, 3.8], gap="large")
 
     with left:
@@ -1329,62 +2040,271 @@ def _render_import_workspace():
             <div class="im-upload-heading">
                 <div>
                     <div class="im-section-title">Upload Data File</div>
-                    <div class="im-section-sub">Format yang didukung: .xlsx, .xls, dan .csv.</div>
+                    <div class="im-section-sub">Format yang didukung: .xlsx dan .xls (Excel).</div>
                 </div>
                 <div class="im-period-chip">April 2026</div>
             </div>
-            <div class="im-upload-visual">
-                <div class="im-cloud">↑</div>
-                <div class="im-upload-title">Drag & Drop Excel or CSV File</div>
-                <div class="im-upload-copy">
-                    Maximum file size 50MB. Only .xlsx, .xls, and .csv formats are supported.
+        """, unsafe_allow_html=True)
+
+        # Let's get the uploaded file from st.file_uploader
+        # If we use a key that depends on version to reset it
+        # We check if file is uploaded or not
+        uploaded = st.session_state.get(uploader_key)
+
+        if not uploaded:
+            st.markdown(f"""
+            <div class="im-dropzone-wrapper">
+                <div class="im-dropzone-visual">
+                    <div class="im-dropzone-icon-box">
+                        <div class="im-dropzone-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="19" x2="12" y2="5"></line>
+                                <polyline points="5 12 12 5 19 12"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="im-dropzone-title">Drag & Drop Excel File</div>
+                    <div class="im-dropzone-subtitle">or <span class="im-dropzone-browse">browse files</span> from your computer</div>
+                    <div class="im-dropzone-badges">
+                        <div class="im-dropzone-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="badge-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            <span style="margin-left: 4px;">.xlsx / .xls supported</span>
+                        </div>
+                        <div class="im-dropzone-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="badge-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            <span style="margin-left: 4px;">Auto validation</span>
+                        </div>
+                        <div class="im-dropzone-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="badge-icon"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path></svg>
+                            <span style="margin-left: 4px;">Max file size 20 MB</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="im-uploader-overlay">
+            """, unsafe_allow_html=True)
+
+            # Render uploader inside the overlay
+            uploaded = st.file_uploader(
+                "Browse Files",
+                type=["xlsx", "xls"],
+                label_visibility="collapsed",
+                key=uploader_key,
+            )
+
+            st.markdown("""
                 </div>
             </div>
-            <div class="im-uploader-slot">
-        """, unsafe_allow_html=True)
-        uploaded = st.file_uploader(
-            "Browse File",
-            type=["xlsx", "xls", "csv"],
-            label_visibility="collapsed",
-            key="im_uploader_refined",
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-        _render_selected_file(uploaded)
+            """, unsafe_allow_html=True)
+
+            st.markdown("""
+                <div class="im-info-banner">
+                    Pastikan struktur file sesuai template untuk menghindari error pada proses import.
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            validation = validate_import_upload(uploaded)
+            st.session_state.im_validation = validation
+            all_valid = all(validation.values())
+            st.session_state.im_import_ready = all_valid
+
+            if all_valid:
+                current_sbu = st.session_state.get("im_sbu", SBU_LIST[0])
+                try:
+                    df_imported, missing_columns = store_shared_import(uploaded, current_sbu)
+                    st.session_state.im_file = uploaded.name
+                    st.session_state.im_import_ready = len(missing_columns) == 0
+
+                    total_records = len(df_imported)
+                    
+                    # Calculate dynamic warnings based on logic:
+                    # check for 0 or negative real_omzet and empty cells
+                    warnings = 0
+                    if "real_omzet" in df_imported.columns:
+                        warnings += int((df_imported["real_omzet"] <= 0).sum())
+                    
+                    null_counts = df_imported.isnull().sum().sum()
+                    warnings += int(null_counts)
+                    
+                    # Capping warnings if they exceed record count for safety
+                    warnings = min(warnings, total_records)
+                    valid_records = max(0, total_records - warnings)
+                    score = int((valid_records / total_records) * 100) if total_records > 0 else 100
+
+                    success_html = (
+                        '<div class="im-success-visual">'
+                        '<div class="im-success-icon-box">'
+                        '<div class="im-success-icon">✓</div>'
+                        '</div>'
+                        '<div class="im-success-title">Upload Successful!</div>'
+                        f'<div class="im-success-subtitle">{uploaded.name} · {total_records:,} records processed</div>'
+                        '<div class="im-progress-bar-container">'
+                        '<div class="im-progress-bar-fill"></div>'
+                        '</div>'
+                        '<div class="im-success-details">'
+                        '<div class="im-stats-row">'
+                        f'<div class="im-stat-card stat-records"><div class="stat-value">{total_records:,}</div><div class="stat-label">Records</div></div>'
+                        f'<div class="im-stat-card stat-valid"><div class="stat-value">{valid_records:,}</div><div class="stat-label">Valid</div></div>'
+                        f'<div class="im-stat-card stat-warnings"><div class="stat-value">{warnings:,}</div><div class="stat-label">Warnings</div></div>'
+                        f'<div class="im-stat-card stat-score"><div class="stat-value">{score}%</div><div class="stat-label">Score</div></div>'
+                        '</div>'
+                        '</div>'
+                        '</div>'
+                    )
+
+                    st.markdown(success_html, unsafe_allow_html=True)
+
+                    st.markdown("<div class='im-success-buttons-container'>", unsafe_allow_html=True)
+                    btn_col1, btn_col2 = st.columns(2)
+                    with btn_col1:
+                        if st.button("Upload Another", key=f"im_upload_another_{st.session_state.uploader_version}"):
+                            st.session_state.uploader_version += 1
+                            if SHARED_DATA_KEY in st.session_state:
+                                del st.session_state[SHARED_DATA_KEY]
+                            if SHARED_META_KEY in st.session_state:
+                                del st.session_state[SHARED_META_KEY]
+                            st.session_state.im_file = None
+                            st.session_state.im_import_ready = False
+                            st.rerun()
+                    with btn_col2:
+                        if st.button("View Data", key=f"im_view_data_{st.session_state.uploader_version}"):
+                            st.session_state.active_menu = "Data Verification"
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as exc:
+                    st.error(f"Gagal memproses file: {exc}")
+                    all_valid = False
+
+            if not all_valid:
+                failed_reasons = []
+                for key, label in KETENTUAN_RULES:
+                    if not validation.get(key, False):
+                        failed_reasons.append(label)
+
+                is_size_failed = uploaded.size > MAX_IMPORT_FILE_BYTES
+                size_kb = max(1, round(uploaded.size / 1024))
+
+                reasons_html = ""
+                for reason in failed_reasons:
+                    reasons_html += (
+                        '<div class="im-failure-detail-item">'
+                        '<span style="color: #ef4444; font-weight: bold;">•</span>'
+                        f'<span>{reason}</span>'
+                        '</div>'
+                    )
+
+                failure_html = (
+                    '<div class="im-failure-visual">'
+                    '<div class="im-failure-icon-box">'
+                    '<div class="im-failure-icon">✗</div>'
+                    '</div>'
+                    '<div class="im-failure-title">Upload Failed</div>'
+                    f'<div class="im-failure-subtitle">{uploaded.name} ({size_kb:,} KB) tidak memenuhi ketentuan import.</div>'
+                    '<div class="im-failure-details">'
+                    '<div style="font-weight: 700; color: #dc2626; margin-bottom: 8px;">Detail Masalah:</div>'
+                    f'{reasons_html}'
+                    '</div>'
+                    '</div>'
+                )
+
+                st.markdown(failure_html, unsafe_allow_html=True)
+
+                st.markdown("<div class='im-success-buttons-container' style='max-width: 240px; margin: 0 auto;'>", unsafe_allow_html=True)
+                if st.button("Upload Another", key=f"im_upload_another_fail_{st.session_state.uploader_version}"):
+                    st.session_state.uploader_version += 1
+                    if SHARED_DATA_KEY in st.session_state:
+                        del st.session_state[SHARED_DATA_KEY]
+                    if SHARED_META_KEY in st.session_state:
+                        del st.session_state[SHARED_META_KEY]
+                    st.session_state.im_file = None
+                    st.session_state.im_import_ready = False
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
-        st.markdown('<div class="im-side-stack">', unsafe_allow_html=True)
-        st.markdown('<div class="im-panel im-side-control">', unsafe_allow_html=True)
-        st.markdown('<div class="im-side-control-grid">', unsafe_allow_html=True)
-        st.markdown('<div><div class="im-control-title">Active PIC</div>', unsafe_allow_html=True)
-        current_sbu = st.session_state.get("im_sbu", SBU_LIST[0])
-        current_idx = SBU_LIST.index(current_sbu) if current_sbu in SBU_LIST else 0
-        sbu_sel = st.selectbox(
-            "Active SBU",
-            SBU_LIST,
-            index=current_idx,
-            label_visibility="collapsed",
-            key="im_sbu_refined",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.session_state.im_sbu = sbu_sel
-        st.markdown('<div>', unsafe_allow_html=True)
-        template_data = "Kode Ruang,Brand,Omzet,Periode\nFB-01-01,Example Brand,10000000,April 2026\n"
-        st.download_button(
-            "Download Template",
-            data=template_data,
-            file_name="template_pendapatan.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key="im_template_refined",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        _render_scheme_mapping()
-        st.markdown("</div>", unsafe_allow_html=True)
+        _render_ketentuan_import(st.session_state.get("im_validation"))
 
     _render_import_history_refined()
+
+
+def _patch_upload_limit_text():
+    components.html(
+        """
+        <script>
+        (function () {
+            const doc = window.parent.document;
+
+            function patchUploadLimit() {
+                doc.querySelectorAll('[data-testid="stFileUploader"]').forEach((uploader) => {
+                    uploader.classList.add('im-refined-uploader');
+
+                    const walker = doc.createTreeWalker(uploader, NodeFilter.SHOW_TEXT);
+                    let node = walker.nextNode();
+                    while (node) {
+                        if (/200\\s*MB/i.test(node.nodeValue || '')) {
+                            node.nodeValue = (node.nodeValue || '').replace(/200\\s*MB/gi, '20MB');
+                        }
+                        node = walker.nextNode();
+                    }
+                });
+            }
+
+            function setupHistoryPagination() {
+                const buttons = doc.querySelectorAll('.im-pg-btn');
+                buttons.forEach(btn => {
+                    if (btn.classList.contains('disabled') || btn.classList.contains('active')) return;
+                    if (btn.dataset.hasListener) return;
+                    btn.dataset.hasListener = "true";
+
+                    btn.addEventListener('click', () => {
+                        const targetPage = btn.getAttribute('data-page');
+                        if (!targetPage) return;
+
+                        const triggerContainer = doc.querySelector('.im-page-trigger-container');
+                        if (triggerContainer) {
+                            const input = triggerContainer.querySelector('input');
+                            if (input) {
+                                input.value = targetPage;
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        }
+                    });
+                });
+            }
+
+            function hidePageSyncTrigger() {
+                doc.querySelectorAll('[data-testid="stTextInput"]').forEach((widget) => {
+                    const label = widget.querySelector('label');
+                    if (label && label.textContent.includes('Page Sync Trigger')) {
+                        widget.style.display = 'none';
+                    }
+                });
+            }
+
+            patchUploadLimit();
+            setupHistoryPagination();
+            hidePageSyncTrigger();
+
+            const observer = new MutationObserver(() => {
+                patchUploadLimit();
+                setupHistoryPagination();
+                hidePageSyncTrigger();
+            });
+
+            observer.observe(doc.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 
 def render_import_manager():
@@ -1395,6 +2315,7 @@ def render_import_manager():
     _render_import_page_header()
     _render_import_workspace()
     st.markdown('</div>', unsafe_allow_html=True)
+    _patch_upload_limit_text()
 
 
 if __name__ == "__main__":
