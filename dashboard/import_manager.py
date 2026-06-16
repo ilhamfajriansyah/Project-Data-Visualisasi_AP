@@ -2243,8 +2243,6 @@ def _render_ketentuan_import(validation: dict[str, bool] | None = None):
     </div>
     """).strip(), unsafe_allow_html=True)
 
-
-<<<<<<< HEAD
 def _render_import_history_refined():
     data = UPLOAD_HISTORY_DATA
     per_page = 7
@@ -2385,104 +2383,6 @@ def _render_import_history_refined():
         '</div>'
         '</div>'
     )
-        </tr>
-        """).strip()
-
-    if not rows_html:
-        rows_html = '<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:28px;">Tidak ada data yang cocok.</td></tr>'
-
-    st.markdown(dedent(f"""
-    <div style="overflow-x:auto;">
-        <table class="im-table-v2">
-            <thead><tr>
-                <th>Nama File</th>
-                <th>Terminal</th>
-                <th>Tanggal Upload</th>
-                <th>Jumlah Baris</th>
-                <th>Status</th>
-                <th>Diupload Oleh</th>
-                <th>Aksi</th>
-            </tr></thead>
-            <tbody>{rows_html}</tbody>
-        </table>
-    </div>
-    <div class="im-pagination-row">
-        <span class="im-pagination-info">Menampilkan 1 - {len(df)} dari {total} data</span>
-        <div class="im-page-btns">
-            <span class="im-page-btn-v2">&lt;</span>
-            <span class="im-page-btn-v2 active">1</span>
-            <span class="im-page-btn-v2">2</span>
-            <span class="im-page-btn-v2">3</span>
-            <span class="im-page-btn-v2 dots">…</span>
-            <span class="im-page-btn-v2">5</span>
-            <span class="im-page-btn-v2">&gt;</span>
-        </div>
-    </div>
-    """).strip(), unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)  # im-riwayat-card
-
-
-def _render_info_cards():
-    st.markdown(dedent("""
-    <div class="im-info-row">
-        <div class="im-info-card-v2">
-            <div class="im-info-icon-v2">🛡️</div>
-            <div>
-                <div class="im-info-title-v2">Enkripsi Data</div>
-                <div class="im-info-text-v2">
-                    Semua dokumen yang diunggah diproses dan disimpan dalam lingkungan
-                    sandbox yang aman dan terenkripsi.
-                </div>
-            </div>
-        </div>
-        <div class="im-info-card-v2">
-            <div class="im-info-icon-v2">✨</div>
-            <div>
-                <div class="im-info-title-v2">AI Auto-Cleaning</div>
-                <div class="im-info-text-v2">
-                    Engine kami secara otomatis memperbaiki masalah format umum dan
-                    mengidentifikasi potensi outlier pada data yang diunggah.
-                </div>
-            </div>
-        </div>
-    </div>
-    """).strip(), unsafe_allow_html=True)
-
-
-_KETENTUAN_HTML = dedent("""
-<div class="im-ketentuan-card">
-    <div class="im-ketentuan-icon-row">
-        <div class="im-ketentuan-icon-box">📋</div>
-        <div class="im-ketentuan-title">Ketentuan Import</div>
-    </div>
-    <div class="im-ketentuan-item">
-        <div class="im-ketentuan-check">✓</div>
-        <div class="im-ketentuan-text">Format file: <strong>.xlsx, .xls, .csv</strong></div>
-    </div>
-    <div class="im-ketentuan-item">
-        <div class="im-ketentuan-check">✓</div>
-        <div class="im-ketentuan-text">Maksimal ukuran file: <strong>50 MB</strong></div>
-    </div>
-    <div class="im-ketentuan-item">
-        <div class="im-ketentuan-check">✓</div>
-        <div class="im-ketentuan-text">Pastikan data <strong>tidak mengandung merge cell</strong></div>
-    </div>
-    <div class="im-ketentuan-item">
-        <div class="im-ketentuan-check">✓</div>
-        <div class="im-ketentuan-text"><strong>Kolom wajib</strong> harus terisi</div>
-    </div>
-    <div class="im-ketentuan-item">
-        <div class="im-ketentuan-check">✓</div>
-        <div class="im-ketentuan-text">Hindari <strong>perubahan struktur kolom</strong></div>
-    </div>
-    <div class="im-ketentuan-footer">
-        <div class="im-ketentuan-footer-label">LAST TEMPLATE UPDATE</div>
-        <div class="im-ketentuan-footer-val">v2.4.1 — Oct 12, 2023</div>
-    </div>
-</div>
-""").strip()
->>>>>>> e560e79554f86a6fc8846f423da7abc9420515d5
 
 
 def _render_new_workspace():

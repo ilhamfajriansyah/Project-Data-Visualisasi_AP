@@ -7,6 +7,14 @@ import streamlit as st
 
 SHARED_DATA_KEY = "shared_import_df"
 SHARED_META_KEY = "shared_import_meta"
+MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024
+
+KETENTUAN_RULES = [
+    ("extension", "Format file harus Excel (.xlsx / .xls)"),
+    ("size", "Ukuran file maksimal 20 MB"),
+    ("readable", "File dapat dibaca"),
+    ("not_empty", "File memiliki data"),
+]
 
 REQUIRED_DASHBOARD_COLUMNS = {
     "perusahaan",
@@ -110,6 +118,33 @@ def read_import_file(uploaded) -> pd.DataFrame:
     if filename.endswith(".csv"):
         return pd.read_csv(uploaded)
     return pd.read_excel(uploaded)
+
+
+def validate_import_upload(uploaded) -> dict[str, bool]:
+    if uploaded is None:
+        return {key: False for key, _ in KETENTUAN_RULES}
+
+    filename = str(getattr(uploaded, "name", "")).lower()
+    size = int(getattr(uploaded, "size", 0) or 0)
+    validation = {
+        "extension": filename.endswith((".xlsx", ".xls")),
+        "size": size <= MAX_IMPORT_FILE_BYTES,
+        "readable": False,
+        "not_empty": False,
+    }
+
+    if validation["extension"] and validation["size"]:
+        try:
+            df = read_import_file(uploaded)
+            validation["readable"] = True
+            validation["not_empty"] = not df.empty
+        except Exception:
+            validation["readable"] = False
+            validation["not_empty"] = False
+        finally:
+            uploaded.seek(0)
+
+    return validation
 
 
 def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str]]:
