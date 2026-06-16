@@ -37,8 +37,10 @@ COLUMN_ALIASES = {
     "sbu": "terminal",
     "office_sbu": "terminal",
     "terminal_sbu": "terminal",
+    "sub_terminal": "terminal",
     "business_category": "bidang_usaha",
     "kategori": "bidang_usaha",
+    "sub_bidang_usaha": "bidang_usaha",
     "periode": "masa_jasa",
     "bulan": "masa_jasa",
     "month": "masa_jasa",
@@ -46,11 +48,14 @@ COLUMN_ALIASES = {
     "minimum_omzet": "min_omzet",
     "target_omzet": "min_omzet",
     "omzet": "real_omzet",
+    "nilai_omzet": "real_omzet",
     "monthly_revenue": "real_omzet",
     "revenue": "real_omzet",
     "sewa": "pendapatan_sewa",
+    "pendapatan": "pendapatan_sewa",
     "revenue_sharing": "pendapatan_rs",
     "rs": "pendapatan_rs",
+    "pendapatanrs": "pendapatan_rs",
     "total_kontribusi": "kontribusi",
     "contribution": "kontribusi",
     "luas": "luas_sqm",
@@ -62,6 +67,8 @@ COLUMN_ALIASES = {
     "passengers": "jumlah_pax",
     "penumpang": "jumlah_pax",
     "jumlah_penumpang": "jumlah_pax",
+    "produksi_m2": "luas_sqm",
+    "produksi": "luas_sqm",
 }
 
 NUMERIC_COLUMNS = [
@@ -104,11 +111,104 @@ def normalize_imported_data(df: pd.DataFrame) -> pd.DataFrame:
     return normalized
 
 
+MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024
+ALLOWED_IMPORT_EXTENSIONS = (".xlsx", ".xls")
+
+KETENTUAN_RULES = [
+    ("format", "Format file: .xlsx, .xls"),
+    ("size", "Maksimal ukuran file: 20 MB"),
+    ("merge_cell", "Pastikan data tidak mengandung merge cell"),
+    ("required_filled", "Kolom wajib harus terisi"),
+    ("structure", "Hindari perubahan struktur kolom"),
+]
+
+
+def _file_has_merged_cells(uploaded) -> bool:
+    uploaded.seek(0)
+    filename = uploaded.name.lower()
+
+    if filename.endswith(".xlsx"):
+        try:
+            from openpyxl import load_workbook
+
+            workbook = load_workbook(uploaded, read_only=True, data_only=True)
+            try:
+                for worksheet in workbook.worksheets:
+                    if worksheet.merged_cells.ranges:
+                        return True
+            finally:
+                workbook.close()
+            return False
+        except Exception:
+            preview = pd.read_excel(uploaded, nrows=0)
+            uploaded.seek(0)
+            return any(str(col).startswith("Unnamed") for col in preview.columns)
+
+    if filename.endswith(".xls"):
+        try:
+            import xlrd
+
+            uploaded.seek(0)
+            workbook = xlrd.open_workbook(file_contents=uploaded.read())
+            for sheet in workbook.sheets():
+                if sheet.merged_cells:
+                    return True
+            return False
+        except ImportError:
+            preview = pd.read_excel(uploaded, nrows=0)
+            uploaded.seek(0)
+            return any(str(col).startswith("Unnamed") for col in preview.columns)
+        except Exception:
+            return True
+
+    return False
+
+
+def _required_columns_filled(df: pd.DataFrame) -> bool:
+    for col in REQUIRED_DASHBOARD_COLUMNS:
+        if col not in df.columns:
+            return False
+        series = df[col]
+        if series.isna().any():
+            return False
+        if series.dtype == object:
+            cleaned = series.astype(str).str.strip()
+            if cleaned.eq("").any() or cleaned.str.lower().isin({"nan", "none", "nat"}).any():
+                return False
+    return True
+
+
+def validate_import_upload(uploaded) -> dict[str, bool]:
+    results = {key: False for key, _ in KETENTUAN_RULES}
+    if uploaded is None:
+        return results
+
+    filename = uploaded.name.lower()
+    results["format"] = filename.endswith(ALLOWED_IMPORT_EXTENSIONS)
+    results["size"] = uploaded.size <= MAX_IMPORT_FILE_BYTES
+
+    if not (results["format"] and results["size"]):
+        return results
+
+    try:
+        results["merge_cell"] = not _file_has_merged_cells(uploaded)
+        uploaded.seek(0)
+        raw_df = read_import_file(uploaded)
+        df = normalize_imported_data(raw_df)
+        missing = get_missing_dashboard_columns(df)
+        results["structure"] = len(missing) == 0
+        results["required_filled"] = _required_columns_filled(df) if results["structure"] else False
+    except Exception:
+        pass
+
+    return results
+
+
 def read_import_file(uploaded) -> pd.DataFrame:
     uploaded.seek(0)
     filename = uploaded.name.lower()
-    if filename.endswith(".csv"):
-        return pd.read_csv(uploaded)
+    if not filename.endswith(ALLOWED_IMPORT_EXTENSIONS):
+        raise ValueError("Format file tidak didukung. Gunakan .xlsx atau .xls.")
     return pd.read_excel(uploaded)
 
 

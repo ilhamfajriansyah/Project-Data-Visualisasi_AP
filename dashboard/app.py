@@ -2402,7 +2402,7 @@ def _sidebar_brand_logo_svg():
 
 
 def _sidebar_brand():
-    if st.session_state.sidebar_minimized:
+    if st.session_state.get("sidebar_minimized", False):
         st.markdown(f"""
         <div class="ap-brand ap-brand-mini">
             <div class="ap-logo">{_sidebar_brand_logo_svg()}</div>
@@ -2422,14 +2422,14 @@ def _sidebar_brand():
 
 
 def _nav_group(label):
-    if st.session_state.sidebar_minimized:
+    if st.session_state.get("sidebar_minimized", False):
         st.markdown('<div class="nav-group-mini"></div>', unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="nav-group">{label}</div>', unsafe_allow_html=True)
 
 
 def _sidebar_footer():
-    if st.session_state.sidebar_minimized:
+    if st.session_state.get("sidebar_minimized", False):
         st.markdown(
             '<div class="ap-sidebar-footer" style="font-size: 12px !important;">'
             '© 2026</div>',
@@ -2470,7 +2470,7 @@ def _nav_row(icon, label):
     if not can_access_menu(label):
         return
 
-    mini = st.session_state.sidebar_minimized
+    mini = st.session_state.get("sidebar_minimized", False)
     is_active = st.session_state.active_menu == label
     label_html = "" if mini else f'<span class="nav-label">{escape(label)}</span>'
 
@@ -2987,7 +2987,7 @@ def render_dashboard_app():
     inject_dashboard_css()
 
     st.markdown(
-        f'<div class="ap-sidebar-state {"is-mini" if st.session_state.sidebar_minimized else "is-expanded"}"></div>',
+        f'<div class="ap-sidebar-state {"is-mini" if st.session_state.get("sidebar_minimized", False) else "is-expanded"}"></div>',
         unsafe_allow_html=True,
     )
 
