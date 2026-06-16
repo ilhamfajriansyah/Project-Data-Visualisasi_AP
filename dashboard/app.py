@@ -5,6 +5,7 @@ from .room_database import render_room_database
 from .lease_contract import render_lease_contract
 from .import_manager import render_import_manager
 from .Data_verification import render_data_verification
+from .traffic_monitor import page_traffic_monitor
 from .dashboard_style import DASHBOARD_CSS
 from login.access_control import Role, get_current_role, init_auth_state, is_authenticated, logout_user
 from .shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
@@ -415,9 +416,9 @@ def inject_dashboard_css():
         background: #ffffff !important;
         border-right: 1px solid #E5E7EB !important;
         box-shadow: none !important;
-        min-width: 250px !important;
-        width: 250px !important;
-        max-width: 250px !important;
+        min-width: 258px !important;
+        width: 258px !important;
+        max-width: 258px !important;
     }
 
     [data-testid="stSidebarContent"] {
@@ -488,11 +489,11 @@ def inject_dashboard_css():
 
     .nav-row,
     .nav-active {
-        display: flex;
+        display: grid;
         align-items: center;
-        gap: 12px;
-        margin: 0 16px 8px !important;
-        padding: 6px 12px;
+        column-gap: 10px;
+        margin: 0 14px 8px !important;
+        padding: 6px 10px;
         border-radius: 10px;
         color: #64748B;
         font-size: 13.5px;
@@ -500,8 +501,18 @@ def inject_dashboard_css():
         font-family: 'Poppins', sans-serif !important;
         line-height: 1.2;
         box-sizing: border-box !important;
+        width: calc(100% - 28px) !important;
+        max-width: calc(100% - 28px) !important;
         height: 44px !important;
         position: relative;
+    }
+
+    .nav-row {
+        grid-template-columns: 32px minmax(0, 1fr);
+    }
+
+    .nav-active {
+        grid-template-columns: 32px minmax(0, 1fr);
     }
 
     .nav-icon-box {
@@ -522,7 +533,10 @@ def inject_dashboard_css():
     }
 
     .nav-label {
+        grid-column: 2;
+        min-width: 0;
         white-space: nowrap;
+        letter-spacing: -0.15px;
         color: inherit;
         font-family: 'Poppins', sans-serif !important;
     }
@@ -536,8 +550,8 @@ def inject_dashboard_css():
     }
 
     .nav-active {
-        margin: 0 16px 8px !important;
-        padding: 6px 12px !important;
+        margin: 0 14px 8px !important;
+        padding: 6px 10px !important;
         border-radius: 10px !important;
         background: #F5F3FF !important;
         border: 1px solid #DDD6FE !important;
@@ -567,14 +581,6 @@ def inject_dashboard_css():
         border-radius: 0 4px 4px 0;
     }
 
-    .nav-chevron {
-        margin-left: auto;
-        color: #A78BFA;
-        display: flex;
-        align-items: center;
-        opacity: 0.8;
-    }
-
     .nav-badge {
         margin-left: auto;
         background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
@@ -586,6 +592,19 @@ def inject_dashboard_css():
         box-shadow: 0 2.5px 7px rgba(6, 182, 212, 0.25);
     }
 
+    [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.nav-overlay) {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.nav-overlay) [data-testid="stMarkdownContainer"],
+    [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(.nav-overlay) [data-testid="stMarkdownContainer"] p {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
     [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
         margin-bottom: -44px !important;
         position: relative;
@@ -593,7 +612,7 @@ def inject_dashboard_css():
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] {
-        margin: 0 16px 8px !important;
+        margin: 0 14px 8px !important;
         padding: 0 !important;
         height: 44px !important;
     }
@@ -2483,7 +2502,6 @@ def _nav_row(icon, label):
                 <span class="nav-indicator-pill"></span>
                 <span class="nav-icon-box">{icon}</span>
                 {label_html}
-                {"" if mini else '<span class="nav-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>'}
             </div>
             """,
             unsafe_allow_html=True,
@@ -3003,7 +3021,7 @@ def render_dashboard_app():
     elif menu == "Lease Contract":
         render_lease_contract()
     elif menu == "Traffic Monitor":
-        page_coming_soon("Traffic Monitor")
+        page_traffic_monitor()
     elif menu == "Import Manager":
         render_import_manager()
     elif menu == "Data Verification":
