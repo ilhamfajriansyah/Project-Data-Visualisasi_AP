@@ -1926,7 +1926,6 @@ ROLE_MENUS = {
         "Traffic Monitor",
         "Import Manager",
         "Data Verification",
-        "Settings",
     ],
     Role.ADMIN: [
         "Overview",
@@ -1935,7 +1934,6 @@ ROLE_MENUS = {
         "Traffic Monitor",
         "Import Manager",
         "Data Verification",
-        "Settings",
     ],
 }
 
@@ -2376,10 +2374,6 @@ NAV_ICONS = {
         '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
         '<path d="m9 12 2 2 4-4"/>',
     ),
-    "Settings": _nav_icon(
-        '<circle cx="12" cy="12" r="3"/>',
-        '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-    ),
 }
 
 
@@ -2476,7 +2470,6 @@ def show_sidebar():
             "Traffic Monitor",
             "Import Manager",
             "Data Verification",
-            "Settings",
         ]
         for label in menu_items:
             _nav_row(NAV_ICONS[label], label)
@@ -3026,8 +3019,6 @@ def render_dashboard_app():
         render_import_manager()
     elif menu == "Data Verification":
         render_data_verification()
-    elif menu == "Settings":
-        page_coming_soon("Settings")
     else:
         page_overview(df_raw)
 

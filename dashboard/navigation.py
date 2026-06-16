@@ -48,10 +48,6 @@ def show_topnav(title="Non Aeronautical Dashboard", subtitle=None, show_search=T
                     </span>
                 </summary>
                 <div class="ap-profile-menu">
-                    <a class="ap-profile-menu-item" href="#settings">
-                        <span class="ap-profile-menu-icon">⚙</span>
-                        <span>Settings</span>
-                    </a>
                     <a class="ap-profile-menu-item" href="?ap_logout=1">
                         <span class="ap-profile-menu-icon">↪</span>
                         <span>Logout</span>
