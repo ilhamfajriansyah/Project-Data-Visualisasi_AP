@@ -839,6 +839,126 @@ def inject_dashboard_css():
         font-size: 11px;
     }
 
+    .kpi-pro-card {
+        display: flex;
+        flex-direction: column;
+        gap: 11px;
+        min-height: 170px;
+        padding: 18px 20px;
+        border-radius: 14px;
+        border: 1px solid #E2E8F0;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+    }
+
+    .kpi-pro-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .kpi-pro-icon {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+    }
+
+    .kpi-pro-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .kpi-pro-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: #DCFCE7;
+        color: #16A34A;
+        white-space: nowrap;
+    }
+
+    .kpi-pro-badge.is-down {
+        background: #FEE2E2;
+        color: #DC2626;
+    }
+
+    .kpi-pro-body {
+        min-width: 0;
+    }
+
+    .kpi-pro-label {
+        color: #64748B;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    .kpi-pro-value-row {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-top: 7px;
+    }
+
+    .kpi-pro-value {
+        color: #0F172A;
+        font-size: 25px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .kpi-pro-unit {
+        color: #94A3B8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .kpi-pro-sub {
+        margin-top: 6px;
+        color: #94A3B8;
+        font-size: 11.5px;
+        font-weight: 500;
+    }
+
+    .kpi-pro-foot {
+        margin-top: auto;
+    }
+
+    .kpi-pro-bar-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .kpi-pro-bar-row span:first-child {
+        color: #94A3B8;
+        font-weight: 500;
+    }
+
+    .kpi-pro-bar-track {
+        height: 5px;
+        border-radius: 999px;
+        background: #F1F5F9;
+        overflow: hidden;
+    }
+
+    .kpi-pro-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+    }
+
     div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker):not(
         :has(div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] .ed-card-marker)
     ) {
@@ -1570,6 +1690,8 @@ def inject_dashboard_css():
                 
     .overview-kpi-card,
     .overview-kpi-card *,
+    .kpi-pro-card,
+    .kpi-pro-card *,
     .overview-light-table-wrap,
     .overview-light-table-wrap *,
     .ed-table-card,
@@ -1594,6 +1716,15 @@ def inject_dashboard_css():
 
         .overview-kpi-value {
             font-size: 23px;
+        }
+
+        .kpi-pro-card {
+            min-height: 150px;
+            padding: 14px 16px;
+        }
+
+        .kpi-pro-value {
+            font-size: 21px;
         }
     }
     </style>
@@ -1689,6 +1820,7 @@ def generate_dummy_data():
             "pendapatan_rs":   np.random.randint(1_000_000, 30_000_000),
             "kontribusi":      np.random.randint(5_000_000, 80_000_000),
             "luas_sqm":        np.random.randint(10, 200),
+            "jumlah_pax":      np.random.randint(500, 3000),
         })
     df = pd.DataFrame(rows)
     df["rev_sqm"] = df["real_omzet"] / df["luas_sqm"]
@@ -1817,6 +1949,84 @@ def _overview_kpi_card(label, value, delta, accent, icon):
             <div class="overview-kpi-label">{escape(label)}</div>
             <div class="overview-kpi-value">{escape(value)}</div>
             <div class="overview-kpi-delta"><strong>↑ {escape(delta)}</strong> vs periode sebelumnya</div>
+        </div>
+    </div>
+    """).strip()
+
+
+# ══════════════════════════════════════════════
+# HELPER: KPI cards "pro" (icon + badge + progress bar)
+# ══════════════════════════════════════════════
+KPI_PRO_ICON_PATHS = {
+    "omzet":  '<line x1="12" y1="2" x2="12" y2="22"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
+    "layers": '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 5.64a1 1 0 0 0 0 1.84l8.58 3.44a2 2 0 0 0 1.66 0l8.58-3.44a1 1 0 0 0 0-1.84Z"></path><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.44a2 2 0 0 0 1.65 0l8.58-3.44A1 1 0 0 0 22 12"></path><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.44a2 2 0 0 0 1.65 0l8.58-3.44A1 1 0 0 0 22 17"></path>',
+    "file":   '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>',
+    "bars":   '<path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M7 11h12"></path><path d="M11 16h8"></path><path d="M11 6h4"></path>',
+    "users":  '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+    "expand": '<path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path>',
+    "award":  '<circle cx="12" cy="8" r="6"></circle><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>',
+    "plane":  '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"></path>',
+}
+
+
+def _kpi_pro_icon_svg(icon_key: str) -> str:
+    paths = KPI_PRO_ICON_PATHS[icon_key]
+    return (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'{paths}</svg>'
+    )
+
+
+def _compact_number(value, decimals=1):
+    if value is None or pd.isna(value):
+        value = 0
+    value = float(value)
+    abs_value = abs(value)
+    if abs_value >= 1_000_000_000_000:
+        return f"{value / 1_000_000_000_000:.{decimals}f}", "T"
+    if abs_value >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.{decimals}f}", "B"
+    if abs_value >= 1_000_000:
+        return f"{value / 1_000_000:.{decimals}f}", "M"
+    if abs_value >= 1_000:
+        return f"{value:,.0f}", ""
+    return f"{value:.{decimals}f}", ""
+
+
+def _pct_change(current, base):
+    if not base:
+        return 0.0
+    return (current - base) / base * 100
+
+
+def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar_label):
+    is_down = delta_pct < 0
+    badge_cls = "is-down" if is_down else ""
+    arrow = "↘" if is_down else "↗"
+    bar_width = min(100, max(6, 50 + delta_pct * 2.2))
+    return dedent(f"""
+    <div class="kpi-pro-card">
+        <div class="kpi-pro-head">
+            <div class="kpi-pro-icon" style="background:{accent}1A;color:{accent};">{_kpi_pro_icon_svg(icon_key)}</div>
+            <div class="kpi-pro-badge {badge_cls}">{arrow} {abs(delta_pct):.1f}%</div>
+        </div>
+        <div class="kpi-pro-body">
+            <div class="kpi-pro-label">{escape(label)}</div>
+            <div class="kpi-pro-value-row">
+                <span class="kpi-pro-value">{escape(value)}</span>
+                <span class="kpi-pro-unit">{escape(unit)}</span>
+            </div>
+            <div class="kpi-pro-sub">{escape(subtitle)}</div>
+        </div>
+        <div class="kpi-pro-foot">
+            <div class="kpi-pro-bar-row">
+                <span>{escape(bar_label)}</span>
+                <span style="color:{accent};">{arrow} {abs(delta_pct):.1f}%</span>
+            </div>
+            <div class="kpi-pro-bar-track">
+                <div class="kpi-pro-bar-fill" style="width:{bar_width:.0f}%;background:{accent};"></div>
+            </div>
         </div>
     </div>
     """).strip()
@@ -2131,18 +2341,84 @@ def page_overview(df_raw):
 
     real_revenue = df["real_omzet"].sum()
     revenue_sharing = df["pendapatan_rs"].sum()
+    rental_revenue = df["pendapatan_sewa"].sum()
     total_contribution = df["kontribusi"].sum()
-    acv_value = df["acv"].mean() if not df.empty else 0
+    total_sqm = df["luas_sqm"].sum()
+    total_pax = df["jumlah_pax"].sum() if "jumlah_pax" in df.columns else 0
+    target_omzet = df["min_omzet"].sum()
+    avg_contract_value = df["min_omzet"].mean() if not df.empty else 0
+    rev_per_sqm = (real_revenue / total_sqm) if total_sqm else 0
+    spending_per_pax = (real_revenue / total_pax) if total_pax else 0
 
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown(_overview_kpi_card("Real Revenue (Omzet)", _fmt_rp_compact(real_revenue), "5.2%", "#2563EB", "Rp"), unsafe_allow_html=True)
-    with k2:
-        st.markdown(_overview_kpi_card("Revenue Sharing", _fmt_rp_compact(revenue_sharing), "2.3%", "#7C3AED", "%"), unsafe_allow_html=True)
-    with k3:
-        st.markdown(_overview_kpi_card("Total Contribution", _fmt_rp_compact(total_contribution), "4.2%", "#059669", "+"), unsafe_allow_html=True)
-    with k4:
-        st.markdown(_overview_kpi_card("ACV", f"{acv_value:.2f}%", "8.4%", "#EA580C", "ACV"), unsafe_allow_html=True)
+    # Periode pembanding (tahun sebelumnya, dengan filter terminal & bulan yang sama)
+    current_year = int(sel_tahun) if sel_tahun != "Semua Tahun" else (int(df["tahun"].max()) if not df.empty else None)
+    prior_df = df_raw.iloc[0:0]
+    if current_year is not None:
+        prior_df = df_raw[df_raw["tahun"] == current_year - 1]
+        if sel_terminal != "All Terminal": prior_df = prior_df[prior_df["terminal"]  == sel_terminal]
+        if sel_masa     != "Semua Bulan":  prior_df = prior_df[prior_df["masa_jasa"] == sel_masa]
+
+    prior_real_revenue = prior_df["real_omzet"].sum()
+    prior_revenue_sharing = prior_df["pendapatan_rs"].sum()
+    prior_rental_revenue = prior_df["pendapatan_sewa"].sum()
+    prior_contribution = prior_df["kontribusi"].sum()
+    prior_sqm = prior_df["luas_sqm"].sum()
+    prior_pax = prior_df["jumlah_pax"].sum() if "jumlah_pax" in prior_df.columns else 0
+    prior_avg_contract = prior_df["min_omzet"].mean() if not prior_df.empty else 0
+    prior_rev_per_sqm = (prior_real_revenue / prior_sqm) if prior_sqm else 0
+    prior_spending_per_pax = (prior_real_revenue / prior_pax) if prior_pax else 0
+
+    omzet_val, omzet_scale = _compact_number(real_revenue)
+    rs_val, rs_scale = _compact_number(revenue_sharing)
+    rental_val, rental_scale = _compact_number(rental_revenue)
+    contrib_val, contrib_scale = _compact_number(total_contribution)
+    spend_val, spend_scale = _compact_number(spending_per_pax, decimals=0)
+    revsqm_val, revsqm_scale = _compact_number(rev_per_sqm, decimals=2)
+    acv_val, acv_scale = _compact_number(avg_contract_value)
+    traffic_val, traffic_scale = _compact_number(total_pax)
+
+    contribution_delta = _pct_change(total_contribution, prior_contribution)
+    spending_delta = _pct_change(spending_per_pax, prior_spending_per_pax)
+    traffic_subtitle = f"Tahun {current_year}" if sel_tahun != "Semua Tahun" else "Seluruh periode"
+
+    kpi_cards = [
+        _kpi_pro_card("Real Omzet", omzet_val, f"Rp {omzet_scale}".strip(),
+                       f"Target: {_fmt_rp_compact(target_omzet)}",
+                       _pct_change(real_revenue, target_omzet), "#4F46E5", "omzet", "vs target"),
+        _kpi_pro_card("Revenue Sharing", rs_val, f"Rp {rs_scale}".strip(),
+                       f"YoY {_pct_change(revenue_sharing, prior_revenue_sharing):+.1f}%",
+                       _pct_change(revenue_sharing, prior_revenue_sharing), "#0891B2", "layers", "YoY growth"),
+        _kpi_pro_card("Rental Revenue", rental_val, f"Rp {rental_scale}".strip(),
+                       f"vs {_fmt_rp_compact(prior_rental_revenue)} prior",
+                       _pct_change(rental_revenue, prior_rental_revenue), "#2563EB", "file", "vs prior yr"),
+        _kpi_pro_card("Total Contribution", contrib_val, f"Rp {contrib_scale}".strip(),
+                       f"{contribution_delta:+.1f}% vs prior period",
+                       contribution_delta, "#059669", "bars", "vs prior yr"),
+        _kpi_pro_card("Spending per Pax", spend_val, f"Rp {spend_scale}".strip(),
+                       f"{spending_delta:+.1f}% vs prior period",
+                       spending_delta, "#D97706", "users", "vs prior yr"),
+        _kpi_pro_card("Rev / SQM", revsqm_val, f"Rp {revsqm_scale}".strip(),
+                       "per sqm · annual",
+                       _pct_change(rev_per_sqm, prior_rev_per_sqm), "#E11D48", "expand", "YoY"),
+        _kpi_pro_card("ACV", acv_val, f"Rp {acv_scale}".strip(),
+                       "Avg Contract Value",
+                       _pct_change(avg_contract_value, prior_avg_contract), "#7C3AED", "award", "vs prior yr"),
+        _kpi_pro_card("Total Traffic", traffic_val, f"{traffic_scale} pax".strip(),
+                       traffic_subtitle,
+                       _pct_change(total_pax, prior_pax), "#2563EB", "plane", "YoY growth"),
+    ]
+
+    kpi_row1 = st.columns(4)
+    for col, card_html in zip(kpi_row1, kpi_cards[:4]):
+        with col:
+            st.markdown(card_html, unsafe_allow_html=True)
+
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+    kpi_row2 = st.columns(4)
+    for col, card_html in zip(kpi_row2, kpi_cards[4:]):
+        with col:
+            st.markdown(card_html, unsafe_allow_html=True)
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 

@@ -639,6 +639,368 @@ _REFINED_IMPORT_CSS = """
 </style>
 """
 
+_NEW_DESIGN_CSS = """
+<style>
+/* ── Page title ── */
+.im-page-title-v2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.2;
+}
+.im-page-sub-v2 {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #64748B;
+    font-weight: 400;
+}
+.im-page-sub-v2 a, .im-page-sub-v2 span {
+    color: #4F46E5;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* ── Upload card: three-section visual card ──
+   Heading (HTML card-top) + drop zone (stFileUploadDropzone) + hint row
+   all appear as one card via matching borders and zero-margin CSS. */
+.im-upload-card-v2 {
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-bottom: none;
+    border-radius: 14px 14px 0 0;
+    padding: 18px 20px 14px;
+}
+.im-upload-title-v2 {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.2;
+}
+.im-upload-sub-v2 {
+    font-size: 12px;
+    color: #94A3B8;
+    margin-top: 3px;
+}
+/* ── File uploader: MINIMAL overrides only — do not touch layout props ──
+   Only section cleanup; card appearance is handled by HTML im-upload-card-v2.
+   The drop zone (stFileUploadDropzone) IS the visual dashed inner box. */
+[data-testid="stFileUploader"] > section {
+    gap: 0 !important;
+    padding: 0 !important;
+}
+[data-testid="stFileUploader"] > section > small { display: none !important; }
+
+/* ── Drop zone: lavender dashed box, flex column, cloud icon via ::before ── */
+[data-testid="stFileUploadDropzone"] {
+    border: 1.5px dashed #C4C9F4 !important;
+    border-radius: 0 0 12px 12px !important;
+    background: #F5F3FF !important;
+    padding: 36px 20px 24px !important;
+    min-height: 200px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    cursor: pointer !important;
+    transition: border-color 0.18s, background 0.18s !important;
+    box-shadow: none !important;
+}
+[data-testid="stFileUploadDropzone"]:hover {
+    border-color: #818CF8 !important;
+    background: #EEF2FF !important;
+}
+/* Cloud upload icon as first flex item */
+[data-testid="stFileUploadDropzone"]::before {
+    content: '' !important;
+    display: block !important;
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 13px !important;
+    background-color: #EEF2FF !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234F46E5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='16 16 12 12 8 16'%3E%3C/polyline%3E%3Cline x1='12' y1='12' x2='12' y2='21'%3E%3C/line%3E%3Cpath d='M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3'%3E%3C/path%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 22px 22px !important;
+    flex-shrink: 0 !important;
+    margin-bottom: 14px !important;
+}
+/* Instruction text container */
+[data-testid="stFileUploadDropzoneInstructions"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin-bottom: 18px !important;
+}
+[data-testid="stFileUploadDropzoneInstructions"] > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 5px !important;
+}
+[data-testid="stFileUploadDropzoneInstructions"] svg { display: none !important; }
+[data-testid="stFileUploadDropzoneInstructions"] > div > span {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #1E293B !important;
+    font-family: 'Poppins', sans-serif !important;
+}
+[data-testid="stFileUploadDropzoneInstructions"] small,
+[data-testid="stFileUploadDropzoneInstructions"] > div > small {
+    font-size: 12px !important;
+    color: #94A3B8 !important;
+    font-weight: 400 !important;
+}
+/* Browse Files button inside the drop zone */
+[data-testid="stFileUploadDropzone"] button {
+    background: #4F46E5 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    min-height: 40px !important;
+    padding: 0 32px !important;
+    letter-spacing: 0.2px !important;
+    box-shadow: 0 4px 14px rgba(79,70,229,0.28) !important;
+    width: auto !important;
+}
+[data-testid="stFileUploadDropzone"] button:hover { background: #4338CA !important; }
+
+/* Hint row below — negative margin-top closes the Streamlit ~1rem vertical gap
+   so it appears flush against the drop zone bottom border. */
+.im-upload-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-top: 1px solid #F0EEFF;
+    border-radius: 0 0 14px 14px;
+    padding: 11px 18px 13px;
+    margin-top: -1rem;
+    position: relative;
+    z-index: 2;
+}
+.im-upload-hint-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.3px;
+}
+.im-upload-hint-text {
+    font-size: 12px;
+    color: #64748B;
+    line-height: 1.5;
+}
+
+/* ── Ketentuan Import (white card) ── */
+.im-ketentuan-card {
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 22px 22px 18px;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+}
+.im-ketentuan-icon-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.im-ketentuan-icon-box {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #EEF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+.im-ketentuan-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: 0.2px;
+}
+.im-ketentuan-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.im-ketentuan-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 900;
+    margin-top: 1px;
+}
+.im-ketentuan-text {
+    font-size: 12px;
+    color: #64748B;
+    line-height: 1.55;
+    font-weight: 500;
+}
+.im-ketentuan-text strong { color: #1E293B; font-weight: 700; }
+.im-ketentuan-footer {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #F1F5F9;
+}
+.im-ketentuan-footer-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    margin-bottom: 3px;
+}
+.im-ketentuan-footer-val {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+}
+
+/* ── Riwayat Import table card ── */
+.im-riwayat-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.05);
+    overflow: hidden;
+    margin-top: 20px;
+}
+.im-riwayat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid #F1F5F9;
+}
+.im-riwayat-title-v2 {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0F172A;
+}
+.im-riwayat-search-box {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    min-width: 220px;
+}
+.im-riwayat-search-icon { color: #94A3B8; font-size: 13px; }
+.im-riwayat-btns { display: flex; gap: 7px; flex-shrink: 0; }
+.im-riwayat-btn-v2 {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: 8px;
+    border: 1px solid #E2E8F0; background: #ffffff;
+    font-size: 12px; font-weight: 600; color: #475569;
+    cursor: pointer; white-space: nowrap;
+}
+.im-riwayat-btn-export {
+    background: #4F46E5; color: #ffffff; border-color: #4F46E5;
+}
+/* table */
+.im-table-v2 { width:100%; border-collapse:collapse; }
+.im-table-v2 thead tr { background:#F8FAFC; }
+.im-table-v2 th { padding:11px 16px; text-align:left; font-size:10.5px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; border-bottom:1px solid #F1F5F9; }
+.im-table-v2 td { padding:13px 16px; font-size:12.5px; color:#334155; border-bottom:1px solid #F8FAFC; vertical-align:middle; }
+.im-table-v2 tbody tr:hover { background:#FAFBFF; }
+.im-table-v2 tbody tr:last-child td { border-bottom:none; }
+.im-file-ext-icon {
+    display: inline-flex; align-items: center; gap: 8px;
+}
+.im-file-badge {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: #DCFCE7; color: #16A34A;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9.5px; font-weight: 800; flex-shrink: 0;
+}
+.im-file-badge.xls { background: #D1FAE5; color: #059669; }
+.im-file-badge.csv { background: #DBEAFE; color: #2563EB; }
+.im-file-badge.err { background: #FEE2E2; color: #DC2626; }
+/* status badges v2 */
+.bv2-sukses  { background:#DCFCE7; color:#16A34A; padding:4px 12px; border-radius:999px; font-size:11.5px; font-weight:700; display:inline-block; }
+.bv2-gagal   { background:#FEE2E2; color:#DC2626; padding:4px 12px; border-radius:999px; font-size:11.5px; font-weight:700; display:inline-block; }
+.bv2-pending { background:#FEF9C3; color:#92400E; padding:4px 12px; border-radius:999px; font-size:11.5px; font-weight:700; display:inline-block; }
+/* eye action icon */
+.im-eye-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: #F1F5F9; display: inline-flex;
+    align-items: center; justify-content: center;
+    color: #64748B; font-size: 14px; cursor: pointer;
+}
+/* pagination */
+.im-pagination-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 13px 20px; border-top: 1px solid #F1F5F9;
+    flex-wrap: wrap; gap: 8px;
+}
+.im-pagination-info { font-size: 12px; color: #94A3B8; font-weight: 500; }
+.im-page-btns { display: flex; gap: 4px; align-items: center; }
+.im-page-btn-v2 {
+    min-width: 30px; height: 30px; padding: 0 6px;
+    border-radius: 6px; border: 1px solid #E2E8F0;
+    background: #ffffff; font-size: 12px; font-weight: 600;
+    color: #64748B; display: inline-flex; align-items: center;
+    justify-content: center; cursor: pointer;
+}
+.im-page-btn-v2.active { background: #4F46E5; color: #ffffff; border-color: #4F46E5; }
+.im-page-btn-v2.dots { border: none; background: transparent; color: #94A3B8; }
+
+/* ── Bottom info cards ── */
+.im-info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 18px;
+}
+.im-info-card-v2 {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    padding: 18px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+.im-info-icon-v2 {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #F1F5F9; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.im-info-title-v2 { font-size: 13px; font-weight: 800; color: #1E293B; margin-bottom: 5px; }
+.im-info-text-v2 { font-size: 11.5px; color: #64748B; line-height: 1.55; font-weight: 400; }
+</style>
+"""
+
 
 # ─────────────────────────────────────────────
 # INIT STATE
@@ -1253,147 +1615,248 @@ def _render_scheme_mapping():
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-def _render_import_history_refined():
-    df_all = _get_admin_history().copy()
-    uploaded_lookup = {
-        "Cikarang": "26 Apr 2026 - 14:22",
-        "Bali": "26 Apr 2026 - 14:22",
-        "Ginung": "25 Apr 2026 - 16:05",
-        "Lombok": "25 Apr 2026 - 11:40",
-        "Manado": "24 Mar 2026 - 09:35",
-        "Kupang": "24 Mar 2026 - 10:12",
-        "Jayapura": "23 Apr 2026 - 15:19",
-        "Sorong": "-",
-    }
+def _get_riwayat_history_v2() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"Nama File": "tenant_registry_2023.xlsx", "Terminal": "Cikarang",  "Tanggal Upload": "12 Jun 2026  10:32", "Jumlah Baris": 1734, "Status": "Sukses",  "Diupload Oleh": "admin.user"},
+        {"Nama File": "sap_attributes_file.csv",   "Terminal": "Bali",      "Tanggal Upload": "12 Jun 2026  09:15", "Jumlah Baris": 420,  "Status": "Gagal",   "Diupload Oleh": "admin.user"},
+        {"Nama File": "ginung_apr_2026.xlsx",       "Terminal": "Gunung",    "Tanggal Upload": "11 Jun 2026  16:40", "Jumlah Baris": 980,  "Status": "Pending", "Diupload Oleh": "admin.user"},
+        {"Nama File": "tenant_master_data.xlsx",    "Terminal": "Medan",     "Tanggal Upload": "11 Jun 2026  11:22", "Jumlah Baris": 1250, "Status": "Sukses",  "Diupload Oleh": "admin.user"},
+        {"Nama File": "contract_list_mar.xlsx",     "Terminal": "Jakarta",   "Tanggal Upload": "10 Jun 2026  09:45", "Jumlah Baris": 2156, "Status": "Sukses",  "Diupload Oleh": "admin.user"},
+    ])
 
-    df = df_all.reset_index(drop=True)
 
+def _status_badge_v2(status: str) -> str:
+    cls = {"Sukses": "bv2-sukses", "Gagal": "bv2-gagal", "Pending": "bv2-pending"}.get(status, "bv2-pending")
+    return f'<span class="{cls}">{status}</span>'
+
+
+def _file_ext_badge(filename: str) -> str:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "file"
+    cls = "xls" if ext in ("xlsx", "xls") else ("csv" if ext == "csv" else "")
+    label = ext.upper()[:3]
+    return (
+        f'<span class="im-file-ext-icon">'
+        f'<span class="im-file-badge {cls}">{label}</span>'
+        f'<span style="font-weight:600;color:#1E293B;">{filename}</span>'
+        f'</span>'
+    )
+
+
+def _render_new_history():
+    df_full = _get_riwayat_history_v2()
+    total = len(df_full) + 20  # simulate 25 total entries
+
+    # ── Header row: title | search | refresh | export ──
+    st.markdown('<div class="im-riwayat-card">', unsafe_allow_html=True)
+    st.markdown('<div class="im-riwayat-head">', unsafe_allow_html=True)
+
+    hc1, hc2, hc3, hc4 = st.columns([2.8, 3.2, 0.95, 0.95])
+    with hc1:
+        st.markdown('<div class="im-riwayat-title-v2">Riwayat Import</div>', unsafe_allow_html=True)
+    with hc2:
+        search_q = st.text_input(
+            "", placeholder="🔍  Cari nama file, terminal...",
+            key="im_search_v2", label_visibility="collapsed"
+        )
+    with hc3:
+        st.button("↻  Refresh", key="im_refresh_v2", use_container_width=True)
+    with hc4:
+        export_data = df_full.to_csv(index=False)
+        st.download_button(
+            "⬇  Export", data=export_data,
+            file_name="riwayat_import.csv", mime="text/csv",
+            key="im_export_v2", use_container_width=True,
+        )
+    st.markdown('</div>', unsafe_allow_html=True)  # im-riwayat-head
+
+    # ── Filter ──
+    df = df_full.copy()
+    if search_q:
+        q = search_q.lower()
+        df = df[
+            df["Nama File"].str.lower().str.contains(q, na=False)
+            | df["Terminal"].str.lower().str.contains(q, na=False)
+        ]
+    df = df.reset_index(drop=True)
+
+    # ── Table ──
     rows_html = ""
     for _, r in df.iterrows():
-        uploaded_at = uploaded_lookup.get(r["PIC"], "-")
         rows_html += dedent(f"""
         <tr>
-            <td style="font-weight:800;color:#1e293b;">{r['PIC']}</td>
-            <td style="color:#64748b;">{uploaded_at}</td>
-            <td style="font-weight:650;color:#334155;">{r['File']}</td>
-            <td style="font-weight:800;color:#1e293b;">{r['Rows']:,}</td>
-            <td>{_status_badge(r['Status'])}</td>
+            <td>{_file_ext_badge(r['Nama File'])}</td>
+            <td style="color:#64748B;">{r['Terminal']}</td>
+            <td style="color:#64748B;">{r['Tanggal Upload']}</td>
+            <td style="font-weight:700;color:#1E293B;">{r['Jumlah Baris']:,}</td>
+            <td>{_status_badge_v2(r['Status'])}</td>
+            <td style="color:#64748B;">{r['Diupload Oleh']}</td>
+            <td><span class="im-eye-btn">👁</span></td>
         </tr>
         """).strip()
 
     if not rows_html:
-        rows_html = dedent("""
-        <tr>
-            <td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;">
-                Belum ada data import yang tersedia.
-            </td>
-        </tr>
-        """).strip()
+        rows_html = '<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:28px;">Tidak ada data yang cocok.</td></tr>'
 
     st.markdown(dedent(f"""
-    <div class="im-panel im-history">
-        <div class="im-history-head">
+    <div style="overflow-x:auto;">
+        <table class="im-table-v2">
+            <thead><tr>
+                <th>Nama File</th>
+                <th>Terminal</th>
+                <th>Tanggal Upload</th>
+                <th>Jumlah Baris</th>
+                <th>Status</th>
+                <th>Diupload Oleh</th>
+                <th>Aksi</th>
+            </tr></thead>
+            <tbody>{rows_html}</tbody>
+        </table>
+    </div>
+    <div class="im-pagination-row">
+        <span class="im-pagination-info">Menampilkan 1 - {len(df)} dari {total} data</span>
+        <div class="im-page-btns">
+            <span class="im-page-btn-v2">&lt;</span>
+            <span class="im-page-btn-v2 active">1</span>
+            <span class="im-page-btn-v2">2</span>
+            <span class="im-page-btn-v2">3</span>
+            <span class="im-page-btn-v2 dots">…</span>
+            <span class="im-page-btn-v2">5</span>
+            <span class="im-page-btn-v2">&gt;</span>
+        </div>
+    </div>
+    """).strip(), unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)  # im-riwayat-card
+
+
+def _render_info_cards():
+    st.markdown(dedent("""
+    <div class="im-info-row">
+        <div class="im-info-card-v2">
+            <div class="im-info-icon-v2">🛡️</div>
             <div>
-                <div class="im-section-title">Import History</div>
-                <div class="im-section-sub">Riwayat upload data per Office/SBU.</div>
+                <div class="im-info-title-v2">Enkripsi Data</div>
+                <div class="im-info-text-v2">
+                    Semua dokumen yang diunggah diproses dan disimpan dalam lingkungan
+                    sandbox yang aman dan terenkripsi.
+                </div>
             </div>
-            <div class="im-refresh">R</div>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="im-table">
-                <thead>
-                    <tr>
-                        <th>Office/SBU</th>
-                        <th>Uploaded Date</th>
-                        <th>Filename</th>
-                        <th>Rows Imported</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>{rows_html}</tbody>
-            </table>
-        </div>
-        <div class="im-footer">
-            <span class="im-footer-info">Showing {len(df)} entries</span>
+        <div class="im-info-card-v2">
+            <div class="im-info-icon-v2">✨</div>
+            <div>
+                <div class="im-info-title-v2">AI Auto-Cleaning</div>
+                <div class="im-info-text-v2">
+                    Engine kami secara otomatis memperbaiki masalah format umum dan
+                    mengidentifikasi potensi outlier pada data yang diunggah.
+                </div>
+            </div>
         </div>
     </div>
     """).strip(), unsafe_allow_html=True)
 
 
-def _render_import_workspace():
-    left, right = st.columns([6.2, 3.8], gap="large")
+_KETENTUAN_HTML = dedent("""
+<div class="im-ketentuan-card">
+    <div class="im-ketentuan-icon-row">
+        <div class="im-ketentuan-icon-box">📋</div>
+        <div class="im-ketentuan-title">Ketentuan Import</div>
+    </div>
+    <div class="im-ketentuan-item">
+        <div class="im-ketentuan-check">✓</div>
+        <div class="im-ketentuan-text">Format file: <strong>.xlsx, .xls, .csv</strong></div>
+    </div>
+    <div class="im-ketentuan-item">
+        <div class="im-ketentuan-check">✓</div>
+        <div class="im-ketentuan-text">Maksimal ukuran file: <strong>50 MB</strong></div>
+    </div>
+    <div class="im-ketentuan-item">
+        <div class="im-ketentuan-check">✓</div>
+        <div class="im-ketentuan-text">Pastikan data <strong>tidak mengandung merge cell</strong></div>
+    </div>
+    <div class="im-ketentuan-item">
+        <div class="im-ketentuan-check">✓</div>
+        <div class="im-ketentuan-text"><strong>Kolom wajib</strong> harus terisi</div>
+    </div>
+    <div class="im-ketentuan-item">
+        <div class="im-ketentuan-check">✓</div>
+        <div class="im-ketentuan-text">Hindari <strong>perubahan struktur kolom</strong></div>
+    </div>
+    <div class="im-ketentuan-footer">
+        <div class="im-ketentuan-footer-label">LAST TEMPLATE UPDATE</div>
+        <div class="im-ketentuan-footer-val">v2.4.1 — Oct 12, 2023</div>
+    </div>
+</div>
+""").strip()
 
+
+def _render_new_workspace():
+    left, right = st.columns([6, 4], gap="medium")
+
+    # ── LEFT: three-section upload card ──
+    # Section 1: HTML heading card  (border-bottom: none, top-only radius)
+    # Section 2: native file uploader styled as lavender dashed drop zone
+    # Section 3: hint row (negative margin-top closes the Streamlit flex gap)
     with left:
-        st.markdown("""
-        <div class="im-panel im-upload-shell">
-            <div class="im-upload-heading">
-                <div>
-                    <div class="im-section-title">Upload Data File</div>
-                    <div class="im-section-sub">Format yang didukung: .xlsx, .xls, dan .csv.</div>
-                </div>
-                <div class="im-period-chip">April 2026</div>
-            </div>
-            <div class="im-upload-visual">
-                <div class="im-cloud">↑</div>
-                <div class="im-upload-title">Drag & Drop Excel or CSV File</div>
-                <div class="im-upload-copy">
-                    Maximum file size 50MB. Only .xlsx, .xls, and .csv formats are supported.
-                </div>
-            </div>
-            <div class="im-uploader-slot">
-        """, unsafe_allow_html=True)
+        # ① Heading (top of the card)
+        st.markdown(dedent("""
+        <div class="im-upload-card-v2">
+            <div class="im-upload-title-v2">Upload Data File</div>
+            <div class="im-upload-sub-v2">Format .xlsx, .xls, .csv · maks 50MB</div>
+        </div>
+        """).strip(), unsafe_allow_html=True)
+
+        # ② Drop zone (stFileUploadDropzone CSS gives it the lavender box + icon)
+        #    border-radius: 0 0 12px 12px connects it flush to the heading above.
         uploaded = st.file_uploader(
-            "Browse File",
-            type=["xlsx", "xls", "csv"],
-            label_visibility="collapsed",
-            key="im_uploader_refined",
+            "Browse Files", type=["xlsx", "xls", "csv"],
+            label_visibility="collapsed", key="im_uploader_v2",
         )
-        st.markdown("</div>", unsafe_allow_html=True)
+
+        # ③ Hint row (bottom of the card)
+        #    margin-top: -1rem in CSS closes the Streamlit vertical-block gap.
+        st.markdown(dedent("""
+        <div class="im-upload-hint">
+            <div class="im-upload-hint-icon">SBU</div>
+            <div class="im-upload-hint-text">
+                Pastikan struktur file sesuai template untuk menghindari
+                error pada proses import.
+            </div>
+        </div>
+        """).strip(), unsafe_allow_html=True)
+
         _render_selected_file(uploaded)
-        st.markdown("</div>", unsafe_allow_html=True)
 
+    # ── RIGHT: Ketentuan Import (white card) ──
     with right:
-        st.markdown('<div class="im-side-stack">', unsafe_allow_html=True)
-        st.markdown('<div class="im-panel im-side-control">', unsafe_allow_html=True)
-        st.markdown('<div class="im-side-control-grid">', unsafe_allow_html=True)
-        st.markdown('<div><div class="im-control-title">Active PIC</div>', unsafe_allow_html=True)
-        current_sbu = st.session_state.get("im_sbu", SBU_LIST[0])
-        current_idx = SBU_LIST.index(current_sbu) if current_sbu in SBU_LIST else 0
-        sbu_sel = st.selectbox(
-            "Active SBU",
-            SBU_LIST,
-            index=current_idx,
-            label_visibility="collapsed",
-            key="im_sbu_refined",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.session_state.im_sbu = sbu_sel
-        st.markdown('<div>', unsafe_allow_html=True)
-        template_data = "Kode Ruang,Brand,Omzet,Periode\nFB-01-01,Example Brand,10000000,April 2026\n"
-        st.download_button(
-            "Download Template",
-            data=template_data,
-            file_name="template_pendapatan.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key="im_template_refined",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        _render_scheme_mapping()
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(_KETENTUAN_HTML, unsafe_allow_html=True)
 
-    _render_import_history_refined()
+    # ── Riwayat Import table ──
+    _render_new_history()
+
+    # ── Bottom info cards ──
+    _render_info_cards()
 
 
 def render_import_manager():
     _init_state()
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
     st.markdown(_REFINED_IMPORT_CSS, unsafe_allow_html=True)
+    st.markdown(_NEW_DESIGN_CSS, unsafe_allow_html=True)
     st.markdown('<div class="im-manager-surface">', unsafe_allow_html=True)
-    _render_import_page_header()
-    _render_import_workspace()
+
+    # Page title
+    st.markdown(dedent("""
+    <div style="margin-bottom:20px;">
+        <div class="im-page-title-v2">Import Data Komersial</div>
+        <div class="im-page-sub-v2">
+            Unggah file performa komersial Anda untuk memperbarui
+            <span>analytics engine</span>.
+        </div>
+    </div>
+    """).strip(), unsafe_allow_html=True)
+
+    _render_new_workspace()
     st.markdown('</div>', unsafe_allow_html=True)
 
 
