@@ -495,31 +495,6 @@ def _compute_kpis(services_df):
     return total_revenue, revenue_share, settlement_rate, issues
 
 
-def _build_settlement_summary(services_df):
-    growth_map = {
-        "Ground Handling": 5.2,
-        "PSC": 3.1,
-        "VIP Services": -2.4,
-        "Commercial Area": 1.8,
-        "Cargo Area": -18.0,
-        "Parking Area": 4.6,
-        "Ground Handling Services": 2.9,
-    }
-    rows = []
-    for _, row in services_df.iterrows():
-        svc = row["Service/SBU"]
-        status = "WARNING" if row["Status"] == "CONFLICT" else row["Status"]
-        rows.append({
-            "Service / SBU": svc,
-            "Revenue": row["Gross Revenue"],
-            "Share %": row["SBU Share Rule %"],
-            "Management Share": row["Management Share"],
-            "Growth %": _format_mom(growth_map.get(svc, 0.0)),
-            "Status": fmt_status_badge(status),
-        })
-    return pd.DataFrame(rows)
-
-
 def _build_revenue_alerts(services_df):
     alerts = []
     cargo = services_df[services_df["Service/SBU"] == "Cargo Area"]
@@ -738,26 +713,6 @@ def page_revenue_sharing():
             )
         alerts = _build_revenue_alerts(services_df)
         st.markdown(f'<div class="rs-alert-grid">{"".join(alerts)}</div>', unsafe_allow_html=True)
-
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-
-    settlement_df = _build_settlement_summary(services_df)
-    settlement_align = {
-        "Revenue": "right",
-        "Share %": "right",
-        "Management Share": "right",
-        "Growth %": "right",
-        "Status": "center",
-    }
-    st.markdown(
-        _enterprise_table_html(
-            settlement_df,
-            title="Service Settlement Summary",
-            subtitle="Primary analytical view — revenue, share rules, and settlement status by service",
-            col_align=settlement_align,
-        ),
-        unsafe_allow_html=True,
-    )
 
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 

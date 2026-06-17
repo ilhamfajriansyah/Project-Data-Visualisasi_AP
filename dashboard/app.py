@@ -33,10 +33,10 @@ def inject_dashboard_css():
     <style>
     .ap-top-actions {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: flex-end;
-        gap: 14px;
-        padding-top: 2px;
+        gap: 8px; /* reduced gap */
+        padding-top: 0;
         position: relative;
         overflow: visible;
     }
@@ -367,8 +367,9 @@ def inject_dashboard_css():
     }
     .ap-top-actions {
         align-items: center;
+        gap: 8px; /* reduced gap */
         padding-top: 0;
-        min-height: 40px;
+        min-height: 38px;
     }
     .ap-top-bell {
         margin-top: 0;
@@ -479,7 +480,7 @@ def inject_dashboard_css():
         color: #94A3B8 !important;
         letter-spacing: 1.2px !important;
         text-transform: uppercase !important;
-        margin: 20px 24px 10px !important;
+        margin: 20px 24px 28px !important;
         font-family: 'Poppins', sans-serif !important;
     }
 
@@ -489,51 +490,42 @@ def inject_dashboard_css():
 
     .nav-row,
     .nav-active {
-        display: grid;
+        display: flex;
         align-items: center;
-        column-gap: 10px;
-        margin: 0 14px 8px !important;
-        padding: 6px 10px;
+        gap: 8px;
+        margin: 0 14px 2px !important;
+        padding: 5px 12px;
         border-radius: 10px;
         color: #64748B;
-        font-size: 13.5px;
+        font-size: 16px;
         font-weight: 600;
         font-family: 'Poppins', sans-serif !important;
         line-height: 1.2;
         box-sizing: border-box !important;
         width: calc(100% - 28px) !important;
         max-width: calc(100% - 28px) !important;
-        height: 44px !important;
+        height: 36px !important;
         position: relative;
-    }
-
-    .nav-row {
-        grid-template-columns: 32px minmax(0, 1fr);
-    }
-
-    .nav-active {
-        grid-template-columns: 32px minmax(0, 1fr);
     }
 
     .nav-icon-box {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
         flex-shrink: 0;
         transition: none !important;
     }
 
     .nav-icon-box svg {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         display: block;
     }
 
     .nav-label {
-        grid-column: 2;
         min-width: 0;
         white-space: nowrap;
         letter-spacing: -0.15px;
@@ -550,14 +542,17 @@ def inject_dashboard_css():
     }
 
     .nav-active {
-        margin: 0 14px 8px !important;
-        padding: 6px 10px !important;
-        border-radius: 10px !important;
+        margin: 0 14px 2px !important;
+        padding: 5px 14px 5px 10px !important;
+        border-radius: 12px !important;
         background: #F5F3FF !important;
         border: 1px solid #DDD6FE !important;
         box-shadow: none !important;
         color: #7C3AED !important;
         font-weight: 700 !important;
+        height: 36px !important;
+        width: fit-content !important;
+        max-width: calc(100% - 28px) !important;
     }
 
     .nav-active .nav-icon-box {
@@ -574,8 +569,8 @@ def inject_dashboard_css():
     .nav-indicator-pill {
         position: absolute;
         left: 0;
-        top: 8px;
-        bottom: 8px;
+        top: 5px;
+        bottom: 5px;
         width: 3.5px;
         background: linear-gradient(180deg, #A78BFA 0%, #7C3AED 100%);
         border-radius: 0 4px 4px 0;
@@ -606,20 +601,20 @@ def inject_dashboard_css():
     }
 
     [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
-        margin-bottom: -44px !important;
+        margin-bottom: -36px !important;
         position: relative;
         z-index: 2;
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] {
-        margin: 0 14px 8px !important;
+        margin: 0 14px 2px !important;
         padding: 0 !important;
-        height: 44px !important;
+        height: 36px !important;
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] > button {
-        height: 44px !important;
-        min-height: 44px !important;
+        height: 36px !important;
+        min-height: 36px !important;
         opacity: 0 !important;
         background: transparent !important;
         border: none !important;
@@ -633,7 +628,8 @@ def inject_dashboard_css():
     [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]):hover + div[data-testid="stElementContainer"] .nav-row.nav-overlay {
         background: rgba(241, 245, 249, 0.5) !important;
         color: #1E293B !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
+        width: fit-content !important;
     }
 
     [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]):hover + div[data-testid="stElementContainer"] .nav-row.nav-overlay .nav-icon-box {
@@ -700,10 +696,10 @@ def inject_dashboard_css():
     }
 
     [data-testid="stSidebar"] div[data-testid="stButton"] > button {
-        height: 44px !important;
-        min-height: 44px !important;
+        height: 36px !important;
+        min-height: 36px !important;
         padding: 0 14px !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         color: #475569 !important;
         font-size: 13px !important;
         font-weight: 600 !important;
