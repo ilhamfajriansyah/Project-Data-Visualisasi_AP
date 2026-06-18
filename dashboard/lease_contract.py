@@ -1,8 +1,81 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import date, datetime
 from textwrap import dedent
+
+from .navigation import topnav_actions_html
+
+LC_PAGE_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+    'width="18" height="18" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>'
+    '<polyline points="14 2 14 8 20 8"></polyline>'
+    '<line x1="16" y1="13" x2="8" y2="13"></line>'
+    '<line x1="16" y1="17" x2="8" y2="17"></line>'
+    '<polyline points="10 9 9 9 8 9"></polyline>'
+    '</svg>'
+)
+
+
+def _lc_page_header_html():
+    return dedent(f"""
+    <div class="ov-page-header">
+        <div class="ov-page-header-left">
+            <div class="ov-page-icon" aria-hidden="true">{LC_PAGE_ICON_SVG}</div>
+            <div class="ov-page-header-copy">
+                <div class="ov-page-title-row">
+                    <h2 class="ov-page-title">Lease Contract</h2>
+                </div>
+                <p class="ov-page-sub">Monitor tenant contract status and contract lifecycle.</p>
+            </div>
+        </div>
+        {topnav_actions_html()}
+    </div>
+    """).strip()
+
+
+def _mount_lc_fixed_header():
+    components.html(
+        """
+        <script>
+        (function () {
+            const doc = window.parent.document;
+
+            function findHeaderHost(marker) {
+                return (
+                    marker.closest('[data-testid="stVerticalBlockBorderWrapper"]')
+                    || marker.closest('[data-testid="stVerticalBlock"]')
+                );
+            }
+
+            function applyFixedHeader() {
+                const marker = doc.querySelector('.ov-sticky-header-marker');
+                if (!marker) return;
+
+                const host = findHeaderHost(marker);
+                if (!host) return;
+
+                host.classList.add('ov-fixed-header-active');
+
+                const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+                const left = sidebar ? sidebar.getBoundingClientRect().width : 258;
+                host.style.left = left + 'px';
+            }
+
+            applyFixedHeader();
+            window.parent.addEventListener('resize', applyFixedHeader);
+            setTimeout(applyFixedHeader, 120);
+            setTimeout(applyFixedHeader, 450);
+            setTimeout(applyFixedHeader, 900);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DUMMY DATA GENERATOR (RETAINS ORIGINAL DATA & STRUCTURE, EXPANDS TO 247 ROWS)
@@ -164,6 +237,13 @@ _PAGE_CSS = """
 
 body:has(.lc-page-marker) .stApp {
     background: #F8FAFC !important;
+}
+
+/* Pull the filters row up to close the default Streamlit gap left after
+   the fixed header's spacer (mirrors the same fix used on Overview's
+   filter row) — keeps it compact/close to the header. */
+body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.filters-label-box) {
+    margin-top: -85px !important;
 }
 
 /* Premium Card Design */
@@ -2097,76 +2177,17 @@ def render_lease_contract():
     _init_state()
     
     # Load custom Poppins layout CSS and page marker
-    st.markdown(_PAGE_CSS + '<div class="lc-page-marker"></div>', unsafe_allow_html=True)
+    st.markdown(_PAGE_CSS + '<div class="overview-page-marker lc-page-marker"></div>', unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        st.markdown(_lc_page_header_html(), unsafe_allow_html=True)
+        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+    _mount_lc_fixed_header()
 
     df_all = st.session_state.lc_filtered_df
-
-    # ─────────────────────────────────────────────
-    # HEADER SECTION (SINGLE ROW REDESIGN - NO ADD CONTRACT)
-    # ─────────────────────────────────────────────
-    total_val = len(df_all)
-    active_val = len(df_all[df_all["Status"] == "Valid"])
-    expiring_val = len(df_all[df_all["Status"] == "Anomaly"])
-    expired_val = len(df_all[df_all["Status"] == "Expired"])
-
-    h_col1, h_col2, h_col3, h_col4 = st.columns([4.2, 2.5, 1.2, 1.1])
-    
-    with h_col1:
-        st.markdown("""
-        <div class="header-left">
-            <div class="header-icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-            </div>
-            <div class="header-title-box">
-                <div class="header-title-row">
-                    <div class="header-main-title">Lease Contract</div>
-                    <span class="header-badge">18 EXPIRING SOON</span>
-                </div>
-                <div class="header-subtitle">Monitor tenant contract status and contract lifecycle.</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    with h_col2:
-        st.markdown(f"""
-        <div class="header-kpi-widget">
-            <div class="header-kpi-col">
-                <span class="header-kpi-val total">{total_val}</span>
-                <span class="header-kpi-lbl">Total</span>
-            </div>
-            <div class="header-kpi-divider"></div>
-            <div class="header-kpi-col">
-                <span class="header-kpi-val active">{active_val}</span>
-                <span class="header-kpi-lbl">Active</span>
-            </div>
-            <div class="header-kpi-divider"></div>
-            <div class="header-kpi-col">
-                <span class="header-kpi-val expiring">{expiring_val}</span>
-                <span class="header-kpi-lbl">Expiring</span>
-            </div>
-            <div class="header-kpi-divider"></div>
-            <div class="header-kpi-col">
-                <span class="header-kpi-val expired">{expired_val}</span>
-                <span class="header-kpi-lbl">Expired</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    with h_col3:
-        st.markdown('<div class="header-btn-alerts-marker"></div>', unsafe_allow_html=True)
-        if st.button("🔔 Set Alerts", key="hc_set_alerts", use_container_width=True):
-            st.toast("🔔 Alert triggers configured successfully!")
-            
-    with h_col4:
-        st.markdown('<div class="header-btn-export-marker"></div>', unsafe_allow_html=True)
-        csv = df_all[["No", "Name/Tenant", "Sub", "Valid Period", "Unit Name/Loc", "Status", "Skema"]].to_csv(index=False).encode("utf-8")
-        st.download_button("⬇ Export", data=csv, file_name="lease_contracts.csv", mime="text/csv", use_container_width=True, key="hc_export")
 
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 

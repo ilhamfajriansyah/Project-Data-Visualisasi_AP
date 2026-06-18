@@ -1,10 +1,83 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime
 from html import escape
 from textwrap import dedent
+
+from .navigation import topnav_actions_html
+
+RS_PAGE_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+    'width="18" height="18" fill="none" stroke="currentColor" '
+    'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<circle cx="18" cy="5" r="3"/>'
+    '<circle cx="6" cy="12" r="3"/>'
+    '<circle cx="18" cy="19" r="3"/>'
+    '<line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>'
+    '<line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>'
+    '</svg>'
+)
+
+
+def _rs_page_header_html():
+    return dedent(f"""
+    <div class="ov-page-header">
+        <div class="ov-page-header-left">
+            <div class="ov-page-icon" aria-hidden="true">{RS_PAGE_ICON_SVG}</div>
+            <div class="ov-page-header-copy">
+                <div class="ov-page-title-row">
+                    <h2 class="ov-page-title">Revenue Sharing</h2>
+                </div>
+                <p class="ov-page-sub">Track revenue distribution and settlement performance.</p>
+            </div>
+        </div>
+        {topnav_actions_html()}
+    </div>
+    """).strip()
+
+
+def _mount_rs_fixed_header():
+    components.html(
+        """
+        <script>
+        (function () {
+            const doc = window.parent.document;
+
+            function findHeaderHost(marker) {
+                return (
+                    marker.closest('[data-testid="stVerticalBlockBorderWrapper"]')
+                    || marker.closest('[data-testid="stVerticalBlock"]')
+                );
+            }
+
+            function applyFixedHeader() {
+                const marker = doc.querySelector('.ov-sticky-header-marker');
+                if (!marker) return;
+
+                const host = findHeaderHost(marker);
+                if (!host) return;
+
+                host.classList.add('ov-fixed-header-active');
+
+                const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+                const left = sidebar ? sidebar.getBoundingClientRect().width : 258;
+                host.style.left = left + 'px';
+            }
+
+            applyFixedHeader();
+            window.parent.addEventListener('resize', applyFixedHeader);
+            setTimeout(applyFixedHeader, 120);
+            setTimeout(applyFixedHeader, 450);
+            setTimeout(applyFixedHeader, 900);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 RS_FONT = "Poppins, sans-serif"
 RS_PERIOD_OPTIONS = ["June 2026", "May 2026", "April 2026"]
@@ -620,11 +693,16 @@ def _donut_legend_html(services_df, total_revenue):
 # PAGE: REVENUE SHARING
 # ══════════════════════════════════════════════
 def page_revenue_sharing():
-    from .navigation import show_topnav
-
     st.markdown('<div class="overview-page-marker rs-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     _inject_rs_page_css()
-    show_topnav("Revenue Sharing", show_search=False)
+
+    with st.container():
+        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        st.markdown(_rs_page_header_html(), unsafe_allow_html=True)
+        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+    _mount_rs_fixed_header()
 
     for key in ["rs_detail_page", "rs_filter_status"]:
         if key not in st.session_state:

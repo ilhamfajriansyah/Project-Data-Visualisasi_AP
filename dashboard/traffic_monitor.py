@@ -229,13 +229,50 @@ def _tm_page_header():
     """).strip()
 
 
-def _filter_bar_html():
-    return dedent("""
-    <div class="tm-filter-label-row">
-        <span class="tm-filter-icon">⚲</span>
-        <span class="tm-filter-title">Filters</span>
+def _filter_bar_v2_html(active_count: int) -> str:
+    badge = (
+        f'<span class="tm-filter-v2-badge">'
+        f'<span class="tm-filter-v2-dot"></span>&nbsp;{active_count} active'
+        f'</span>'
+        if active_count > 0 else ""
+    )
+    return dedent(f"""
+    <div class="tm-filter-v2-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Filter Aktif
+        {badge}
     </div>
     """).strip()
+
+
+def _filter_chip_state_css() -> str:
+    """Inject per-chip color based on whether the filter is at its default value."""
+    _DEFAULTS = {"tm_year": "2024", "tm_month": "All Months", "tm_terminal": "All Terminals"}
+    # columns: label=1st-child, year=2nd, month=3rd, terminal=4th
+    _NTH = {"tm_year": 2, "tm_month": 3, "tm_terminal": 4}
+
+    rules = []
+    for key, default in _DEFAULTS.items():
+        nth = _NTH[key]
+        is_active = st.session_state.get(key, default) != default
+        if is_active:
+            bg, border, color, svg = "#EEF2FF", "#C7D2FE", "#4338CA", "#818CF8"
+        else:
+            bg, border, color, svg = "#F8FAFC", "#E2E8F0", "#94A3B8", "#CBD5E1"
+        base = (
+            f"body:has(.tm-page-marker) "
+            f"[data-testid='stHorizontalBlock']:has(.tm-filter-v2-label) "
+            f"> div:nth-child({nth}) "
+            f"[data-testid='stSelectbox'] > div[data-baseweb='select'] > div:first-child"
+        )
+        rules.append(f"{base} {{ background:{bg}!important; border-color:{border}!important; color:{color}!important; }}")
+        rules.append(f"{base} svg {{ fill:{svg}!important; }}")
+
+    return f"<style>{''.join(rules)}</style>"
 
 
 def _mount_tm_fixed_header():
@@ -458,6 +495,7 @@ def _inject_tm_css():
         overflow-y: auto !important;
         overscroll-behavior: contain !important;
         scroll-behavior: smooth;
+        padding-top: 8px !important;
         padding-bottom: 28px !important;
         box-sizing: border-box !important;
     }}
@@ -470,15 +508,21 @@ def _inject_tm_css():
         background: #F8FAFC !important;
         border-bottom: 1px solid #E2E8F0 !important;
         box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08) !important;
-        padding: 14px 28px 12px !important;
+        height: 93px !important;
+        min-height: 93px !important;
+        max-height: 93px !important;
+        padding: 0 28px !important;
         margin: 0 !important;
         width: auto !important;
         box-sizing: border-box !important;
+        display: flex !important;
+        align-items: center !important;
+        overflow: hidden !important;
     }}
 
     body:has(.tm-page-marker) .tm-fixed-header-spacer {{
         display: block;
-        height: var(--tm-header-height, 84px);
+        height: 93px;
         width: 100%;
         flex-shrink: 0;
     }}
@@ -488,66 +532,158 @@ def _inject_tm_css():
         display: none;
     }}
 
+    body:has(.tm-page-marker) [data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-sticky-header-marker) {{
+        gap: 0 !important;
+        height: 100% !important;
+        justify-content: center !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-sticky-header-marker) > div[data-testid="stElementContainer"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-sticky-header-marker) {{
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+    }}
+
     body:has(.tm-page-marker) .tm-page-header {{
-        display: flex; align-items: flex-start; justify-content: flex-start; gap: 16px;
-        margin: 0 0 0; padding: 0;
+        display: flex; align-items: center; justify-content: flex-start; gap: 16px;
+        margin: 0; padding: 0;
+        height: 100%;
     }}
     body:has(.tm-page-marker) .tm-page-header-left {{
         display: flex; align-items: center; gap: 12px; min-width: 0;
     }}
     body:has(.tm-page-marker) .tm-page-icon {{
-        width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px;
+        width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px;
         display: flex; align-items: center; justify-content: center;
         background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
         color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
     }}
     body:has(.tm-page-marker) .tm-page-icon svg {{
-        width: 20px; height: 20px;
+        width: 18px; height: 18px;
     }}
     body:has(.tm-page-marker) .tm-page-header-copy {{
-        display: flex; flex-direction: column; justify-content: center; gap: 1px;
-        min-height: 42px; min-width: 0;
+        display: flex; flex-direction: column; justify-content: center; gap: 4px !important;
+        min-height: 36px; min-width: 0;
     }}
     body:has(.tm-page-marker) .tm-page-title-row {{
-        display: flex; align-items: center; gap: 10px; min-height: 22px;
+        display: flex; align-items: center; gap: 10px; min-height: 0 !important;
+        margin: 0 !important; padding: 0 !important;
     }}
-    body:has(.tm-page-marker) .tm-page-title {{
-        margin: 0; font-size: 20px; line-height: 1.08; font-weight: 800;
+    body:has(.tm-page-marker) h2.tm-page-title {{
+        margin: 0 !important; padding: 0 !important;
+        font-size: 18px; line-height: 1 !important; font-weight: 800;
         color: #0F172A; font-family: {TM_FONT} !important;
     }}
-    body:has(.tm-page-marker) .tm-page-sub {{
-        margin: 0; color: #64748B; font-size: 12.5px; line-height: 1.12;
+    body:has(.tm-page-marker) p.tm-page-sub {{
+        margin: 0 !important; padding: 0 !important;
+        color: #64748B; font-size: 12px; line-height: 1 !important;
         font-weight: 500; font-family: {TM_FONT} !important;
     }}
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has([data-testid="stSelectbox"]) {{
-        align-items: end !important;
-        margin: 0 0 12px !important;
-        padding: 12px 14px 8px !important;
+    /* ── Filter bar v2 ──────────────────────────────────────────── */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) {{
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        margin: 0 0 14px !important;
+        padding: 7px 12px !important;
         background: #ffffff !important;
         border: 1px solid #E2E8F0 !important;
         border-radius: 12px !important;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
+        flex-wrap: nowrap !important;
+        width: fit-content !important;
     }}
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has([data-testid="stSelectbox"]) .overview-filter-label {{
-        display: none !important;
+    /* Label column: collapse to content width, don't stretch */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:first-child {{
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
     }}
-    body:has(.tm-page-marker) .tm-filter-label-row {{
-        display: flex; align-items: center; gap: 8px;
-        height: 52px;
+    /* Selectbox & button columns: also auto-width */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:not(:first-child) {{
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
     }}
-    body:has(.tm-page-marker) .tm-filter-title {{
-        font-size: 12px; font-weight: 700; color: #475569; font-family: {TM_FONT} !important;
+    /* Strip all default Streamlit spacing inside the filter bar */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stElementContainer"],
+    body:has(.tm-page-marker) [data-testid="stElementContainer"]:has(.tm-filter-v2-label) {{
+        margin: 0 !important;
+        padding: 0 !important;
     }}
-    body:has(.tm-page-marker) .tm-filter-actions {{
-        display: flex; justify-content: flex-end; gap: 8px; align-items: end; height: 52px;
+    /* Flex-center the wrappers containing the label */
+    body:has(.tm-page-marker) [data-testid="stVerticalBlock"]:has(.tm-filter-v2-label),
+    body:has(.tm-page-marker) [data-testid="stMarkdownContainer"]:has(.tm-filter-v2-label) {{
+        display: flex !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }}
-    body:has(.tm-page-marker) .tm-filter-btn {{
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;
-        font-family: {TM_FONT} !important; border: 1px solid #E2E8F0; background: #ffffff; color: #475569;
+    body:has(.tm-page-marker) .tm-filter-v2-label {{
+        display: flex; align-items: center; gap: 7px;
+        padding-right: 14px; border-right: 1.5px solid #E2E8F0;
+        white-space: nowrap; line-height: 1;
+        font-size: 11.5px; font-weight: 700; color: #475569;
+        font-family: {TM_FONT} !important;
     }}
-    body:has(.tm-page-marker) .tm-filter-btn.is-primary {{
-        background: #2563EB; border-color: #2563EB; color: #ffffff;
+    body:has(.tm-page-marker) .tm-filter-v2-badge {{
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 999px;
+        background: #F0FDF4; border: 1px solid #BBF7D0;
+        font-size: 10.5px; font-weight: 700; color: #16A34A;
+        white-space: nowrap; font-family: {TM_FONT} !important;
+        flex-shrink: 0;
+    }}
+    body:has(.tm-page-marker) .tm-filter-v2-dot {{
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #16A34A; display: inline-block; flex-shrink: 0;
+    }}
+    /* Selectboxes inside filter bar → chip style */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] {{
+        margin: 0 !important;
+        width: 160px !important;
+        flex-shrink: 0 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {{
+        width: 160px !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {{
+        border-radius: 999px !important;
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        min-height: 30px !important; height: 30px !important;
+        width: 160px !important;
+        padding: 0 10px 0 14px !important;
+        display: flex !important; align-items: center !important;
+        box-sizing: border-box !important;
+        font-size: 12px !important; font-weight: 600 !important;
+        color: #94A3B8 !important; font-family: {TM_FONT} !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {{
+        fill: #CBD5E1 !important;
+        flex-shrink: 0 !important;
+    }}
+    /* Clear All + Apply: same width as dropdowns */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-secondary"] {{
+        border: 1px solid #E2E8F0 !important; border-radius: 8px !important;
+        background: #ffffff !important; color: #475569 !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
+        min-height: 30px !important; height: 30px !important;
+        width: 160px !important; padding: 0 !important;
+        font-family: {TM_FONT} !important; white-space: nowrap !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-primary"] {{
+        border: none !important; border-radius: 8px !important;
+        background: #4F46E5 !important; color: #ffffff !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
+        min-height: 30px !important; height: 30px !important;
+        width: 160px !important; padding: 0 !important;
+        font-family: {TM_FONT} !important;
+        box-shadow: 0 2px 8px rgba(79,70,229,0.25) !important;
+        white-space: nowrap !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-grid {{
         display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; width: 100%;
@@ -722,23 +858,32 @@ def page_traffic_monitor():
     st.markdown('<div class="tm-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
     _mount_tm_fixed_header()
 
-    ff0, ff1, ff2, ff3, ff4 = st.columns([0.72, 1.0, 1.15, 1.25, 2.0])
+    active_count = sum([
+        st.session_state.get("tm_year", "2024") != "2024",
+        st.session_state.get("tm_month", "All Months") != "All Months",
+        st.session_state.get("tm_terminal", "All Terminals") != "All Terminals",
+    ])
+    st.markdown(_filter_chip_state_css(), unsafe_allow_html=True)
+    ff0, ff1, ff2, ff3, ff4, ff5 = st.columns(
+        [0.85, 0.9, 1.05, 1.2, 0.65, 0.55], gap="small"
+    )
     with ff0:
-        st.markdown(_filter_bar_html(), unsafe_allow_html=True)
+        st.markdown(_filter_bar_v2_html(active_count), unsafe_allow_html=True)
     with ff1:
-        st.selectbox("Year", TM_YEAR_OPTIONS, key="tm_year", label_visibility="collapsed")
+        st.selectbox("Tahun", TM_YEAR_OPTIONS, key="tm_year", label_visibility="collapsed")
     with ff2:
-        st.selectbox("Month", TM_MONTH_OPTIONS, key="tm_month", label_visibility="collapsed")
+        st.selectbox("Bulan", TM_MONTH_OPTIONS, key="tm_month", label_visibility="collapsed")
     with ff3:
         st.selectbox("Terminal", TM_TERMINAL_OPTIONS, key="tm_terminal", label_visibility="collapsed")
     with ff4:
-        st.markdown(
-            '<div class="tm-filter-actions">'
-            '<span class="tm-filter-btn">Reset</span>'
-            '<span class="tm-filter-btn is-primary">Apply</span>'
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        if st.button("Clear All", key="tm_clear_all", use_container_width=True):
+            st.session_state.tm_year = "2024"
+            st.session_state.tm_month = "All Months"
+            st.session_state.tm_terminal = "All Terminals"
+            st.rerun()
+    with ff5:
+        if st.button("Apply", key="tm_apply", use_container_width=True, type="primary"):
+            st.rerun()
 
     spark_total = trend_df["FY 2024"].tolist()
     spark_dom = dom_intl_df["Domestic"].tolist()

@@ -1,4 +1,4 @@
-from .navigation import show_topnav
+from .navigation import show_topnav, topnav_actions_html
 from .accrual_billing import page_accrual_billing
 from .revenue_sharing import page_revenue_sharing
 from .room_database import render_room_database
@@ -10,6 +10,7 @@ from .dashboard_style import DASHBOARD_CSS
 from login.access_control import Role, get_current_role, init_auth_state, is_authenticated, logout_user
 from .shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -435,7 +436,9 @@ def inject_dashboard_css():
     }
     .ap-brand {
         margin: 0 !important;
-        padding: 10px 24px 16px !important;
+        padding: 13px 24px 13px !important;
+        display: flex !important;
+        align-items: center !important;
         border-bottom: 1px solid #E5E7EB !important;
     }
 
@@ -497,7 +500,7 @@ def inject_dashboard_css():
         padding: 5px 12px;
         border-radius: 10px;
         color: #64748B;
-        font-size: 16px;
+        font-size: 13px;
         font-weight: 600;
         font-family: 'Poppins', sans-serif !important;
         line-height: 1.2;
@@ -516,7 +519,8 @@ def inject_dashboard_css():
         height: 28px;
         border-radius: 7px;
         flex-shrink: 0;
-        transition: none !important;
+        box-sizing: border-box !important;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
     }
 
     .nav-icon-box svg {
@@ -526,7 +530,8 @@ def inject_dashboard_css():
     }
 
     .nav-label {
-        min-width: 0;
+        flex-shrink: 0;
+        overflow: visible;
         white-space: nowrap;
         letter-spacing: -0.15px;
         color: inherit;
@@ -551,7 +556,7 @@ def inject_dashboard_css():
         color: #7C3AED !important;
         font-weight: 700 !important;
         height: 36px !important;
-        width: fit-content !important;
+        width: calc(100% - 28px) !important;
         max-width: calc(100% - 28px) !important;
     }
 
@@ -629,13 +634,11 @@ def inject_dashboard_css():
         background: rgba(241, 245, 249, 0.5) !important;
         color: #1E293B !important;
         border-radius: 12px !important;
-        width: fit-content !important;
     }
 
     [data-testid="stSidebar"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]):hover + div[data-testid="stElementContainer"] .nav-row.nav-overlay .nav-icon-box {
         background-color: #E2E8F0 !important;
         color: #1E293B !important;
-        transform: scale(1.04);
     }
 
     .ap-sidebar-footer {
@@ -795,6 +798,129 @@ def inject_dashboard_css():
 
     .overview-page-marker {
         display: none;
+    }
+
+    /* The marker's own wrapper still occupies a flex slot in Streamlit's
+       vertical block (contributing a default "gap" before the next element)
+       even though its content is display:none. Remove the wrapper itself
+       from flow so it doesn't add unwanted spacing. */
+    div[data-testid="stElementContainer"]:has(.overview-page-marker) {
+        display: none !important;
+    }
+
+    /* ── Overview header — identical mechanism to Traffic Monitor's header:
+       position:fixed (pinned to the viewport, immune to normal-flow gaps),
+       sized to land its bottom border on the sidebar's divider line:
+       stSidebarContent padding-top (24px) + .ap-brand box
+       (13px + 42px logo + 13px padding + 1px border) = 93px. */
+    body:has(.overview-page-marker) .ov-fixed-header-active {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        z-index: 200 !important;
+        background: #F8FAFC !important;
+        border-bottom: 1px solid #E5E7EB !important;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08) !important;
+        height: 93px !important;
+        min-height: 93px !important;
+        max-height: 93px !important;
+        padding: 0 28px !important;
+        margin: 0 !important;
+        width: auto !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        align-items: center !important;
+        overflow: visible !important;
+    }
+    body:has(.overview-page-marker) .ov-fixed-header-spacer {
+        display: block !important;
+        height: 93px !important;
+        min-height: 93px !important;
+        max-height: 93px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100%;
+        flex-shrink: 0;
+    }
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-fixed-header-spacer) {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 93px !important;
+        min-height: 93px !important;
+        max-height: 93px !important;
+    }
+    /* Collapse the invisible JS-mount component (iframe) so it doesn't add
+       its own default element spacing between the spacer and the filters. */
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(> iframe) {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 0 !important;
+        min-height: 0 !important;
+    }
+    /* Pull the filter row up to close the remaining default Streamlit gap
+       after the (mandatory, fixed-height) spacer — keeps it compact/close
+       to the header without overlapping the fixed header itself. */
+    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.overview-filter-label) {
+        margin-top: -85px !important;
+    }
+    body:has(.overview-page-marker) .ov-sticky-header-marker,
+    body:has(.overview-page-marker) .ov-sticky-header-end {
+        display: none;
+    }
+    body:has(.overview-page-marker) [data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ov-sticky-header-marker) {
+        gap: 0 !important;
+        height: 100% !important;
+        justify-content: center !important;
+    }
+    body:has(.overview-page-marker) [data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ov-sticky-header-marker) > div[data-testid="stElementContainer"] {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-sticky-header-marker) {
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    body:has(.overview-page-marker) .ov-page-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100%;
+        gap: 16px;
+        height: 100%;
+    }
+    body:has(.overview-page-marker) .ov-page-header-left {
+        display: flex; align-items: center; gap: 12px; min-width: 0;
+    }
+    body:has(.overview-page-marker) .ov-page-icon {
+        width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
+        color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
+    }
+    body:has(.overview-page-marker) .ov-page-icon svg {
+        width: 18px; height: 18px;
+    }
+    body:has(.overview-page-marker) .ov-page-header-copy {
+        display: flex; flex-direction: column; justify-content: center; gap: 4px !important;
+        min-height: 36px; min-width: 0;
+    }
+    body:has(.overview-page-marker) .ov-page-title-row {
+        display: flex; align-items: center; gap: 10px; min-height: 0 !important;
+        margin: 0 !important; padding: 0 !important;
+    }
+    body:has(.overview-page-marker) h2.ov-page-title {
+        margin: 0 !important; padding: 0 !important;
+        font-size: 18px; line-height: 1 !important; font-weight: 800;
+        color: #0F172A; font-family: 'Poppins', sans-serif !important;
+    }
+    body:has(.overview-page-marker) p.ov-page-sub {
+        margin: 0 !important; padding: 0 !important;
+        color: #64748B; font-size: 12px; line-height: 1 !important;
+        font-weight: 500; font-family: 'Poppins', sans-serif !important;
+    }
+    body:has(.overview-page-marker) .ap-top-actions {
+        flex-shrink: 0;
     }
 
     body:has(.overview-page-marker) [data-testid="stMain"] [data-testid="stSelectbox"] > div > div {
@@ -2373,6 +2499,63 @@ NAV_ICONS = {
 }
 
 
+def _overview_page_header_html():
+    return dedent(f"""
+    <div class="ov-page-header">
+        <div class="ov-page-header-left">
+            <div class="ov-page-icon" aria-hidden="true">{NAV_ICONS["Overview"]}</div>
+            <div class="ov-page-header-copy">
+                <div class="ov-page-title-row">
+                    <h2 class="ov-page-title">Overview</h2>
+                </div>
+                <p class="ov-page-sub">Monitor commercial revenue and operational performance.</p>
+            </div>
+        </div>
+        {topnav_actions_html()}
+    </div>
+    """).strip()
+
+
+def _mount_overview_fixed_header():
+    components.html(
+        """
+        <script>
+        (function () {
+            const doc = window.parent.document;
+
+            function findHeaderHost(marker) {
+                return (
+                    marker.closest('[data-testid="stVerticalBlockBorderWrapper"]')
+                    || marker.closest('[data-testid="stVerticalBlock"]')
+                );
+            }
+
+            function applyFixedHeader() {
+                const marker = doc.querySelector('.ov-sticky-header-marker');
+                if (!marker) return;
+
+                const host = findHeaderHost(marker);
+                if (!host) return;
+
+                host.classList.add('ov-fixed-header-active');
+
+                const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+                const left = sidebar ? sidebar.getBoundingClientRect().width : 258;
+                host.style.left = left + 'px';
+            }
+
+            applyFixedHeader();
+            window.parent.addEventListener('resize', applyFixedHeader);
+            setTimeout(applyFixedHeader, 120);
+            setTimeout(applyFixedHeader, 450);
+            setTimeout(applyFixedHeader, 900);
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def _go_to_menu(menu_name):
     if not can_access_menu(menu_name):
         st.session_state.active_menu = "Overview"
@@ -2520,7 +2703,14 @@ def _nav_sub(icon, label):
 # ══════════════════════════════════════════════
 def page_overview(df_raw):
     st.markdown('<div class="overview-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-    show_topnav("Overview", show_search=False)
+
+    with st.container():
+        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        st.markdown(_overview_page_header_html(), unsafe_allow_html=True)
+        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+    _mount_overview_fixed_header()
 
     for key in ["show_all_rev", "show_all_best", "show_all_detail", "overview_detail_page"]:
         if key not in st.session_state:

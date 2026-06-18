@@ -1,8 +1,78 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import date, datetime
+from textwrap import dedent
 
 from .shared_import import get_shared_import_data, get_shared_import_meta
+from .navigation import topnav_actions_html
+
+DV_PAGE_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+    'width="18" height="18" fill="none" stroke="currentColor" '
+    'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'
+    '<path d="m9 12 2 2 4-4"/>'
+    '</svg>'
+)
+
+
+def _dv_page_header_html():
+    return dedent(f"""
+    <div class="ov-page-header">
+        <div class="ov-page-header-left">
+            <div class="ov-page-icon" aria-hidden="true">{DV_PAGE_ICON_SVG}</div>
+            <div class="ov-page-header-copy">
+                <div class="ov-page-title-row">
+                    <h2 class="ov-page-title">Data Verification</h2>
+                </div>
+                <p class="ov-page-sub">Verifikasi dan validasi data yang telah diimport dari Import Manager.</p>
+            </div>
+        </div>
+        {topnav_actions_html()}
+    </div>
+    """).strip()
+
+
+def _mount_dv_fixed_header():
+    components.html(
+        """
+        <script>
+        (function () {
+            const doc = window.parent.document;
+
+            function findHeaderHost(marker) {
+                return (
+                    marker.closest('[data-testid="stVerticalBlockBorderWrapper"]')
+                    || marker.closest('[data-testid="stVerticalBlock"]')
+                );
+            }
+
+            function applyFixedHeader() {
+                const marker = doc.querySelector('.ov-sticky-header-marker');
+                if (!marker) return;
+
+                const host = findHeaderHost(marker);
+                if (!host) return;
+
+                host.classList.add('ov-fixed-header-active');
+
+                const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+                const left = sidebar ? sidebar.getBoundingClientRect().width : 258;
+                host.style.left = left + 'px';
+            }
+
+            applyFixedHeader();
+            window.parent.addEventListener('resize', applyFixedHeader);
+            setTimeout(applyFixedHeader, 120);
+            setTimeout(applyFixedHeader, 450);
+            setTimeout(applyFixedHeader, 900);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 # ─────────────────────────────────────────────
 # DUMMY DATA — nanti diganti dari session_state import_manager
@@ -78,6 +148,13 @@ def _get_verification_data() -> pd.DataFrame:
 # ─────────────────────────────────────────────
 _PAGE_CSS = """
 <style>
+/* Pull the action-buttons row up to close the default Streamlit gap left
+   after the fixed header's spacer (mirrors the same fix used elsewhere)
+   — keeps it compact/close to the header. */
+body:has(.dv-page-marker) div[data-testid="stElementContainer"]:has(.dv-actions-marker) + div[data-testid="stHorizontalBlock"] {
+    margin-top: -85px !important;
+}
+
 /* ── KPI CARDS ── */
 .dv-kpi {
     background: rgba(255,255,255,0.68);
@@ -252,45 +329,19 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
 def render_data_verification():
     """Call this from dashboard.py router."""
     _init_state()
+    st.markdown('<div class="overview-page-marker dv-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
 
-    # ── Header + Topnav ──
-    h1, h2 = st.columns([5, 5])
-    with h1:
-        st.markdown("""
-        <div style="padding-top:0;">
-            <div style="font-size:19px;font-weight:800;color:#0f172a;line-height:1.2;">Data Verification</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
-                Verifikasi dan validasi data yang telah diimport dari Import Manager.
-            </div>
-        </div>""", unsafe_allow_html=True)
-    with h2:
-        initial = st.session_state.get("user_name","Admin")[0].upper()
-        uname   = st.session_state.get("user_name","Admin")
-        uemail  = st.session_state.get("user_email","angkasapura@mail.com")
-        st.markdown(f"""
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:0;">
-            <div style="width:34px;height:34px;border-radius:50%;
-                background:rgba(255,255,255,0.72);border:1px solid rgba(255,255,255,0.95);
-                backdrop-filter:blur(10px);display:flex;align-items:center;
-                justify-content:center;font-size:16px;
-                box-shadow:0 2px 8px rgba(99,102,241,0.08);">🔔</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div style="background:linear-gradient(135deg,#6366f1,#ec4899);
-                    border-radius:50%;width:34px;height:34px;
-                    display:flex;align-items:center;justify-content:center;
-                    color:#fff;font-size:13px;font-weight:700;
-                    box-shadow:0 3px 12px rgba(99,102,241,0.35);">{initial}</div>
-                <div>
-                    <div style="font-size:12px;font-weight:700;color:#1e293b;">{uname}</div>
-                    <div style="font-size:10px;color:#94a3b8;">{uemail}</div>
-                </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        st.markdown(_dv_page_header_html(), unsafe_allow_html=True)
+        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+    _mount_dv_fixed_header()
 
     # ── Action Buttons ──
+    st.markdown('<div class="dv-actions-marker"></div>', unsafe_allow_html=True)
     _, ab1, ab2 = st.columns([6, 1.6, 1.8])
     with ab1:
         df_exp = st.session_state.dv_df.copy()

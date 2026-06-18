@@ -7,6 +7,33 @@ import streamlit as st
 from login.access_control import Role, get_current_role
 
 
+def topnav_actions_html():
+    """Bell + profile/logout menu — shared so any custom header layout can reuse it
+    without duplicating (and risking breaking) the logout link."""
+    user_name = escape(st.session_state.user_name or "User")
+    role_label = "Admin" if get_current_role() == Role.ADMIN else "Analyst"
+    return f"""
+    <div class="ap-top-actions">
+        <div class="ap-top-bell">🔔</div>
+        <details class="ap-profile-details">
+            <summary aria-label="Profile menu">
+                <span class="ap-profile-avatar" title="{user_name}"></span>
+                <span class="ap-user-meta">
+                    <span>{user_name}</span>
+                    <span class="ap-user-role">{role_label}</span>
+                </span>
+            </summary>
+            <div class="ap-profile-menu">
+                <a class="ap-profile-menu-item" href="?ap_logout=1" target="_self">
+                    <span class="ap-profile-menu-icon">↪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </details>
+    </div>
+    """
+
+
 def show_topnav(title="Non Aeronautical Dashboard", subtitle=None, show_search=True):
     if show_search:
         n1, n2, n3 = st.columns([3, 4, 3])
@@ -34,26 +61,5 @@ def show_topnav(title="Non Aeronautical Dashboard", subtitle=None, show_search=T
                 key="search_bar",
             )
     with n3:
-        user_name = escape(st.session_state.user_name or "User")
-        role_label = "Admin" if get_current_role() == Role.ADMIN else "Analyst"
-        st.markdown(f"""
-        <div class="ap-top-actions">
-            <div class="ap-top-bell">🔔</div>
-            <details class="ap-profile-details">
-                <summary aria-label="Profile menu">
-                    <span class="ap-profile-avatar" title="{user_name}"></span>
-                    <span class="ap-user-meta">
-                        <span>{user_name}</span>
-                        <span class="ap-user-role">{role_label}</span>
-                    </span>
-                </summary>
-                <div class="ap-profile-menu">
-                    <a class="ap-profile-menu-item" href="?ap_logout=1">
-                        <span class="ap-profile-menu-icon">↪</span>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </details>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(topnav_actions_html(), unsafe_allow_html=True)
     st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)

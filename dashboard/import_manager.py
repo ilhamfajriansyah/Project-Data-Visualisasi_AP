@@ -14,6 +14,75 @@ from .shared_import import (
     SHARED_META_KEY,
     MAX_IMPORT_FILE_BYTES,
 )
+from .navigation import topnav_actions_html
+
+IM_PAGE_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+    'width="18" height="18" fill="none" stroke="currentColor" '
+    'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true">'
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
+    '<polyline points="17 8 12 3 7 8"/>'
+    '<line x1="12" y1="3" x2="12" y2="15"/>'
+    '</svg>'
+)
+
+
+def _im_page_header_html():
+    return dedent(f"""
+    <div class="ov-page-header">
+        <div class="ov-page-header-left">
+            <div class="ov-page-icon" aria-hidden="true">{IM_PAGE_ICON_SVG}</div>
+            <div class="ov-page-header-copy">
+                <div class="ov-page-title-row">
+                    <h2 class="ov-page-title">Import Manager</h2>
+                </div>
+                <p class="ov-page-sub">Unggah file performa komersial Anda untuk memperbarui analytics engine.</p>
+            </div>
+        </div>
+        {topnav_actions_html()}
+    </div>
+    """).strip()
+
+
+def _mount_im_fixed_header():
+    components.html(
+        """
+        <script>
+        (function () {
+            const doc = window.parent.document;
+
+            function findHeaderHost(marker) {
+                return (
+                    marker.closest('[data-testid="stVerticalBlockBorderWrapper"]')
+                    || marker.closest('[data-testid="stVerticalBlock"]')
+                );
+            }
+
+            function applyFixedHeader() {
+                const marker = doc.querySelector('.ov-sticky-header-marker');
+                if (!marker) return;
+
+                const host = findHeaderHost(marker);
+                if (!host) return;
+
+                host.classList.add('ov-fixed-header-active');
+
+                const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+                const left = sidebar ? sidebar.getBoundingClientRect().width : 258;
+                host.style.left = left + 'px';
+            }
+
+            applyFixedHeader();
+            window.parent.addEventListener('resize', applyFixedHeader);
+            setTimeout(applyFixedHeader, 120);
+            setTimeout(applyFixedHeader, 450);
+            setTimeout(applyFixedHeader, 900);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 # ─────────────────────────────────────────────
 # DUMMY DATA
@@ -68,6 +137,13 @@ def _get_belum_submit():
 # ─────────────────────────────────────────────
 _PAGE_CSS = """
 <style>
+/* Pull the workspace surface up to close the default Streamlit gap left
+   after the fixed header's spacer (mirrors the same fix used elsewhere)
+   — keeps it compact/close to the header. */
+body:has(.im-page-marker) div[data-testid="stElementContainer"]:has(.im-manager-surface) {
+    margin-top: -85px !important;
+}
+
 /* ── STEPPER ── */
 .stepper-wrap {
     display: flex; align-items: center; gap: 0;
@@ -2705,22 +2781,20 @@ def _patch_upload_limit_text():
 
 def render_import_manager():
     _init_state()
+    st.markdown('<div class="overview-page-marker im-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
     st.markdown(_REFINED_IMPORT_CSS, unsafe_allow_html=True)
     st.markdown(_NEW_DESIGN_CSS, unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        st.markdown(_im_page_header_html(), unsafe_allow_html=True)
+        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+    _mount_im_fixed_header()
+
     st.markdown('<div class="im-manager-surface">', unsafe_allow_html=True)
-
-    # Page title
-    st.markdown(dedent("""
-    <div style="margin-bottom:20px;">
-        <div class="im-page-title-v2">Import Data Komersial</div>
-        <div class="im-page-sub-v2">
-            Unggah file performa komersial Anda untuk memperbarui
-            <span>analytics engine</span>.
-        </div>
-    </div>
-    """).strip(), unsafe_allow_html=True)
-
     _render_new_workspace()
     st.markdown('</div>', unsafe_allow_html=True)
     _patch_upload_limit_text()
