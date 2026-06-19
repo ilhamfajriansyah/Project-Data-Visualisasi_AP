@@ -80,8 +80,78 @@ def _mount_rs_fixed_header():
     )
 
 RS_FONT = "Poppins, sans-serif"
+RS_YEAR_OPTIONS = ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"]
+RS_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+RS_TERMINAL_OPTIONS = ["All Terminal", "T1", "T2", "T3"]
 RS_PERIOD_OPTIONS = ["June 2026", "May 2026", "April 2026"]
 RS_DONUT_COLORS = ["#6366F1", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#64748B"]
+
+
+def clear_rs_filters():
+    st.session_state.rs_year = "All Year"
+    st.session_state.rs_month = "All Month"
+    st.session_state.rs_terminal = "All Terminal"
+    st.session_state.rs_filter_status = "All"
+    if "rs_detail_search" in st.session_state:
+        st.session_state.rs_detail_search = ""
+
+
+def _rs_filter_bar_v2_html(active_count: int) -> str:
+    badge = (
+        f'<span class="rs-filter-v2-badge">'
+        f'<span class="rs-filter-v2-dot"></span>&nbsp;{active_count} active'
+        f'</span>'
+        if active_count > 0 else ""
+    )
+    return dedent(f"""
+    <div class="rs-filter-v2-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Filter Aktif
+        {badge}
+    </div>
+    """).strip()
+
+
+def _rs_filter_chip_state_css() -> str:
+    """Inject per-chip color based on whether the filter is at its default value."""
+    _DEFAULTS = {"rs_terminal": "All Terminal", "rs_year": "All Year", "rs_month": "All Month"}
+    _NTH = {"rs_terminal": 2, "rs_year": 3, "rs_month": 4}
+
+    rules = []
+    for key, default in _DEFAULTS.items():
+        nth = _NTH[key]
+        is_active = st.session_state.get(key, default) != default
+        if is_active:
+            bg, border, color, svg = "#EEF2FF", "#C7D2FE", "#4338CA", "#818CF8"
+        else:
+            bg, border, color, svg = "#F8FAFC", "#E2E8F0", "#94A3B8", "#CBD5E1"
+        base = (
+            f"body:has(.rs-page-marker) "
+            f"[data-testid='stHorizontalBlock']:has(.rs-filter-v2-label) "
+            f"> div:nth-child({nth}) "
+            f"[data-testid='stSelectbox'] > div[data-baseweb='select'] > div:first-child"
+        )
+        rules.append(f"{base} {{ background:{bg}!important; border-color:{border}!important; color:{color}!important; }}")
+        rules.append(f"{base} svg {{ fill:{svg}!important; }}")
+
+    return f"<style>{''.join(rules)}</style>"
+
+
+def _compute_filtered_kpis(filtered_detail):
+    if filtered_detail.empty:
+        return 0, 0, 0, 0
+    total_rev = filtered_detail["Revenue"].map(_parse_rp).sum()
+    rev_share = filtered_detail["Management Share"].map(_parse_rp).sum()
+    settled_count = (filtered_detail["Settlement Status"] == "Settled").sum()
+    total_count = len(filtered_detail)
+    settlement_rate = int(round(settled_count / total_count * 100)) if total_count else 0
+    issues = int(filtered_detail["Settlement Status"].isin(["Failed", "Conflict"]).sum())
+    return total_rev, rev_share, settlement_rate, issues
 RS_SETTLEMENT_FILTER_OPTIONS = ["All", "Settled", "Pending", "Failed", "Conflict"]
 
 
@@ -118,13 +188,27 @@ def get_terminal_files():
     })
 
 
-def get_trend_data():
-    return pd.DataFrame({
+def get_trend_data(terminal_filter="All Terminal"):
+    term_map = {"T1": "Terminal 1", "T2": "Terminal 2", "T3": "Terminal 3"}
+    normalized_filter = term_map.get(terminal_filter, terminal_filter)
+    df = pd.DataFrame({
         "Bulan":           ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
         "Ground Handling": [0.9, 1.0, 0.95, 1.1, 1.05, 1.2],
         "PSC":             [0.7, 0.8, 0.75, 0.85, 0.9, 0.95],
         "Others":          [0.5, 0.6, 0.55, 0.65, 0.7, 0.8],
     })
+    if normalized_filter == "Terminal 1":
+        factor = 0.42
+    elif normalized_filter == "Terminal 2":
+        factor = 0.38
+    elif normalized_filter == "Terminal 3":
+        factor = 0.20
+    else:
+        factor = 1.0
+
+    for col in ["Ground Handling", "PSC", "Others"]:
+        df[col] = df[col] * factor
+    return df
 
 
 def fmt_status_badge(status):
@@ -351,6 +435,111 @@ def _inject_rs_page_css():
     <style>
     .rs-page-marker { display: none; }
 
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) {
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 16px !important;
+        margin-top: -28px !important;
+        margin-bottom: 0px !important;
+        padding: 6px 16px !important;
+        background: #ffffff !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
+        flex-wrap: nowrap !important;
+        width: fit-content !important;
+        padding-top: 0 !important;
+    }
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-kpi-grid) {
+        margin-top: -4px !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:first-child {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:not(:first-child) {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stElementContainer"],
+    body:has(.rs-page-marker) [data-testid="stElementContainer"]:has(.rs-filter-v2-label) {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stVerticalBlock"]:has(.rs-filter-v2-label),
+    body:has(.rs-page-marker) [data-testid="stMarkdownContainer"]:has(.rs-filter-v2-label) {
+        display: flex !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    body:has(.rs-page-marker) .rs-filter-v2-label {
+        display: flex; align-items: center; gap: 7px;
+        padding-right: 18px; border-right: 1.5px solid #E2E8F0;
+        white-space: nowrap; line-height: 1;
+        font-size: 13px; font-weight: 700; color: #475569;
+        font-family: Poppins, sans-serif !important;
+        height: 38px !important;
+    }
+    body:has(.rs-page-marker) .rs-filter-v2-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 999px;
+        background: #F0FDF4; border: 1px solid #BBF7D0;
+        font-size: 10.5px; font-weight: 700; color: #16A34A;
+        white-space: nowrap; font-family: Poppins, sans-serif !important;
+        flex-shrink: 0;
+    }
+    body:has(.rs-page-marker) .rs-filter-v2-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #16A34A; display: inline-block; flex-shrink: 0;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] {
+        margin: 0 !important;
+        width: 140px !important;
+        flex-shrink: 0 !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {
+        width: 140px !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {
+        border-radius: 12px !important;
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: 140px !important;
+        padding: 0 12px 0 16px !important;
+        display: flex !important; align-items: center !important;
+        box-sizing: border-box !important;
+        font-size: 13px !important; font-weight: 600 !important;
+        color: #94A3B8 !important; font-family: Poppins, sans-serif !important;
+        transition: all 0.2s ease !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
+        fill: #CBD5E1 !important;
+        flex-shrink: 0 !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {
+        border-color: #6366F1 !important;
+        background: #ffffff !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="baseButton-secondary"] {
+        border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+        background: #ffffff !important; color: #475569 !important;
+        font-size: 13px !important; font-weight: 700 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: auto !important; padding: 0 16px !important;
+        font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+        transition: all 0.2s ease !important;
+        box-shadow: none !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="baseButton-secondary"]:hover {
+        border-color: #6366F1 !important;
+        color: #6366F1 !important;
+        background: #F8FAFC !important;
+    }
+
     body:has(.rs-page-marker) .rs-kpi-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -555,6 +744,12 @@ def _inject_rs_page_css():
         .rs-donut-body { flex-direction: column; }
         .rs-donut-chart-slot { flex-basis: auto; width: 100%; }
     }
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-last-update) {
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -693,6 +888,24 @@ def _donut_legend_html(services_df, total_revenue):
 # PAGE: REVENUE SHARING
 # ══════════════════════════════════════════════
 def page_revenue_sharing():
+    for key, default in [
+        ("rs_year", "All Year"),
+        ("rs_month", "All Month"),
+        ("rs_terminal", "All Terminal"),
+        ("rs_detail_page", 1),
+        ("rs_filter_status", "All"),
+    ]:
+        if key not in st.session_state:
+            st.session_state[key] = default
+    if st.session_state.get("rs_filter_status") not in RS_SETTLEMENT_FILTER_OPTIONS:
+        st.session_state.rs_filter_status = "All"
+
+    active_count = sum([
+        st.session_state.get("rs_year", "All Year") != "All Year",
+        st.session_state.get("rs_month", "All Month") != "All Month",
+        st.session_state.get("rs_terminal", "All Terminal") != "All Terminal",
+    ])
+
     st.markdown('<div class="overview-page-marker rs-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     _inject_rs_page_css()
 
@@ -702,28 +915,68 @@ def page_revenue_sharing():
         st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    ff0, ff1, ff2, ff3, ff4 = st.columns(
+        [0.85, 1.1, 1.1, 1.1, 0.85], gap="small"
+    )
+    with ff0:
+        st.markdown(_rs_filter_bar_v2_html(active_count), unsafe_allow_html=True)
+    with ff1:
+        st.selectbox("Terminal", RS_TERMINAL_OPTIONS, key="rs_terminal", label_visibility="collapsed")
+    with ff2:
+        st.selectbox("Tahun", RS_YEAR_OPTIONS, key="rs_year", label_visibility="collapsed")
+    with ff3:
+        st.selectbox("Bulan", RS_MONTH_OPTIONS, key="rs_month", label_visibility="collapsed")
+    with ff4:
+        st.button("Clear All", key="rs_clear_all", use_container_width=True, on_click=clear_rs_filters)
+
     _mount_rs_fixed_header()
+    st.markdown(_rs_filter_chip_state_css(), unsafe_allow_html=True)
 
-    for key in ["rs_detail_page", "rs_filter_status"]:
-        if key not in st.session_state:
-            st.session_state[key] = 1 if key == "rs_detail_page" else "All"
-    if st.session_state.get("rs_filter_status") not in RS_SETTLEMENT_FILTER_OPTIONS:
-        st.session_state.rs_filter_status = "All"
 
-    pf1, pf2, pf3 = st.columns([1.35, 1.35, 3.3])
-    with pf1:
-        st.markdown(_overview_filter_label("Periode"), unsafe_allow_html=True)
-        st.selectbox("Periode", RS_PERIOD_OPTIONS, key="rs_period", label_visibility="collapsed")
-    with pf3:
-        st.markdown(
-            '<div style="height:52px;display:flex;align-items:end;justify-content:flex-end;'
-            f'color:#64748B;font-size:12px;font-weight:500;font-family:{RS_FONT};">'
-            "Data terakhir diperbarui: 02 Jun 2026 10:30 WIB</div>",
-            unsafe_allow_html=True,
-        )
+    MONTH_MAP = {
+        "Jan": "Jan", "Feb": "Feb", "Mar": "Mar", "Apr": "Apr",
+        "May": "Mei", "Jun": "Jun", "Jul": "Jul", "Aug": "Aug",
+        "Sep": "Sep", "Oct": "Oct", "Nov": "Nov", "Dec": "Dec"
+    }
 
-    services_df = get_services_data()
-    total_revenue, revenue_share, settlement_rate, issues = _compute_kpis(services_df)
+    # Load granular detail dataframe
+    detail_df_raw = get_detail_revenue_sharing_data()
+
+    # Apply global filters (Year, Month, Terminal)
+    filtered_detail = detail_df_raw.copy()
+    if st.session_state.rs_year != "All Year":
+        filtered_detail = filtered_detail[filtered_detail["Date"].str.endswith(st.session_state.rs_year)]
+    if st.session_state.rs_month != "All Month":
+        month_abbr = MONTH_MAP.get(st.session_state.rs_month)
+        if month_abbr:
+            filtered_detail = filtered_detail[filtered_detail["Date"].str.contains(month_abbr, case=False)]
+    if st.session_state.rs_terminal != "All Terminal":
+        term_map = {"T1": "Terminal 1", "T2": "Terminal 2", "T3": "Terminal 3"}
+        normalized_term = term_map.get(st.session_state.rs_terminal, st.session_state.rs_terminal)
+        filtered_detail = filtered_detail[filtered_detail["Terminal"] == normalized_term]
+
+    # Dynamically build SBU services summary from filtered details
+    if not filtered_detail.empty:
+        grouped_svc = filtered_detail.groupby("Service/SBU").agg(
+            Gross_Revenue_Val=("Revenue", lambda x: x.map(_parse_rp).sum()),
+            Mgmt_Share_Val=("Management Share", lambda x: x.map(_parse_rp).sum()),
+            Share_Rule=("Share %", "first"),
+            Status=("Settlement Status", lambda x: "SUCCESS" if (x == "Settled").all() else "FAILED")
+        ).reset_index()
+
+        services_df = pd.DataFrame({
+            "Service/SBU": grouped_svc["Service/SBU"],
+            "Gross Revenue": grouped_svc["Gross_Revenue_Val"].map(_fmt_rp_compact),
+            "SBU Share Rule %": grouped_svc["Share_Rule"],
+            "Management Share": grouped_svc["Mgmt_Share_Val"].map(_fmt_rp_compact),
+            "Status": grouped_svc["Status"]
+        })
+    else:
+        services_df = pd.DataFrame(columns=["Service/SBU", "Gross Revenue", "SBU Share Rule %", "Management Share", "Status"])
+
+    # Compute KPIs
+    total_revenue, revenue_share, settlement_rate, issues = _compute_filtered_kpis(filtered_detail)
 
     st.markdown(
         _kpi_grid_html(
@@ -735,7 +988,7 @@ def page_revenue_sharing():
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     chart_left, chart_right = st.columns([46, 54], gap="small")
     with chart_left:
@@ -772,12 +1025,12 @@ def page_revenue_sharing():
         with th2:
             st.selectbox("Trend period", ["Monthly"], key="rs_trend_period", label_visibility="collapsed")
         st.plotly_chart(
-            _trend_figure(get_trend_data()),
+            _trend_figure(get_trend_data(st.session_state.rs_terminal)),
             use_container_width=True,
             config={"displayModeBar": False},
         )
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     alert_card = st.container()
     with alert_card:
@@ -792,7 +1045,7 @@ def page_revenue_sharing():
         alerts = _build_revenue_alerts(services_df)
         st.markdown(f'<div class="rs-alert-grid">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:
@@ -823,7 +1076,7 @@ def page_revenue_sharing():
                 on_change=lambda: st.session_state.update({"rs_detail_page": 1}),
             )
 
-        detail_df = get_detail_revenue_sharing_data()
+        detail_df = filtered_detail.copy()
         if search_query:
             q = search_query.lower().strip()
             detail_df = detail_df[

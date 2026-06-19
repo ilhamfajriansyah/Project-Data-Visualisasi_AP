@@ -150,7 +150,8 @@ def inject_dashboard_css():
         visibility: hidden !important;
     }
     .block-container {
-        padding-top: 2px !important;
+        padding-top: 0rem !important;
+        margin-top: 0 !important;
     }
     [data-testid="stSidebarContent"] {
         padding: 0 !important;
@@ -412,6 +413,15 @@ def inject_dashboard_css():
         padding-top: 0 !important;
         padding-bottom: 34px !important;
         margin-top: 0 !important;
+    }
+
+    .dashboard-container,
+    .page-container,
+    .content-wrapper,
+    .main-content,
+    .overview-container {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
     }
 
     [data-testid="stSidebar"] {
@@ -860,8 +870,12 @@ def inject_dashboard_css():
     /* Pull the filter row up to close the remaining default Streamlit gap
        after the (mandatory, fixed-height) spacer — keeps it compact/close
        to the header without overlapping the fixed header itself. */
-    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.overview-filter-label) {
-        margin-top: -85px !important;
+    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) {
+        margin-top: -22px !important;
+        padding-top: 0 !important;
+    }
+    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.overview-kpi-card) {
+        margin-top: 0 !important;
     }
     body:has(.overview-page-marker) .ov-sticky-header-marker,
     body:has(.overview-page-marker) .ov-sticky-header-end {
@@ -2701,24 +2715,188 @@ def _nav_sub(icon, label):
 # ══════════════════════════════════════════════
 # PAGE: OVERVIEW
 # ══════════════════════════════════════════════
+def clear_overview_filters():
+    st.session_state.f_terminal = "All Terminal"
+    st.session_state.f_tahun = "All Year"
+    st.session_state.f_masa = "All Month"
+
+
+def _overview_filter_bar_v2_html(active_count: int) -> str:
+    badge = (
+        f'<span class="ov-filter-v2-badge">'
+        f'<span class="ov-filter-v2-dot"></span>&nbsp;{active_count} active'
+        f'</span>'
+        if active_count > 0 else ""
+    )
+    return dedent(f"""
+    <div class="ov-filter-v2-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Filter Aktif
+        {badge}
+    </div>
+    """).strip()
+
+
+def _overview_filter_chip_state_css() -> str:
+    """Inject per-chip color based on whether the filter is at its default value."""
+    _DEFAULTS = {"f_terminal": "All Terminal", "f_tahun": "All Year", "f_masa": "All Month"}
+    _NTH = {"f_terminal": 2, "f_tahun": 3, "f_masa": 4}
+
+    rules = []
+    for key, default in _DEFAULTS.items():
+        nth = _NTH[key]
+        is_active = st.session_state.get(key, default) != default
+        if is_active:
+            bg, border, color, svg = "#EEF2FF", "#C7D2FE", "#4338CA", "#818CF8"
+        else:
+            bg, border, color, svg = "#F8FAFC", "#E2E8F0", "#94A3B8", "#CBD5E1"
+        base = (
+            f"body:has(.overview-page-marker) "
+            f"[data-testid='stHorizontalBlock']:has(.ov-filter-v2-label) "
+            f"> div:nth-child({nth}) "
+            f"[data-testid='stSelectbox'] > div[data-baseweb='select'] > div:first-child"
+        )
+        rules.append(f"{base} {{ background:{bg}!important; border-color:{border}!important; color:{color}!important; }}")
+        rules.append(f"{base} svg {{ fill:{svg}!important; }}")
+
+    return f"<style>{''.join(rules)}</style>"
+
+
+def _get_overview_extra_css():
+    return dedent(f"""
+    <style>
+    /* ── Filter bar v2 ──────────────────────────────────────────── */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) {{
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 16px !important;
+        margin-top: -28px !important;
+        margin-bottom: 0px !important;
+        padding: 6px 16px !important;
+        background: #ffffff !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
+        flex-wrap: nowrap !important;
+        width: fit-content !important;
+        padding-top: 0 !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-pro-card) {{
+        margin-top: -4px !important;
+    }}
+    /* Label column: collapse to content width */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div:first-child {{
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }}
+    /* Selectbox & button columns: auto-width */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div:not(:first-child) {{
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stElementContainer"]:has(.ov-filter-v2-label) {{
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlock"]:has(.ov-filter-v2-label),
+    body:has(.overview-page-marker) [data-testid="stMarkdownContainer"]:has(.ov-filter-v2-label) {{
+        display: flex !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    body:has(.overview-page-marker) .ov-filter-v2-label {{
+        display: flex; align-items: center; gap: 7px;
+        padding-right: 18px; border-right: 1.5px solid #E2E8F0;
+        white-space: nowrap; line-height: 1;
+        font-size: 13px; font-weight: 700; color: #475569;
+        font-family: Poppins, sans-serif !important;
+        height: 38px !important;
+    }}
+    body:has(.overview-page-marker) .ov-filter-v2-badge {{
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 999px;
+        background: #F0FDF4; border: 1px solid #BBF7D0;
+        font-size: 10.5px; font-weight: 700; color: #16A34A;
+        white-space: nowrap; font-family: Poppins, sans-serif !important;
+        flex-shrink: 0;
+    }}
+    body:has(.overview-page-marker) .ov-filter-v2-dot {{
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #16A34A; display: inline-block; flex-shrink: 0;
+    }}
+    /* Selectboxes inside filter bar → chip style */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] {{
+        margin: 0 !important;
+        width: 140px !important;
+        flex-shrink: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {{
+        width: 140px !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {{
+        border-radius: 12px !important;
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: 140px !important;
+        padding: 0 12px 0 16px !important;
+        display: flex !important; align-items: center !important;
+        box-sizing: border-box !important;
+        font-size: 13px !important; font-weight: 600 !important;
+        color: #94A3B8 !important; font-family: Poppins, sans-serif !important;
+        transition: all 0.2s ease !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {{
+        fill: #CBD5E1 !important;
+        flex-shrink: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {{
+        border-color: #6366F1 !important;
+        background: #ffffff !important;
+    }}
+    /* Clear All Button */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="baseButton-secondary"] {{
+        border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+        background: #ffffff !important; color: #475569 !important;
+        font-size: 13px !important; font-weight: 700 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: 185px !important; padding: 0 !important;
+        font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="baseButton-primary"] {{
+        border: none !important; border-radius: 8px !important;
+        background: #4F46E5 !important; color: #ffffff !important;
+        font-size: 13px !important; font-weight: 700 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: 185px !important; padding: 0 !important;
+        font-family: Poppins, sans-serif !important;
+        box-shadow: 0 2px 8px rgba(79,70,229,0.25) !important;
+        white-space: nowrap !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-pro-card) {{
+        margin-top: 0 !important;
+    }}
+    </style>
+    """)
+
+
 def page_overview(df_raw):
-    st.markdown('<div class="overview-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-
-    with st.container():
-        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-        st.markdown(_overview_page_header_html(), unsafe_allow_html=True)
-        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
-    _mount_overview_fixed_header()
-
     for key in ["show_all_rev", "show_all_best", "show_all_detail", "overview_detail_page"]:
         if key not in st.session_state:
             st.session_state[key] = 1 if key == "overview_detail_page" else False
 
     terminal_options = ["All Terminal"] + sorted(df_raw["terminal"].dropna().unique().tolist())
-    year_options = ["Semua Tahun"] + sorted(df_raw["tahun"].dropna().unique().tolist(), reverse=True)
-    month_options = ["Semua Bulan"] + BULAN
+    db_years = [int(y) for y in df_raw["tahun"].dropna().unique()]
+    all_years = sorted(list(set(db_years + [2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030])), reverse=True)
+    year_options = ["All Year"] + all_years
+    month_options = ["All Month"] + BULAN
 
     if st.session_state.get("f_terminal") not in terminal_options:
         st.session_state.f_terminal = terminal_options[0]
@@ -2727,28 +2905,43 @@ def page_overview(df_raw):
     if st.session_state.get("f_masa") not in month_options:
         st.session_state.f_masa = month_options[0]
 
-    f1, f2, f3, f4 = st.columns([1.45, 1.35, 1.55, 2.65])
-    with f1:
-        st.markdown(_overview_filter_label("Terminal"), unsafe_allow_html=True)
+    active_count = sum([
+        st.session_state.get("f_terminal", "All Terminal") != "All Terminal",
+        st.session_state.get("f_tahun", "All Year") != "All Year",
+        st.session_state.get("f_masa", "All Month") != "All Month",
+    ])
+
+    st.markdown('<div class="overview-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+    st.markdown(_get_overview_extra_css(), unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        st.markdown(_overview_page_header_html(), unsafe_allow_html=True)
+        st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    ff0, ff1, ff2, ff3, ff4 = st.columns(
+        [0.85, 1.1, 1.1, 1.1, 0.85], gap="small"
+    )
+    with ff0:
+        st.markdown(_overview_filter_bar_v2_html(active_count), unsafe_allow_html=True)
+    with ff1:
         sel_terminal = st.selectbox("Terminal", terminal_options, key="f_terminal", label_visibility="collapsed")
-    with f2:
-        st.markdown(_overview_filter_label("Tahun"), unsafe_allow_html=True)
+    with ff2:
         sel_tahun = st.selectbox("Tahun", year_options, key="f_tahun", label_visibility="collapsed")
-    with f3:
-        st.markdown(_overview_filter_label("Bulan"), unsafe_allow_html=True)
+    with ff3:
         sel_masa = st.selectbox("Bulan", month_options, key="f_masa", label_visibility="collapsed")
-    with f4:
-        st.markdown(
-            '<div style="height:52px;display:flex;align-items:end;justify-content:flex-end;'
-            f'color:#64748B;font-size:12px;font-weight:500;font-family:{OVERVIEW_FONT_FAMILY};">'
-            'Data terakhir diperbarui: 02 Jun 2025 10:30 WIB</div>',
-            unsafe_allow_html=True,
-        )
+    with ff4:
+        st.button("Clear All", key="overview_clear_all", use_container_width=True, on_click=clear_overview_filters)
+
+    _mount_overview_fixed_header()
+    st.markdown(_overview_filter_chip_state_css(), unsafe_allow_html=True)
 
     df = df_raw.copy()
     if sel_terminal != "All Terminal": df = df[df["terminal"]  == sel_terminal]
-    if sel_tahun    != "Semua Tahun":  df = df[df["tahun"]     == int(sel_tahun)]
-    if sel_masa     != "Semua Bulan":  df = df[df["masa_jasa"] == sel_masa]
+    if sel_tahun    != "All Year":     df = df[df["tahun"]     == int(sel_tahun)]
+    if sel_masa     != "All Month":    df = df[df["masa_jasa"] == sel_masa]
 
     real_revenue = df["real_omzet"].sum()
     revenue_sharing = df["pendapatan_rs"].sum()
@@ -2762,12 +2955,12 @@ def page_overview(df_raw):
     spending_per_pax = (real_revenue / total_pax) if total_pax else 0
 
     # Periode pembanding (tahun sebelumnya, dengan filter terminal & bulan yang sama)
-    current_year = int(sel_tahun) if sel_tahun != "Semua Tahun" else (int(df["tahun"].max()) if not df.empty else None)
+    current_year = int(sel_tahun) if sel_tahun != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
     prior_df = df_raw.iloc[0:0]
     if current_year is not None:
         prior_df = df_raw[df_raw["tahun"] == current_year - 1]
         if sel_terminal != "All Terminal": prior_df = prior_df[prior_df["terminal"]  == sel_terminal]
-        if sel_masa     != "Semua Bulan":  prior_df = prior_df[prior_df["masa_jasa"] == sel_masa]
+        if sel_masa     != "All Month":    prior_df = prior_df[prior_df["masa_jasa"] == sel_masa]
 
     prior_real_revenue = prior_df["real_omzet"].sum()
     prior_revenue_sharing = prior_df["pendapatan_rs"].sum()
@@ -2824,14 +3017,12 @@ def page_overview(df_raw):
         with col:
             st.markdown(card_html, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-
     kpi_row2 = st.columns(4)
     for col, card_html in zip(kpi_row2, kpi_cards[4:]):
         with col:
             st.markdown(card_html, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     main_left, main_right = st.columns([65, 35], gap="small")
     with main_left:
@@ -2931,7 +3122,7 @@ def page_overview(df_raw):
         ]
         st.markdown(f'<div class="ed-alert-list">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     tenant_summary = (
         df.groupby(["perusahaan", "brand"])
@@ -3011,7 +3202,7 @@ def page_overview(df_raw):
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:

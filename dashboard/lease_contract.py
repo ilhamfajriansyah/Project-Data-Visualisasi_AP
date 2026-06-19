@@ -242,8 +242,13 @@ body:has(.lc-page-marker) .stApp {
 /* Pull the filters row up to close the default Streamlit gap left after
    the fixed header's spacer (mirrors the same fix used on Overview's
    filter row) — keeps it compact/close to the header. */
-body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.filters-label-box) {
-    margin-top: -85px !important;
+body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) {
+    margin-top: -28px !important;
+    padding-top: 0 !important;
+}
+
+body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
+    margin-top: -4px !important;
 }
 
 /* Premium Card Design */
@@ -1598,10 +1603,9 @@ def _init_state():
     if "lc_alert_toast" not in st.session_state: st.session_state.lc_alert_toast = False
 
     # Filter states initialization
-    if "f_terminal"     not in st.session_state: st.session_state.f_terminal     = "All Terminals"
-    if "f_type"         not in st.session_state: st.session_state.f_type         = "All Types"
-    if "f_category"     not in st.session_state: st.session_state.f_category     = "All Categories"
-    if "f_status"       not in st.session_state: st.session_state.f_status       = "All Status"
+    if "f_terminal"     not in st.session_state: st.session_state.f_terminal     = "All Terminal"
+    if "f_year"         not in st.session_state: st.session_state.f_year         = "All Year"
+    if "f_month"        not in st.session_state: st.session_state.f_month        = "All Month"
     if "lc_filtered_df" not in st.session_state: st.session_state.lc_filtered_df = st.session_state.lc_df
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -2173,11 +2177,210 @@ def render_executive_insights():
 # ──────────────────────────────────────────────────────────────────────────────
 # MAIN RENDER FUNCTION
 # ──────────────────────────────────────────────────────────────────────────────
+def clear_lc_filters():
+    st.session_state.f_terminal = "All Terminal"
+    st.session_state.f_year = "All Year"
+    st.session_state.f_month = "All Month"
+    st.session_state.lc_filtered_df = st.session_state.lc_df
+
+
+def _lc_filter_bar_v2_html(active_count: int) -> str:
+    badge = (
+        f'<span class="lc-filter-v2-badge">'
+        f'<span class="lc-filter-v2-dot"></span>&nbsp;{active_count} active'
+        f'</span>'
+        if active_count > 0 else ""
+    )
+    return dedent(f"""
+    <div class="lc-filter-v2-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Filter Aktif
+        {badge}
+    </div>
+    """).strip()
+
+
+def _lc_filter_chip_state_css() -> str:
+    """Inject per-chip color based on whether the filter is at its default value."""
+    _DEFAULTS = {"f_terminal": "All Terminal", "f_year": "All Year", "f_month": "All Month"}
+    _NTH = {"f_terminal": 2, "f_year": 3, "f_month": 4}
+
+    rules = []
+    for key, default in _DEFAULTS.items():
+        nth = _NTH[key]
+        is_active = st.session_state.get(key, default) != default
+        if is_active:
+            bg, border, color, svg = "#EEF2FF", "#C7D2FE", "#4338CA", "#818CF8"
+        else:
+            bg, border, color, svg = "#F8FAFC", "#E2E8F0", "#94A3B8", "#CBD5E1"
+        base = (
+            f"body:has(.lc-page-marker) "
+            f"[data-testid='stHorizontalBlock']:has(.lc-filter-v2-label) "
+            f"> div:nth-child({nth}) "
+            f"[data-testid='stSelectbox'] > div[data-baseweb='select'] > div:first-child"
+        )
+        rules.append(f"{base} {{ background:{bg}!important; border-color:{border}!important; color:{color}!important; }}")
+        rules.append(f"{base} svg {{ fill:{svg}!important; }}")
+
+    return f"<style>{''.join(rules)}</style>"
+
+
+def _get_lc_extra_css():
+    return dedent("""
+    <style>
+    /* ── Filter bar v2 ──────────────────────────────────────────── */
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) {
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 16px !important;
+        margin-top: -28px !important;
+        margin-bottom: 0px !important;
+        padding: 6px 16px !important;
+        background: #ffffff !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
+        flex-wrap: nowrap !important;
+        width: fit-content !important;
+        padding-top: 0 !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
+        margin-top: -4px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:first-child {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:not(:first-child) {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stElementContainer"],
+    body:has(.lc-page-marker) [data-testid="stElementContainer"]:has(.lc-filter-v2-label) {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlock"]:has(.lc-filter-v2-label),
+    body:has(.lc-page-marker) [data-testid="stMarkdownContainer"]:has(.lc-filter-v2-label) {
+        display: flex !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    body:has(.lc-page-marker) .lc-filter-v2-label {
+        display: flex; align-items: center; gap: 7px;
+        padding-right: 18px; border-right: 1.5px solid #E2E8F0;
+        white-space: nowrap; line-height: 1;
+        font-size: 13px; font-weight: 700; color: #475569;
+        font-family: Poppins, sans-serif !important;
+        height: 38px !important;
+    }
+    body:has(.lc-page-marker) .lc-filter-v2-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 999px;
+        background: #F0FDF4; border: 1px solid #BBF7D0;
+        font-size: 10.5px; font-weight: 700; color: #16A34A;
+        white-space: nowrap; font-family: Poppins, sans-serif !important;
+        flex-shrink: 0;
+    }
+    body:has(.lc-page-marker) .lc-filter-v2-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #16A34A; display: inline-block; flex-shrink: 0;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] {
+        margin: 0 !important;
+        width: 165px !important;
+        flex-shrink: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {
+        width: 165px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {
+        border-radius: 12px !important;
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: 165px !important;
+        padding: 0 12px 0 16px !important;
+        display: flex !important; align-items: center !important;
+        box-sizing: border-box !important;
+        font-size: 13px !important; font-weight: 600 !important;
+        color: #94A3B8 !important; font-family: Poppins, sans-serif !important;
+        transition: all 0.2s ease !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
+        fill: #CBD5E1 !important;
+        flex-shrink: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {
+        border-color: #6366F1 !important;
+        background: #ffffff !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="baseButton-secondary"] {
+        border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+        background: #ffffff !important; color: #475569 !important;
+        font-size: 13px !important; font-weight: 700 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: auto !important; padding: 0 16px !important;
+        font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+        transition: all 0.2s ease !important;
+        box-shadow: none !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="baseButton-secondary"]:hover {
+        border-color: #6366F1 !important;
+        color: #6366F1 !important;
+        background: #F8FAFC !important;
+    }
+    </style>
+    """)
+
+
 def render_lease_contract():
     _init_state()
     
-    # Load custom Poppins layout CSS and page marker
+    # Apply global filters dynamically on every rerun (auto-apply)
+    df_filt = st.session_state.lc_df.copy()
+    
+    sel_term = st.session_state.get("f_terminal", "All Terminal")
+    if sel_term != "All Terminal" and not df_filt.empty:
+        term_map = {
+            "Terminal 1": "T1",
+            "Terminal 2": "T2",
+        }
+        sel_term_code = term_map.get(sel_term, sel_term)
+        df_filt = df_filt[df_filt["Terminal"] == sel_term_code]
+        
+    sel_year = st.session_state.get("f_year", "All Year")
+    if sel_year != "All Year" and not df_filt.empty:
+        df_filt = df_filt[df_filt["Valid Period"].apply(lambda x: x.split(" - ")[1].endswith(sel_year) if " - " in x else False)]
+        
+    sel_month = st.session_state.get("f_month", "All Month")
+    if sel_month != "All Month" and not df_filt.empty:
+        month_map = {
+            "January": "Jan", "February": "Feb", "March": "Mar", "April": "Apr",
+            "May": "May", "June": "Jun", "July": "Jul", "August": "Aug",
+            "September": "Sep", "October": "Oct", "November": "Nov", "December": "Dec"
+        }
+        month_abbr = month_map.get(sel_month, sel_month[:3])
+        df_filt = df_filt[df_filt["Valid Period"].apply(lambda x: x.split(" - ")[1].split(" ")[1] == month_abbr if " - " in x else False)]
+        
+    df_all = df_filt
+    st.session_state.lc_filtered_df = df_filt
+
+    active_count = sum([
+        st.session_state.get("f_terminal", "All Terminal") != "All Terminal",
+        st.session_state.get("f_year", "All Year") != "All Year",
+        st.session_state.get("f_month", "All Month") != "All Month",
+    ])
+
     st.markdown(_PAGE_CSS + '<div class="overview-page-marker lc-page-marker"></div>', unsafe_allow_html=True)
+    st.markdown(_get_lc_extra_css(), unsafe_allow_html=True)
 
     with st.container():
         st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
@@ -2185,110 +2388,28 @@ def render_lease_contract():
         st.markdown('<div class="ov-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
+
+    ff0, ff1, ff2, ff3, ff4 = st.columns(
+        [0.85, 1.1, 1.1, 1.1, 0.85], gap="small"
+    )
+    with ff0:
+        st.markdown(_lc_filter_bar_v2_html(active_count), unsafe_allow_html=True)
+    with ff1:
+        st.selectbox("Terminal", ["All Terminal", "Terminal 1", "Terminal 2"], key="f_terminal", label_visibility="collapsed")
+    with ff2:
+        st.selectbox("Tahun", ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"], key="f_year", label_visibility="collapsed")
+    with ff3:
+        st.selectbox("Bulan", ["All Month", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], key="f_month", label_visibility="collapsed")
+    with ff4:
+        st.button("Clear All", key="lc_btn_reset", use_container_width=True, on_click=clear_lc_filters)
+
     _mount_lc_fixed_header()
+    st.markdown('<div class="filters-marker"></div>', unsafe_allow_html=True)
+    st.markdown(_lc_filter_chip_state_css(), unsafe_allow_html=True)
 
-    df_all = st.session_state.lc_filtered_df
-
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-
-    # ── Render Add Contract Form ──
     if st.session_state.lc_show_form:
         _render_add_form()
 
-    # ─────────────────────────────────────────────
-    # FILTERS ROW
-    # ─────────────────────────────────────────────
-    st.markdown('<div class="filters-marker"></div>', unsafe_allow_html=True)
-    f_lbl_col, f_t_col, f_type_col, f_cat_col, f_stat_col, f_spacer_col, f_reset_col, f_apply_col = st.columns([0.7, 1.5, 1.5, 1.5, 1.5, 3.0, 1.1, 1.2], gap="small")
-
-    with f_lbl_col:
-        st.markdown("""
-        <div class="filters-label-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="4" y1="21" x2="4" y2="14"></line>
-                <line x1="4" y1="10" x2="4" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12" y2="3"></line>
-                <line x1="20" y1="21" x2="20" y2="16"></line>
-                <line x1="20" y1="12" x2="20" y2="3"></line>
-                <line x1="1" y1="14" x2="7" y2="14"></line>
-                <line x1="9" y1="8" x2="15" y2="8"></line>
-                <line x1="17" y1="16" x2="23" y2="16"></line>
-            </svg>
-            <span class="filters-lbl-text">Filters</span>
-            <div class="filters-lbl-divider"></div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with f_t_col:
-        st.selectbox(
-            "Terminal",
-            options=["All Terminals", "T1", "T2", "T3", "T3U"],
-            key="f_terminal",
-            label_visibility="collapsed"
-        )
-
-    with f_type_col:
-        st.selectbox(
-            "Contract Type",
-            options=["All Types", "Revenue Sharing", "RS+MO", "MGRS"],
-            key="f_type",
-            label_visibility="collapsed"
-        )
-
-    with f_cat_col:
-        st.selectbox(
-            "Business Category",
-            options=["All Categories"],
-            key="f_category",
-            label_visibility="collapsed"
-        )
-
-    with f_stat_col:
-        st.selectbox(
-            "Contract Status",
-            options=["All Status", "Valid", "Anomaly", "Expired"],
-            key="f_status",
-            label_visibility="collapsed"
-        )
-
-    with f_spacer_col:
-        st.write("")
-
-    with f_reset_col:
-        st.markdown('<div class="btn-reset-marker"></div>', unsafe_allow_html=True)
-        if st.button("⟳ Reset", key="lc_btn_reset", use_container_width=True):
-            st.session_state.f_terminal = "All Terminals"
-            st.session_state.f_type = "All Types"
-            st.session_state.f_category = "All Categories"
-            st.session_state.f_status = "All Status"
-            st.session_state.lc_filtered_df = st.session_state.lc_df
-            st.rerun()
-
-    with f_apply_col:
-        st.markdown('<div class="btn-apply-marker"></div>', unsafe_allow_html=True)
-        if st.button("Apply", key="lc_btn_apply", use_container_width=True):
-            df_filt = st.session_state.lc_df.copy()
-            
-            # 1. Terminal Filter
-            sel_term = st.session_state.f_terminal.replace("Terminal ", "")
-            if sel_term != "All Terminals":
-                df_filt = df_filt[df_filt["Terminal"] == sel_term]
-                
-            # 2. Contract Type Filter
-            sel_type = st.session_state.f_type.replace("Contract Type ", "")
-            if sel_type != "All Types":
-                df_filt = df_filt[df_filt["Skema"] == sel_type]
-                
-            # 3. Contract Status Filter
-            sel_status = st.session_state.f_status.replace("Contract Status ", "")
-            if sel_status != "All Status":
-                df_filt = df_filt[df_filt["Status"] == sel_status]
-                
-            st.session_state.lc_filtered_df = df_filt
-            st.rerun()
-
-    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # TOP KPI CARDS
@@ -2396,7 +2517,7 @@ def render_lease_contract():
         )
         st.markdown(html_expired, unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # CONTRACT EXPIRY TIMELINE & DONUT CHARTS (3-COLUMN REDESIGN)
@@ -2584,7 +2705,7 @@ def render_lease_contract():
             """
             st.markdown(html_status_score, unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # CRITICAL / EXPIRING TABLES (SECTION 1-3 DYNAMIC GENERATION)
@@ -2699,7 +2820,7 @@ def render_lease_contract():
         unsafe_allow_html=True
     )
 
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # BOTTOM SECTION: SIDE-BY-SIDE PANELS

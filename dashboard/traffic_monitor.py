@@ -18,10 +18,10 @@ from .enterprise_ui import (
     table_inner_html,
 )
 TM_FONT = ED_FONT
-TM_YEAR_OPTIONS = ["2024", "2023"]
-TM_MONTH_OPTIONS = ["All Months", "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"]
-TM_TERMINAL_OPTIONS = ["All Terminals", "Terminal 1", "Terminal 2"]
+TM_YEAR_OPTIONS = ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"]
+TM_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+TM_TERMINAL_OPTIONS = ["All Terminal", "Terminal 1", "Terminal 2"]
 TM_DONUT_COLORS = ["#7C3AED", "#06B6D4"]
 TM_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -55,10 +55,12 @@ def _terminal_rows():
     return rows
 
 
-def _aggregate_metrics(terminal_filter="All Terminals"):
+def _aggregate_metrics(terminal_filter="All Terminal"):
+    term_map = {"T1": "Terminal 1", "T2": "Terminal 2"}
+    normalized_filter = term_map.get(terminal_filter, terminal_filter)
     rows = _terminal_rows()
-    if terminal_filter != "All Terminals":
-        rows = [r for r in rows if r["name"] == terminal_filter]
+    if normalized_filter != "All Terminal":
+        rows = [r for r in rows if r["name"] == normalized_filter]
 
     total = sum(r["total"] for r in rows)
     domestic = sum(r["domestic"] for r in rows)
@@ -102,7 +104,7 @@ def _monthly_traffic_series(total_m, seed=7):
     return (weights * total_m).tolist()
 
 
-def get_monthly_traffic_trend(terminal_filter="All Terminals"):
+def get_monthly_traffic_trend(terminal_filter="All Terminal"):
     metrics = _aggregate_metrics(terminal_filter)
     current = _monthly_traffic_series(metrics["total"], seed=11)
     prior = _monthly_traffic_series(metrics["prior_total"], seed=23)
@@ -113,7 +115,7 @@ def get_monthly_traffic_trend(terminal_filter="All Terminals"):
     })
 
 
-def get_domestic_intl_monthly(terminal_filter="All Terminals"):
+def get_domestic_intl_monthly(terminal_filter="All Terminal"):
     metrics = _aggregate_metrics(terminal_filter)
     dom_series = _monthly_traffic_series(metrics["domestic"], seed=31)
     intl_series = _monthly_traffic_series(metrics["international"], seed=37)
@@ -124,7 +126,7 @@ def get_domestic_intl_monthly(terminal_filter="All Terminals"):
     })
 
 
-def get_spp_monthly(terminal_filter="All Terminals"):
+def get_spp_monthly(terminal_filter="All Terminal"):
     metrics = _aggregate_metrics(terminal_filter)
     base = metrics["spp"] / 1_000
     rng = np.random.default_rng(45)
@@ -133,7 +135,7 @@ def get_spp_monthly(terminal_filter="All Terminals"):
 
 
 def get_terminal_table_df():
-    metrics = _aggregate_metrics("All Terminals")
+    metrics = _aggregate_metrics("All Terminal")
     rows = []
     for row in metrics["rows"]:
         total = row["total"]
@@ -251,9 +253,9 @@ def _filter_bar_v2_html(active_count: int) -> str:
 
 def _filter_chip_state_css() -> str:
     """Inject per-chip color based on whether the filter is at its default value."""
-    _DEFAULTS = {"tm_year": "2024", "tm_month": "All Months", "tm_terminal": "All Terminals"}
-    # columns: label=1st-child, year=2nd, month=3rd, terminal=4th
-    _NTH = {"tm_year": 2, "tm_month": 3, "tm_terminal": 4}
+    _DEFAULTS = {"tm_terminal": "All Terminal", "tm_year": "All Year", "tm_month": "All Month"}
+    # columns: label=1st-child, terminal=2nd, year=3rd, month=4th
+    _NTH = {"tm_terminal": 2, "tm_year": 3, "tm_month": 4}
 
     rules = []
     for key, default in _DEFAULTS.items():
@@ -475,6 +477,7 @@ def _yoy_bar_figure(rows):
 
 
 def _inject_tm_css():
+    st.markdown("<style>@import url('https://cdn.jsdelivr.net/gh/lykmapipo/themify-icons@0.1.2/css/themify-icons.css'); @import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css');</style>", unsafe_allow_html=True)
     inject_enterprise_page_css("tm-page-marker", extra_css=dedent(f"""
     body:has(.tm-page-marker) .nad-top-divider {{ display: none !important; }}
 
@@ -586,15 +589,17 @@ def _inject_tm_css():
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) {{
         align-items: center !important;
         justify-content: flex-start !important;
-        gap: 8px !important;
-        margin: 0 0 14px !important;
-        padding: 7px 12px !important;
+        gap: 16px !important;
+        margin-top: -28px !important;
+        margin-bottom: 0px !important;
+        padding: 6px 16px !important;
         background: #ffffff !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 12px !important;
+        border-radius: 16px !important;
         box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
         flex-wrap: nowrap !important;
         width: fit-content !important;
+        padding-top: 0 !important;
     }}
     /* Label column: collapse to content width, don't stretch */
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:first-child {{
@@ -624,10 +629,11 @@ def _inject_tm_css():
     }}
     body:has(.tm-page-marker) .tm-filter-v2-label {{
         display: flex; align-items: center; gap: 7px;
-        padding-right: 14px; border-right: 1.5px solid #E2E8F0;
+        padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
-        font-size: 11.5px; font-weight: 700; color: #475569;
+        font-size: 13px; font-weight: 700; color: #475569;
         font-family: {TM_FONT} !important;
+        height: 38px !important;
     }}
     body:has(.tm-page-marker) .tm-filter-v2-badge {{
         display: inline-flex; align-items: center; gap: 4px;
@@ -644,49 +650,52 @@ def _inject_tm_css():
     /* Selectboxes inside filter bar → chip style */
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] {{
         margin: 0 !important;
-        width: 160px !important;
+        width: 165px !important;
         flex-shrink: 0 !important;
     }}
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {{
-        width: 160px !important;
+        width: 165px !important;
     }}
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {{
-        border-radius: 999px !important;
+        border-radius: 12px !important;
         background: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
-        min-height: 30px !important; height: 30px !important;
-        width: 160px !important;
-        padding: 0 10px 0 14px !important;
+        min-height: 38px !important; height: 38px !important;
+        width: 165px !important;
+        padding: 0 12px 0 16px !important;
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
-        font-size: 12px !important; font-weight: 600 !important;
+        font-size: 13px !important; font-weight: 600 !important;
         color: #94A3B8 !important; font-family: {TM_FONT} !important;
+        transition: all 0.2s ease !important;
     }}
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {{
         fill: #CBD5E1 !important;
         flex-shrink: 0 !important;
     }}
-    /* Clear All + Apply: same width as dropdowns */
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-secondary"] {{
-        border: 1px solid #E2E8F0 !important; border-radius: 8px !important;
-        background: #ffffff !important; color: #475569 !important;
-        font-size: 11.5px !important; font-weight: 700 !important;
-        min-height: 30px !important; height: 30px !important;
-        width: 160px !important; padding: 0 !important;
-        font-family: {TM_FONT} !important; white-space: nowrap !important;
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {{
+        border-color: #6366F1 !important;
+        background: #ffffff !important;
     }}
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-primary"] {{
-        border: none !important; border-radius: 8px !important;
-        background: #4F46E5 !important; color: #ffffff !important;
-        font-size: 11.5px !important; font-weight: 700 !important;
-        min-height: 30px !important; height: 30px !important;
-        width: 160px !important; padding: 0 !important;
-        font-family: {TM_FONT} !important;
-        box-shadow: 0 2px 8px rgba(79,70,229,0.25) !important;
-        white-space: nowrap !important;
+    /* Clear All Button */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-secondary"] {{
+        border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+        background: #ffffff !important; color: #475569 !important;
+        font-size: 13px !important; font-weight: 700 !important;
+        min-height: 38px !important; height: 38px !important;
+        width: auto !important; padding: 0 16px !important;
+        font-family: {TM_FONT} !important; white-space: nowrap !important;
+        transition: all 0.2s ease !important;
+        box-shadow: none !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-secondary"]:hover {{
+        border-color: #6366F1 !important;
+        color: #6366F1 !important;
+        background: #F8FAFC !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-grid {{
         display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; width: 100%;
+        margin-top: -4px !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-card {{
         display: flex; flex-direction: column; gap: 6px; min-height: 132px; padding: 14px 16px;
@@ -715,6 +724,10 @@ def _inject_tm_css():
     }}
     body:has(.tm-page-marker) .tm-sparkline {{
         width: 100%; height: 28px; margin-top: auto;
+    }}
+    body:has(.tm-page-marker) .tm-sparkline polyline {{
+        stroke-linecap: round !important;
+        stroke-linejoin: round !important;
     }}
     body:has(.tm-page-marker) .tm-mini-metrics {{
         display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px;
@@ -825,6 +838,230 @@ def _inject_tm_css():
     body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-performance-card) {{
         padding: 18px 20px !important;
     }}
+
+    /* ── Filter Card Container ── */
+    body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-filter-container-marker) {{
+        background: #ffffff !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 16px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        margin-bottom: 16px !important;
+    }}
+    body:has(.tm-page-marker) .tm-filter-container-marker {{
+        display: none !important;
+    }}
+
+    /* ── Filter Chips Bar (Redesigned horizontal component) ── */
+    body:has(.tm-page-marker) .active-filter-bar-wrap {{
+        display: none !important; /* marker only */
+    }}
+    
+    body:has(.tm-page-marker) div[data-testid="stHorizontalBlock"]:has(.active-filter-bar-wrap) {{
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 8px 16px !important;
+        background: #F6F8FD !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 30px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-bottom: 0 !important;
+        box-shadow: none !important;
+    }}
+
+    body:has(.tm-page-marker) div[data-testid="stHorizontalBlock"]:has(.active-filter-bar-wrap) [data-testid="column"],
+    body:has(.tm-page-marker) div[data-testid="stHorizontalBlock"]:has(.active-filter-bar-wrap) [data-testid="stColumn"] {{
+        width: auto !important;
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+        padding: 0 !important;
+    }}
+
+    body:has(.tm-page-marker) div[data-testid="stHorizontalBlock"]:has(.active-filter-bar-wrap) [data-testid="column"]:has(.filter-spacer-marker),
+    body:has(.tm-page-marker) div[data-testid="stHorizontalBlock"]:has(.active-filter-bar-wrap) [data-testid="stColumn"]:has(.filter-spacer-marker) {{
+        flex: 1 1 auto !important;
+    }}
+
+    body:has(.tm-page-marker) .filter-chip-marker,
+    body:has(.tm-page-marker) .add-filter-marker,
+    body:has(.tm-page-marker) .filter-spacer-marker,
+    body:has(.tm-page-marker) .clear-all-marker,
+    body:has(.tm-page-marker) .apply-marker {{
+        display: none !important;
+    }}
+
+    body:has(.tm-page-marker) .filter-aktif-label {{
+        font-size: 13px !important;
+        color: #64748B !important; /* secondary */
+        font-weight: 500 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+        font-family: {TM_FONT} !important;
+        border: none !important;
+        border-right: 1px solid #e0e0e0 !important;
+        background: transparent !important;
+        padding-right: 16px !important;
+        margin-right: 8px !important;
+        height: 24px !important;
+    }}
+    body:has(.tm-page-marker) .filter-aktif-label::before {{
+        content: "\\e6a2" !important; /* ti-filter */
+        font-family: 'themify' !important;
+        font-size: 16px !important;
+        color: #64748B !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.filter-chip-marker) button,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.filter-chip-marker) button {{
+        background: #E6F1FB !important;
+        border: 1px solid #B5D4F4 !important;
+        border-radius: 20px !important;
+        padding: 5px 10px !important;
+        font-size: 13px !important;
+        color: #0C447C !important;
+        font-weight: 400 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        line-height: 1.2 !important;
+        font-family: {TM_FONT} !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="column"]:has(.filter-chip-marker) button:hover,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.filter-chip-marker) button:hover {{
+        background: #D9ECFA !important;
+        border-color: #94C4F0 !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.filter-chip-marker.year-chip) button::before,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.filter-chip-marker.year-chip) button::before,
+    body:has(.tm-page-marker) [data-testid="column"]:has(.filter-chip-marker.month-chip) button::before,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.filter-chip-marker.month-chip) button::before {{
+        content: "\\e6b6" !important; /* ti-calendar */
+        font-family: 'themify' !important;
+        color: #185FA5 !important;
+        font-size: 14px !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.filter-chip-marker.terminal-chip) button::before,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.filter-chip-marker.terminal-chip) button::before {{
+        content: "\\f1dd" !important; /* bi-building from Bootstrap Icons */
+        font-family: 'bootstrap-icons' !important;
+        color: #185FA5 !important;
+        font-size: 14px !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.filter-chip-marker) button::after,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.filter-chip-marker) button::after {{
+        content: "×" !important;
+        font-size: 13px !important;
+        color: #185FA5 !important;
+        font-weight: normal !important;
+        cursor: pointer !important;
+        margin-left: 0 !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.add-filter-marker) button,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.add-filter-marker) button {{
+        border: 1.5px dashed #B5D4F4 !important;
+        border-radius: 20px !important;
+        padding: 5px 14px !important;
+        background: transparent !important;
+        font-size: 13px !important;
+        color: #378ADD !important;
+        height: auto !important;
+        min-height: 0 !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        line-height: 1.2 !important;
+        font-family: {TM_FONT} !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="column"]:has(.add-filter-marker) button:hover,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.add-filter-marker) button:hover {{
+        background: #F0F7FF !important;
+        border-color: #378ADD !important;
+    }}
+
+    body:has(.tm-page-marker) .active-indicator-wrapper {{
+        font-size: 13px !important;
+        color: #475569 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+        font-family: {TM_FONT} !important;
+        background: #F1F5F9 !important;
+        border-radius: 20px !important;
+        padding: 4px 10px !important;
+    }}
+    body:has(.tm-page-marker) .dot-green {{
+        color: #22C55E !important;
+        background: #DCFCE7 !important;
+        border-radius: 50% !important;
+        width: 14px !important;
+        height: 14px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 6px !important;
+        line-height: 1 !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.clear-all-marker) button,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.clear-all-marker) button {{
+        background: white !important;
+        border: 0.5px solid #d0d0d0 !important;
+        border-radius: 8px !important;
+        padding: 6px 14px !important;
+        font-size: 13px !important;
+        color: #444 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        font-family: {TM_FONT} !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="column"]:has(.clear-all-marker) button:hover,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.clear-all-marker) button:hover {{
+        background: #F8FAFC !important;
+        border-color: #94A3B8 !important;
+    }}
+
+    body:has(.tm-page-marker) [data-testid="column"]:has(.apply-marker) button,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.apply-marker) button {{
+        background: #378ADD !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 6px 18px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        box-shadow: none !important;
+        cursor: pointer;
+        font-family: {TM_FONT} !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="column"]:has(.apply-marker) button:hover,
+    body:has(.tm-page-marker) [data-testid="stColumn"]:has(.apply-marker) button:hover {{
+        background: #2D78C8 !important;
+    }}
+
+    body:has(.tm-page-marker) .tm-filter-selectbox-container {{
+        display: none !important;
+    }}
+
     @media (max-width: 1400px) {{
         body:has(.tm-page-marker) .tm-kpi-grid {{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
         body:has(.tm-page-marker) .tm-insight-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -832,14 +1069,17 @@ def _inject_tm_css():
     """))
 
 
-def page_traffic_monitor():
-    st.markdown('<div class="overview-page-marker tm-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-    _inject_tm_css()
+def clear_tm_filters():
+    st.session_state.tm_year = "All Year"
+    st.session_state.tm_month = "All Month"
+    st.session_state.tm_terminal = "All Terminal"
 
+
+def page_traffic_monitor():
     for key, default in [
-        ("tm_year", "2024"),
-        ("tm_month", "All Months"),
-        ("tm_terminal", "All Terminals"),
+        ("tm_year", "All Year"),
+        ("tm_month", "All Month"),
+        ("tm_terminal", "All Terminal"),
     ]:
         if key not in st.session_state:
             st.session_state[key] = default
@@ -849,41 +1089,38 @@ def page_traffic_monitor():
     dom_intl_df = get_domestic_intl_monthly(st.session_state.tm_terminal)
     spp_df = get_spp_monthly(st.session_state.tm_terminal)
 
+    active_count = sum([
+        st.session_state.get("tm_year", "All Year") != "All Year",
+        st.session_state.get("tm_month", "All Month") != "All Month",
+        st.session_state.get("tm_terminal", "All Terminal") != "All Terminal",
+    ])
+
+    st.markdown('<div class="overview-page-marker tm-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+    _inject_tm_css()
+
     with st.container():
         st.markdown('<div class="tm-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
         st.markdown(_tm_page_header(), unsafe_allow_html=True)
-
         st.markdown('<div class="tm-sticky-header-end" aria-hidden="true"></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="tm-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
-    _mount_tm_fixed_header()
 
-    active_count = sum([
-        st.session_state.get("tm_year", "2024") != "2024",
-        st.session_state.get("tm_month", "All Months") != "All Months",
-        st.session_state.get("tm_terminal", "All Terminals") != "All Terminals",
-    ])
-    st.markdown(_filter_chip_state_css(), unsafe_allow_html=True)
-    ff0, ff1, ff2, ff3, ff4, ff5 = st.columns(
-        [0.85, 0.9, 1.05, 1.2, 0.65, 0.55], gap="small"
+    ff0, ff1, ff2, ff3, ff4 = st.columns(
+        [0.85, 1.1, 1.1, 1.1, 0.85], gap="small"
     )
     with ff0:
         st.markdown(_filter_bar_v2_html(active_count), unsafe_allow_html=True)
     with ff1:
-        st.selectbox("Tahun", TM_YEAR_OPTIONS, key="tm_year", label_visibility="collapsed")
-    with ff2:
-        st.selectbox("Bulan", TM_MONTH_OPTIONS, key="tm_month", label_visibility="collapsed")
-    with ff3:
         st.selectbox("Terminal", TM_TERMINAL_OPTIONS, key="tm_terminal", label_visibility="collapsed")
+    with ff2:
+        st.selectbox("Tahun", TM_YEAR_OPTIONS, key="tm_year", label_visibility="collapsed")
+    with ff3:
+        st.selectbox("Bulan", TM_MONTH_OPTIONS, key="tm_month", label_visibility="collapsed")
     with ff4:
-        if st.button("Clear All", key="tm_clear_all", use_container_width=True):
-            st.session_state.tm_year = "2024"
-            st.session_state.tm_month = "All Months"
-            st.session_state.tm_terminal = "All Terminals"
-            st.rerun()
-    with ff5:
-        if st.button("Apply", key="tm_apply", use_container_width=True, type="primary"):
-            st.rerun()
+        st.button("Clear All", key="tm_clear_all", use_container_width=True, on_click=clear_tm_filters)
+
+    _mount_tm_fixed_header()
+    st.markdown(_filter_chip_state_css(), unsafe_allow_html=True)
 
     spark_total = trend_df["FY 2024"].tolist()
     spark_dom = dom_intl_df["Domestic"].tolist()
@@ -907,7 +1144,7 @@ def page_traffic_monitor():
                      "Weighted terminal average", 6.6, "#EA580C", "🛍", spark_spp),
     ])
     st.markdown(f'<div class="tm-kpi-grid">{kpi_html}</div>', unsafe_allow_html=True)
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     row1_left, row1_right = st.columns([1.55, 1], gap="small")
     peak_month = trend_df.loc[trend_df["FY 2024"].idxmax(), "Month"]
@@ -963,7 +1200,7 @@ def page_traffic_monitor():
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     row2_a, row2_b, row2_c = st.columns([1.15, 1.05, 0.95], gap="small")
     spp_avg = spp_df["SPP"].mean()
@@ -995,7 +1232,7 @@ def page_traffic_monitor():
             "Annual passengers (Millions) — FY 2024",
         ), unsafe_allow_html=True)
         cards = []
-        all_metrics = _aggregate_metrics("All Terminals")
+        all_metrics = _aggregate_metrics("All Terminal")
         for row in all_metrics["rows"]:
             cards.append(_terminal_card_html(row, all_metrics["shares"][row["name"]]))
         st.markdown(f'<div class="tm-terminal-stack">{"".join(cards)}</div>', unsafe_allow_html=True)
@@ -1024,7 +1261,7 @@ def page_traffic_monitor():
         st.plotly_chart(_yoy_bar_figure(all_metrics["rows"]), use_container_width=True,
                         config={"displayModeBar": False})
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     t2 = TERMINAL_PROFILES["Terminal 2"]
     t1 = TERMINAL_PROFILES["Terminal 1"]
@@ -1068,7 +1305,7 @@ def page_traffic_monitor():
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     table_df = get_terminal_table_df()
     display_df = table_df.drop(columns=["_share", "_total"]).copy()
