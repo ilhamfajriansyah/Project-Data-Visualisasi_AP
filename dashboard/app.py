@@ -924,8 +924,7 @@ def inject_dashboard_css():
        after the (mandatory, fixed-height) spacer — keeps it compact/close
        to the header without overlapping the fixed header itself. */
     body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) {
-        margin-top: -22px !important;
-        padding-top: 0 !important;
+        margin-top: -28px !important;
     }
     body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.overview-kpi-card) {
         margin-top: 0 !important;
@@ -2201,8 +2200,8 @@ def generate_dummy_data():
 
 def fmt_rp(v):
     if v >= 1_000_000_000_000: return f"Rp {v/1_000_000_000_000:.2f}T"
-    if v >= 1_000_000_000:     return f"Rp {v/1_000_000_000:.2f}B"
-    if v >= 1_000_000:         return f"Rp {v/1_000_000:.2f}M"
+    if v >= 1_000_000_000:     return f"Rp {v/1_000_000_000:.2f}M"
+    if v >= 1_000_000:         return f"Rp {v/1_000_000:.2f}Jt"
     return f"Rp {v:,.0f}"
 
 BULAN = [
@@ -2294,9 +2293,9 @@ def _fmt_rp_compact(value):
     if value >= 1_000_000_000_000:
         return f"Rp {value / 1_000_000_000_000:.2f}T"
     if value >= 1_000_000_000:
-        return f"Rp {value / 1_000_000_000:.2f}B"
+        return f"Rp {value / 1_000_000_000:.2f}M"
     if value >= 1_000_000:
-        return f"Rp {value / 1_000_000:.2f}M"
+        return f"Rp {value / 1_000_000:.2f}Jt"
     return f"Rp {value:,.0f}"
 
 
@@ -2358,9 +2357,9 @@ def _compact_number(value, decimals=1):
     if abs_value >= 1_000_000_000_000:
         return f"{value / 1_000_000_000_000:.{decimals}f}", "T"
     if abs_value >= 1_000_000_000:
-        return f"{value / 1_000_000_000:.{decimals}f}", "B"
+        return f"{value / 1_000_000_000:.{decimals}f}", "M"
     if abs_value >= 1_000_000:
-        return f"{value / 1_000_000:.{decimals}f}", "M"
+        return f"{value / 1_000_000:.{decimals}f}", "Jt"
     if abs_value >= 1_000:
         return f"{value:,.0f}", ""
     return f"{value:.{decimals}f}", ""
@@ -2824,6 +2823,8 @@ def _get_overview_extra_css():
     <style>
     /* ── Filter bar v2 ──────────────────────────────────────────── */
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) {{
+        display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
         justify-content: flex-start !important;
         gap: 16px !important;
@@ -2836,40 +2837,84 @@ def _get_overview_extra_css():
         box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
         flex-wrap: nowrap !important;
         width: fit-content !important;
-        padding-top: 0 !important;
     }}
     body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-pro-card) {{
         margin-top: -4px !important;
     }}
-    /* Label column: collapse to content width */
-    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div:first-child {{
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }}
-    /* Selectbox & button columns: auto-width */
-    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div:not(:first-child) {{
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }}
-    body:has(.overview-page-marker) [data-testid="stElementContainer"]:has(.ov-filter-v2-label) {{
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-    body:has(.overview-page-marker) [data-testid="stVerticalBlock"]:has(.ov-filter-v2-label),
-    body:has(.overview-page-marker) [data-testid="stMarkdownContainer"]:has(.ov-filter-v2-label) {{
+    /* Center columns vertically and remove default Streamlit paddings/margins */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div {{
         display: flex !important;
         align-items: center !important;
-        margin: 0 !important;
+        justify-content: center !important;
         padding: 0 !important;
+        margin: 0 !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 38px !important;
     }}
+    /* Keep the separator on Filter Aktif from causing alignment issues */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div:first-child {{
+        display: flex !important;
+        align-items: center !important;
+    }}
+    /* Separator after "Filter Aktif" has the same height as the area filter and does not push alignment */
     body:has(.overview-page-marker) .ov-filter-v2-label {{
         display: flex; align-items: center; gap: 7px;
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
         font-size: 13px; font-weight: 700; color: #475569;
         font-family: Poppins, sans-serif !important;
+        height: 38px !important;
+        box-sizing: border-box !important;
+    }}
+    /* Spacing of 24px between the last dropdown (Month, 4th child) and Clear All (5th child) */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div:nth-child(5) {{
+        margin-left: 8px !important;
+    }}
+    /* Perfect horizontal and vertical centering for all components in the capsule */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stVerticalBlock"] {{
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        height: 38px !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stElementContainer"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 180px !important;
+        height: 38px !important;
+        flex-shrink: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stButton"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stMarkdownContainer"] {{
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
         height: 38px !important;
     }}
     body:has(.overview-page-marker) .ov-filter-v2-badge {{
@@ -2884,21 +2929,43 @@ def _get_overview_extra_css():
         width: 6px; height: 6px; border-radius: 50%;
         background: #16A34A; display: inline-block; flex-shrink: 0;
     }}
-    /* Selectboxes inside filter bar → chip style */
+    /* Override generic selectbox rules for filter bar selectboxes to match Revenue Sharing layout */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div > div {{
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 180px !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] div[data-baseweb="select"] {{
+        width: 180px !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        gap: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+        height: 38px !important;
+        line-height: 38px !important;
+    }}
+    /* Selectboxes inside filter bar → chip style with 180px width */
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] {{
         margin: 0 !important;
-        width: 140px !important;
+        width: 180px !important;
         flex-shrink: 0 !important;
     }}
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {{
-        width: 140px !important;
+        width: 180px !important;
     }}
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {{
         border-radius: 12px !important;
         background: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
         min-height: 38px !important; height: 38px !important;
-        width: 140px !important;
+        width: 180px !important;
         padding: 0 12px 0 16px !important;
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
@@ -2908,6 +2975,10 @@ def _get_overview_extra_css():
     }}
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {{
         fill: #CBD5E1 !important;
+        opacity: 1 !important;
+        color: #CBD5E1 !important;
+        width: 14px !important;
+        height: 14px !important;
         flex-shrink: 0 !important;
     }}
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {{
@@ -2920,8 +2991,16 @@ def _get_overview_extra_css():
         background: #ffffff !important; color: #475569 !important;
         font-size: 13px !important; font-weight: 700 !important;
         min-height: 38px !important; height: 38px !important;
-        width: 185px !important; padding: 0 !important;
+        width: auto !important; padding: 0 16px !important;
         font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+        transition: all 0.2s ease !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="baseButton-secondary"]:hover {{
+        border-color: #6366F1 !important;
+        color: #6366F1 !important;
+        background: #F8FAFC !important;
     }}
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="baseButton-primary"] {{
         border: none !important; border-radius: 8px !important;
@@ -2935,6 +3014,55 @@ def _get_overview_extra_css():
     }}
     body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-pro-card) {{
         margin-top: 0 !important;
+    }}
+    /* Export button on overview detail tenant table */
+    div[data-testid="stElementContainer"]:has(.ov-btn-export-marker) {{
+        position: absolute !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.ov-btn-export-marker) + div[data-testid="stElementContainer"] button {{
+        background: rgba(255, 255, 255, 0.72) !important;
+        border: 1px solid rgba(99, 102, 241, 0.25) !important;
+        color: #4F46E5 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 0 16px !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.ov-btn-export-marker) + div[data-testid="stElementContainer"] button:hover {{
+        background: #f5f3ff !important;
+        border-color: rgba(99, 102, 241, 0.45) !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.ov-btn-export-marker) + div[data-testid="stElementContainer"] button p {{
+        color: #4F46E5 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        font-family: 'Poppins', sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.ov-btn-export-marker) + div[data-testid="stElementContainer"] button::before {{
+        content: "" !important;
+        display: inline-block !important;
+        width: 14px !important;
+        height: 14px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%234F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>') !important;
+        background-size: contain !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        flex-shrink: 0 !important;
     }}
     </style>
     """)
@@ -3080,11 +3208,7 @@ def page_overview(df_raw):
     main_left, main_right = st.columns([65, 35], gap="small")
     with main_left:
         st.markdown('<div class="ed-card-marker overview-trend-card"></div>', unsafe_allow_html=True)
-        th1, th2 = st.columns([3.4, 1.4])
-        with th1:
-            st.markdown('<p class="ed-section-title">Revenue Trend</p><p class="ed-section-sub">Monthly revenue, sharing, and contribution in Rp billion</p>', unsafe_allow_html=True)
-        with th2:
-            st.selectbox("Trend period", ["Monthly"], key="overview_trend_period", label_visibility="collapsed")
+        st.markdown('<p class="ed-section-title">Revenue Trend</p><p class="ed-section-sub">Monthly revenue, sharing, and contribution in Rp billion</p>', unsafe_allow_html=True)
 
         trend = (
             df.groupby("masa_jasa")
@@ -3151,11 +3275,7 @@ def page_overview(df_raw):
 
     with main_right:
         st.markdown('<div class="ed-card-marker overview-alert-card"></div>', unsafe_allow_html=True)
-        ah1, ah2 = st.columns([3, 1])
-        with ah1:
-            st.markdown('<p class="ed-section-title">Alert & Insight</p><p class="ed-section-sub">Highlights requiring analyst attention</p>', unsafe_allow_html=True)
-        with ah2:
-            st.markdown('<div class="ed-card-action">Lihat semua</div>', unsafe_allow_html=True)
+        st.markdown('<p class="ed-section-title">Alert & Insight</p><p class="ed-section-sub">Highlights requiring analyst attention</p>', unsafe_allow_html=True)
 
         trend_nonzero = trend[trend["real_revenue"] > 0]
         if len(trend_nonzero) >= 2:
@@ -3222,7 +3342,6 @@ def page_overview(df_raw):
         <div class="ed-table-card" style="display:flex;flex-direction:column;">
             <div class="ed-table-head">
                 <p class="ed-table-title">Revenue Per Sqm</p>
-                <span class="ed-table-link">View All</span>
             </div>
             <div class="ed-table-scroll" style="flex:1;">
                 <table class="ed-table">
@@ -3239,7 +3358,6 @@ def page_overview(df_raw):
         <div class="ed-table-card ed-table-best3" style="display:flex;flex-direction:column;">
             <div class="ed-table-head">
                 <p class="ed-table-title">Best 3 Achievement</p>
-                <span class="ed-table-link">View All</span>
             </div>
             <div class="ed-table-scroll" style="flex:1;">
                 <table class="ed-table">
@@ -3288,6 +3406,7 @@ def page_overview(df_raw):
         export_df = detail_df.copy()
 
         with dex:
+            st.markdown('<div class="ov-btn-export-marker"></div>', unsafe_allow_html=True)
             st.download_button(
                 "Export",
                 data=export_df.to_csv(index=False).encode("utf-8"),
