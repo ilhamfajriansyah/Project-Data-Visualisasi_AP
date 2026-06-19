@@ -84,6 +84,16 @@ def inject_shared_css() -> None:
             overflow-x: hidden !important;
         }}
 
+        /* Hide the invisible iframes used by the cookie-manager component
+           (session persistence) — extra_streamlit_components only hides
+           these via a legacy ".element-container" selector that no longer
+           matches current Streamlit's DOM, leaving a thin blank gap per
+           call otherwise. */
+        div[data-testid="stElementContainer"]:has(iframe[height="0"]),
+        div[data-testid="stElementContainer"]:has(> div > iframe[height="0"]) {{
+            display: none !important;
+        }}
+
         body,
         [data-testid="stApp"],
         [data-testid="stAppViewContainer"],

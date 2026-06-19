@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 import re
+import secrets
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -11,8 +12,33 @@ from typing import Any
 import extra_streamlit_components as stx
 import streamlit as st
 
-AUTH_COOKIE_NAME = "ap_auth_session"
-AUTH_COOKIE_MAX_AGE_DAYS = 30
+# ──────────────────────────────────────────────────────────────────────────
+# SESSION POLICY
+#
+# Architecture note: this is a single-process Streamlit app — there is no
+# separate REST backend or database. The "backend" for session purposes is
+# this Python module's in-memory _SESSION_STORE, which lives in the running
+# Streamlit server process and is shared by every connected browser/tab
+# (st.session_state, by contrast, is per-tab and is wiped on a hard
+# refresh — that's why the store, not session_state, is the source of
+# truth for expiry). A real production deployment would back this store
+# with Redis/a database so sessions survive a server restart; documented
+# here as the known trade-off of the in-memory approach.
+# ──────────────────────────────────────────────────────────────────────────
+AUTH_COOKIE_NAME = "ap_session_token"
+
+IDLE_TIMEOUT = timedelta(minutes=60)
+IDLE_WARNING_LEAD = timedelta(minutes=5)  # show the "expiring soon" modal this far ahead
+ABSOLUTE_TIMEOUT_NORMAL = timedelta(hours=8)
+ABSOLUTE_TIMEOUT_REMEMBER = timedelta(days=3)
+
+IDLE_TIMEOUT_SECONDS = IDLE_TIMEOUT.total_seconds()
+IDLE_WARNING_LEAD_SECONDS = IDLE_WARNING_LEAD.total_seconds()
+
+# Set to True once the app is served over HTTPS. Cookies marked Secure are
+# silently refused by browsers on a plain http:// origin (e.g. local dev),
+# so this must stay False there.
+COOKIE_SECURE = False
 
 
 class Role(str, Enum):
@@ -82,6 +108,139 @@ class AuthUser:
             return None
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# SERVER-SIDE SESSION STORE
+#
+# "Database schema" (documented as a dict shape here since there's no real
+# DB in this app — this is exactly the shape you'd give a `sessions` table
+# if/when this store moves to Redis/Postgres):
+#
+#   sessions:
+#     token               TEXT PRIMARY KEY   -- opaque bearer token (cookie value)
+#     email               TEXT NOT NULL
+#     name                TEXT NOT NULL
+#     role                TEXT NOT NULL
+#     remember            BOOLEAN NOT NULL
+#     login_at            TIMESTAMP NOT NULL
+#     last_activity_at    TIMESTAMP NOT NULL
+#     absolute_expires_at TIMESTAMP NOT NULL
+# ──────────────────────────────────────────────────────────────────────────
+_SESSION_STORE: dict[str, dict[str, Any]] = {}
+_SESSION_STORE_LOCK = threading.Lock()
+
+
+def _now() -> datetime:
+    return datetime.now()
+
+
+def _new_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def create_session(user: AuthUser, remember: bool) -> str:
+    """Creates the server-side session record (the "database row") and
+    returns the bearer token that gets handed to the browser as a cookie.
+    Never put the token's *content* (role, etc.) in the cookie itself —
+    only this opaque token, so a tampered cookie can't forge a role."""
+    token = _new_token()
+    now = _now()
+    lifetime = ABSOLUTE_TIMEOUT_REMEMBER if remember else ABSOLUTE_TIMEOUT_NORMAL
+
+    record = {
+        "email": user.email,
+        "name": user.name,
+        "role": user.role.value,
+        "remember": remember,
+        "login_at": now,
+        "last_activity_at": now,
+        "absolute_expires_at": now + lifetime,
+    }
+    with _SESSION_STORE_LOCK:
+        _SESSION_STORE[token] = record
+    return token
+
+
+def invalidate_token(token: str | None) -> None:
+    if not token:
+        return
+    with _SESSION_STORE_LOCK:
+        _SESSION_STORE.pop(token, None)
+
+
+def touch_session(token: str | None) -> bool:
+    """Explicitly refresh last_activity_at (used by the keepalive
+    endpoint triggered from the frontend watchdog's "Stay Logged In"
+    button and periodic activity sync)."""
+    if not token:
+        return False
+    with _SESSION_STORE_LOCK:
+        record = _SESSION_STORE.get(token)
+        if not record:
+            return False
+        record["last_activity_at"] = _now()
+        return True
+
+
+def validate_token(token: str | None) -> tuple[AuthUser | None, bool, str | None]:
+    """The core backend check: reject (idle_timeout / absolute_timeout /
+    invalid) or accept-and-touch. Returns (user_or_none, remember, reason).
+    Called on every authenticated render — see validate_active_session()."""
+    if not token:
+        return None, False, "invalid"
+
+    with _SESSION_STORE_LOCK:
+        record = _SESSION_STORE.get(token)
+        if not record:
+            return None, False, "invalid"
+
+        now = _now()
+        if now >= record["absolute_expires_at"]:
+            del _SESSION_STORE[token]
+            return None, False, "absolute_timeout"
+
+        if now - record["last_activity_at"] >= IDLE_TIMEOUT:
+            del _SESSION_STORE[token]
+            return None, False, "idle_timeout"
+
+        # Valid request — this *is* the "refresh activity timestamp safely"
+        # requirement: every validated request extends the idle window.
+        record["last_activity_at"] = now
+        remember = bool(record["remember"])
+        try:
+            user = AuthUser(
+                email=record["email"],
+                name=record["name"],
+                role=normalize_role(record["role"]),
+            )
+        except ValueError:
+            del _SESSION_STORE[token]
+            return None, False, "invalid"
+
+    return user, remember, None
+
+
+def session_time_remaining(token: str | None) -> dict[str, float] | None:
+    """Snapshot used to seed the frontend countdown accurately from the
+    server's notion of time, instead of trusting the browser clock alone."""
+    if not token:
+        return None
+    with _SESSION_STORE_LOCK:
+        record = _SESSION_STORE.get(token)
+        if not record:
+            return None
+        now = _now()
+        idle_deadline = record["last_activity_at"] + IDLE_TIMEOUT
+        deadline = min(idle_deadline, record["absolute_expires_at"])
+        idle_elapsed = (now - record["last_activity_at"]).total_seconds()
+        seconds_until_expiry = max(0.0, (deadline - now).total_seconds())
+
+    return {
+        "idle_elapsed_seconds": max(0.0, idle_elapsed),
+        "idle_timeout_seconds": IDLE_TIMEOUT_SECONDS,
+        "seconds_until_expiry": seconds_until_expiry,
+    }
+
+
 def init_auth_state() -> None:
     st.session_state.setdefault("is_authenticated", False)
     st.session_state.setdefault("auth_user", None)
@@ -90,6 +249,8 @@ def init_auth_state() -> None:
     st.session_state.setdefault("user_role", "")
     st.session_state.setdefault("login_role", Role.USER.value)
     st.session_state.setdefault("remember_me", False)
+    st.session_state.setdefault("session_token", None)
+    st.session_state.setdefault("session_expired_reason", None)
 
 
 def normalize_role(role: str | Role) -> Role:
@@ -166,6 +327,8 @@ def authenticate_user(
 
 def login_user(user: AuthUser, remember: bool = False) -> None:
     init_auth_state()
+    token = create_session(user, remember)
+
     st.session_state.is_authenticated = True
     st.session_state.auth_user = user.to_session()
     st.session_state.user_name = user.name
@@ -173,21 +336,23 @@ def login_user(user: AuthUser, remember: bool = False) -> None:
     st.session_state.user_role = user.role.value
     st.session_state.login_role = user.role.value
     st.session_state.remember_me = remember
+    st.session_state.session_token = token
+    st.session_state.session_expired_reason = None
 
-    if remember:
-        persist_session(user)
-    else:
-        clear_persisted_session()
+    _write_session_cookie(token, remember)
 
 
 def logout_user() -> None:
+    invalidate_token(st.session_state.get("session_token"))
+
     st.session_state.is_authenticated = False
     st.session_state.auth_user = None
     st.session_state.user_name = ""
     st.session_state.user_email = ""
     st.session_state.user_role = ""
     st.session_state.login_role = Role.USER.value
-    clear_persisted_session()
+    st.session_state.session_token = None
+    _clear_session_cookie()
 
 
 def get_cookie_manager() -> stx.CookieManager:
@@ -204,87 +369,157 @@ def get_cookie_manager() -> stx.CookieManager:
     return st.session_state["_ap_cookie_manager"]
 
 
-def ensure_session_persisted() -> None:
-    """Re-assert the remember-me cookie on every authenticated render.
+def _get_cookies_or_none(cookie_manager: stx.CookieManager, key: str) -> dict[str, Any] | None:
+    """Like cookie_manager.get_all(), but distinguishes "the browser
+    genuinely has no cookies" ({}) from "the cookie iframe hasn't reported
+    back yet this run" (None) — get_all() always uses default={} for both,
+    which is exactly what causes the login-page flash on refresh: the very
+    first script run after a hard reload can't tell those two cases apart
+    and wrongly assumes "no cookie" before the real answer has arrived.
 
-    Setting the cookie once, right before the st.rerun() that follows a
-    successful login, is unreliable: the cookie-writing component is an
-    iframe that needs a round-trip to the browser to actually execute its
-    JS, and the immediate rerun can cut that short before it finishes.
-    Calling this on every dashboard render (it's a cheap no-op once the
-    cookie already matches) gives it many more chances to actually stick
-    before the user ever hits refresh."""
-    if not st.session_state.get("is_authenticated"):
-        return
-    if not st.session_state.get("remember_me"):
-        return
-
-    user = get_current_user()
-    if user:
-        persist_session(user)
+    Reaches into CookieManager's own `.cookie_manager` (the underlying
+    declared component callable) since the public wrapper methods don't
+    expose a way to override their hardcoded default={}."""
+    return cookie_manager.cookie_manager(method="getAll", key=key, default=None)
 
 
-def persist_session(user: AuthUser) -> None:
-    """Only called when the user ticks "Remember Me" at login — writes the
-    session to a browser cookie so a page refresh (or new browser session,
-    within the cookie's lifetime) doesn't bounce back to the login page."""
+def is_session_check_pending() -> bool:
+    """True while we genuinely don't know yet whether a persisted-session
+    cookie exists (the component hasn't reported back this run). The
+    caller should render nothing/a neutral loading state and st.stop() —
+    Streamlit automatically reruns once the component resolves."""
+    return bool(st.session_state.get("_ap_session_check_pending"))
+
+
+def handle_logout_request() -> bool:
+    """Call when ?ap_logout=1 is present, before any other session logic.
+
+    The Logout link is a real page navigation (target="_self"), which
+    starts a brand-new Streamlit session — st.session_state.session_token
+    is empty in that fresh session, so the *only* place the real token
+    can be recovered from is the cookie itself. Reading that cookie is
+    async (see _get_cookies_or_none), so: if it hasn't resolved yet, wait
+    (return False, caller should st.stop()) rather than guessing — acting
+    before we know the token would invalidate nothing and leave the old
+    session valid server-side, which is exactly what silently logs the
+    user right back in once the cookie *does* resolve afterwards.
+
+    Returns True once the logout has actually been carried out (caller
+    should st.rerun())."""
     cookie_manager = get_cookie_manager()
-    expires_at = datetime.now() + timedelta(days=AUTH_COOKIE_MAX_AGE_DAYS)
+    cookies = _get_cookies_or_none(cookie_manager, "ap_logout_cookie_read")
+    if cookies is None:
+        return False
+
+    token = st.session_state.get("session_token") or cookies.get(AUTH_COOKIE_NAME)
+    invalidate_token(token)
+    logout_user()
+    return True
+
+
+def _write_session_cookie(token: str, remember: bool) -> None:
+    """The cookie only ever carries the opaque token — never the
+    password, role, or any other session payload (see module docstring).
+
+    HttpOnly can't be set here: this library writes cookies via
+    document.cookie in client-side JS, and HttpOnly cookies are by
+    definition unwritable/unreadable from JS (only a real HTTP response's
+    Set-Cookie header can mark a cookie HttpOnly). That requires server
+    control over HTTP headers, which a pure Streamlit app doesn't expose.
+    Documented trade-off: mitigated by the cookie containing only a
+    revocable random token, never credentials.
+
+    `remember=False` still gets a real (non-session) expiry because this
+    underlying library always requires an explicit expiry — but the
+    *server-side* record (see create_session) is the actual authority for
+    both the 60-minute idle cap and the 8-hour/3-day absolute cap, so this
+    is just a transport convenience, not a security boundary."""
+    cookie_manager = get_cookie_manager()
+    lifetime = ABSOLUTE_TIMEOUT_REMEMBER if remember else ABSOLUTE_TIMEOUT_NORMAL
     cookie_manager.set(
         AUTH_COOKIE_NAME,
-        json.dumps(user.to_session()),
-        expires_at=expires_at,
+        token,
+        expires_at=datetime.now() + lifetime,
         key="ap_set_auth_cookie",
+        secure=COOKIE_SECURE,
+        same_site="strict",
     )
 
 
-def clear_persisted_session() -> None:
+def _clear_session_cookie() -> None:
     cookie_manager = get_cookie_manager()
     cookies = cookie_manager.get_all(key="ap_cookie_refresh_clear")
     if AUTH_COOKIE_NAME in cookies:
         cookie_manager.delete(AUTH_COOKIE_NAME, key="ap_delete_auth_cookie")
 
 
-def restore_session_from_cookie() -> bool:
-    """Call once near the top of the app, before any login check. If the
-    user isn't already authenticated in this session but a valid "Remember
-    Me" cookie exists from a previous session, transparently log them back
-    in instead of showing the login page after a refresh."""
+def validate_active_session() -> bool:
+    """Call once near the top of every page render, before deciding
+    whether to show the dashboard or the login page. This is the
+    "backend validation on every authenticated request" requirement:
+    idle/absolute expiry is re-checked here every single rerun, never
+    just trusted from client-held state.
+
+    Also transparently restores a session from the persisted cookie when
+    st.session_state is empty (e.g. right after a hard refresh)."""
     init_auth_state()
-    if st.session_state.is_authenticated:
-        return True
 
     cookie_manager = get_cookie_manager()
-    # Force a fresh read from the browser — the snapshot taken when the
-    # manager was constructed is frequently stale/empty on the very first
-    # rerun after the underlying component finishes loading.
-    cookies = cookie_manager.get_all(key="ap_cookie_refresh_restore")
-    raw_value = cookies.get(AUTH_COOKIE_NAME)
-    if not raw_value:
+    cookies = _get_cookies_or_none(cookie_manager, "ap_cookie_refresh_validate")
+
+    if cookies is None:
+        # Don't know yet whether a remember-me cookie exists — if there's
+        # also no in-tab session, avoid flashing the login page; the
+        # caller should wait (see is_session_check_pending()) for the
+        # automatic rerun that fires once the component resolves.
+        st.session_state["_ap_session_check_pending"] = not st.session_state.is_authenticated
+        return bool(st.session_state.is_authenticated)
+
+    st.session_state["_ap_session_check_pending"] = False
+    cookie_token = cookies.get(AUTH_COOKIE_NAME)
+
+    token = st.session_state.get("session_token") or cookie_token
+    if not token:
+        if st.session_state.is_authenticated:
+            logout_user()
         return False
 
-    try:
-        data = json.loads(raw_value)
-        user = AuthUser.from_session(data)
-    except (ValueError, TypeError):
-        user = None
-
+    user, remember, reason = validate_token(token)
     if not user:
-        cookie_manager.delete(AUTH_COOKIE_NAME, key="ap_delete_invalid_cookie")
+        st.session_state.session_expired_reason = reason
+        logout_user()
         return False
 
-    # Re-validate against the demo account table so a stale/edited cookie
-    # can't grant a role the account no longer has.
-    demo_account = DEMO_ACCOUNTS.get(user.email)
-    if demo_account and normalize_role(demo_account["role"]) != user.role:
-        cookie_manager.delete(AUTH_COOKIE_NAME, key="ap_delete_mismatched_cookie")
-        return False
+    if not st.session_state.is_authenticated or st.session_state.get("session_token") != token:
+        st.session_state.is_authenticated = True
+        st.session_state.auth_user = user.to_session()
+        st.session_state.user_name = user.name
+        st.session_state.user_email = user.email
+        st.session_state.user_role = user.role.value
+        st.session_state.login_role = user.role.value
+        st.session_state.session_token = token
+        st.session_state.remember_me = remember
+        st.session_state.session_expired_reason = None
 
-    login_user(user, remember=True)
+    # Re-assert the cookie on every render (not just once at login) — for
+    # BOTH remember-me and normal sessions, since "stay logged in across a
+    # refresh" is required for normal sessions too (just not across a full
+    # browser restart). The cookie-writing component is an iframe that
+    # needs a round trip to the browser to actually execute — a single
+    # .set() call right before the login flow's immediate st.rerun() can
+    # get cut short before it ever reaches the browser. Repeating this on
+    # every authenticated render gives it many more chances to actually
+    # stick before a refresh happens.
+    if cookie_token != token:
+        _write_session_cookie(token, remember)
+
     return True
 
 
 def is_authenticated() -> bool:
+    """Cheap session_state-only check for UI gating. The actual
+    idle/absolute-expiry enforcement happens once per render in
+    validate_active_session() — this just reads the result of that."""
     init_auth_state()
     return bool(st.session_state.is_authenticated and get_current_user())
 

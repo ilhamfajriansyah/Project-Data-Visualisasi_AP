@@ -7,7 +7,16 @@ from .import_manager import render_import_manager
 from .Data_verification import render_data_verification
 from .traffic_monitor import page_traffic_monitor
 from .dashboard_style import DASHBOARD_CSS
-from login.access_control import Role, get_current_role, init_auth_state, is_authenticated, logout_user
+from login.access_control import (
+    IDLE_TIMEOUT_SECONDS,
+    IDLE_WARNING_LEAD_SECONDS,
+    Role,
+    get_current_role,
+    init_auth_state,
+    is_authenticated,
+    session_time_remaining,
+)
+from .session_watchdog import inject_session_watchdog
 from .shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
 import streamlit as st
 import streamlit.components.v1 as components
@@ -32,6 +41,14 @@ def inject_dashboard_css():
     st.markdown(f"<style>{DASHBOARD_CSS}</style>", unsafe_allow_html=True)
     st.markdown("""
     <style>
+    /* Hide the invisible iframes used by the session watchdog / cookie
+       manager components (session persistence + idle-timeout tracking) —
+       without this they leave a thin blank gap that pushes page content
+       down, since they're still a normal (non-collapsed) flex item even
+       though there's nothing visible inside. */
+    div[data-testid="stElementContainer"]:has(iframe[height="0"]) {
+        display: none !important;
+    }
     .ap-top-actions {
         display: flex;
         align-items: center;
@@ -3397,18 +3414,20 @@ def init_dashboard_state():
         st.session_state.active_menu = "Overview"
 
 
-def handle_logout_query():
-    if st.query_params.get("ap_logout") != "1":
-        return
-    st.query_params.clear()
-    logout_user()
-    st.rerun()
-
-
 def render_dashboard_app():
+    # ?ap_logout=1 / ?ap_keepalive=1 are handled earlier, in login/app.py's
+    # main(), before this function is ever reached — see the comment there
+    # for why (it must run before the cookie/pending-session gate).
     init_dashboard_state()
-    handle_logout_query()
     inject_dashboard_css()
+
+    session_status = session_time_remaining(st.session_state.get("session_token"))
+    if session_status:
+        inject_session_watchdog(
+            idle_elapsed_seconds=session_status["idle_elapsed_seconds"],
+            idle_timeout_seconds=IDLE_TIMEOUT_SECONDS,
+            warning_lead_seconds=IDLE_WARNING_LEAD_SECONDS,
+        )
 
     st.markdown(
         f'<div class="ap-sidebar-state {"is-mini" if st.session_state.get("sidebar_minimized", False) else "is-expanded"}"></div>',

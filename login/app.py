@@ -15,11 +15,13 @@ if __package__:
     from .access_control import (
         authenticate_user,
         available_roles,
-        ensure_session_persisted,
+        handle_logout_request,
         init_auth_state,
         is_authenticated,
+        is_session_check_pending,
         login_user,
-        restore_session_from_cookie,
+        touch_session,
+        validate_active_session,
     )
     from .forgot_pass import render_forgot_panel
     from .reset_pass import render_reset_panel
@@ -28,11 +30,13 @@ else:
     from access_control import (
         authenticate_user,
         available_roles,
-        ensure_session_persisted,
+        handle_logout_request,
         init_auth_state,
         is_authenticated,
+        is_session_check_pending,
         login_user,
-        restore_session_from_cookie,
+        touch_session,
+        validate_active_session,
     )
     from forgot_pass import render_forgot_panel
     from reset_pass import render_reset_panel
@@ -48,6 +52,12 @@ def init_login_page_state() -> None:
         st.session_state.auth_page = page_param
 
 
+SESSION_EXPIRED_MESSAGES = {
+    "idle_timeout": "Sesi Anda berakhir karena tidak ada aktivitas selama 60 menit.",
+    "absolute_timeout": "Sesi Anda berakhir. Silakan login kembali.",
+}
+
+
 def render_login_panel() -> None:
     if is_authenticated():
         return
@@ -56,6 +66,16 @@ def render_login_panel() -> None:
         "Airport Monitoring",
         "Sign in to access your dashboard",
     )
+
+    # "invalid" (token unrecognized — e.g. right after a normal logout, or
+    # a first-ever visit with a stale/foreign cookie) is intentionally NOT
+    # shown here: it isn't an unexpected expiry, just "not logged in", and
+    # alarming the user about it on every fresh visit/logout would be
+    # noise. Only genuine idle/absolute timeouts warrant the notice.
+    expired_reason = st.session_state.pop("session_expired_reason", None)
+    expired_message = SESSION_EXPIRED_MESSAGES.get(expired_reason)
+    if expired_message:
+        show_error(expired_message)
 
     role_options = available_roles()
     if "login_role_initialized" not in st.session_state:
@@ -169,13 +189,43 @@ def main() -> None:
     )
 
     init_auth_state()
-    restore_session_from_cookie()
+
+    # Handle ?ap_logout=1 unconditionally, before any other session logic.
+    # The Logout link is a real page navigation (target="_self"), which
+    # starts a brand-new Streamlit session — st.session_state has no token
+    # to invalidate yet, only the (async) cookie does. handle_logout_request
+    # waits for that cookie read to resolve before acting, so we don't risk
+    # invalidating nothing and having the old session quietly restore
+    # itself right back.
+    if st.query_params.get("ap_logout") == "1":
+        if not handle_logout_request():
+            st.stop()
+        st.query_params.clear()
+        st.rerun()
+
+    # Same reasoning as logout above — this is a real page navigation
+    # (window.parent.location.search = '?ap_keepalive=1' from the session
+    # watchdog's JS), so handle it before any cookie/pending gate so an
+    # activity ping is never silently dropped behind that race.
+    if st.query_params.get("ap_keepalive") == "1":
+        st.query_params.clear()
+        touch_session(st.session_state.get("session_token"))
+        st.rerun()
+
+    validate_active_session()
+
     if is_authenticated():
-        ensure_session_persisted()
         from dashboard import render_dashboard_app
 
         render_dashboard_app()
         return
+
+    if is_session_check_pending():
+        # We genuinely don't know yet whether a remember-me cookie exists
+        # (the cookie component hasn't reported back this run) — render
+        # nothing rather than flashing the login page; Streamlit reruns
+        # automatically the moment the component resolves.
+        st.stop()
 
     app_shell(render_current_page)
 
