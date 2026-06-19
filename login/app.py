@@ -15,9 +15,11 @@ if __package__:
     from .access_control import (
         authenticate_user,
         available_roles,
+        ensure_session_persisted,
         init_auth_state,
         is_authenticated,
         login_user,
+        restore_session_from_cookie,
     )
     from .forgot_pass import render_forgot_panel
     from .reset_pass import render_reset_panel
@@ -26,9 +28,11 @@ else:
     from access_control import (
         authenticate_user,
         available_roles,
+        ensure_session_persisted,
         init_auth_state,
         is_authenticated,
         login_user,
+        restore_session_from_cookie,
     )
     from forgot_pass import render_forgot_panel
     from reset_pass import render_reset_panel
@@ -135,7 +139,7 @@ def render_login_panel() -> None:
             show_error(error_message)
             return
 
-        login_user(user)
+        login_user(user, remember=remember)
         st.session_state.auth_page = "login"
         st.query_params.clear()
         st.rerun()
@@ -165,7 +169,9 @@ def main() -> None:
     )
 
     init_auth_state()
+    restore_session_from_cookie()
     if is_authenticated():
+        ensure_session_persisted()
         from dashboard import render_dashboard_app
 
         render_dashboard_app()

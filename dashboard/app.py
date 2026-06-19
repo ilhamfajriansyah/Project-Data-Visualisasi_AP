@@ -89,7 +89,7 @@ def inject_dashboard_css():
         width: 19px;
         height: 19px;
         border-radius: 50%;
-        background: #9f9f9f;
+        background: #ffffff;
         transform: translateX(-50%);
     }
     .ap-profile-avatar::after {
@@ -100,43 +100,57 @@ def inject_dashboard_css():
         width: 35px;
         height: 25px;
         border-radius: 50% 50% 42% 42% / 62% 62% 38% 38%;
-        background: #9f9f9f;
+        background: #ffffff;
         transform: translateX(-50%);
     }
     .ap-profile-menu {
         position: absolute;
         right: 0;
-        top: 54px;
+        top: 48px;
         z-index: 9999;
-        width: 210px;
-        padding: 8px 0;
+        width: 132px;
+        padding: 4px 0;
         border-radius: 10px;
-        background: rgba(255,255,255,0.98);
-        border: 1px solid rgba(226,232,240,0.96);
-        box-shadow: 0 16px 34px rgba(15,23,42,0.14);
+        background: linear-gradient(135deg, rgba(244,114,182,0.10), rgba(255,255,255,0.32));
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(255,255,255,0.35);
+        box-shadow: 0 8px 18px rgba(15,23,42,0.10);
         overflow: hidden;
     }
     .ap-profile-menu-item {
-        height: 46px;
-        padding: 0 20px;
+        height: 32px;
+        padding: 0 12px;
         color: #334155 !important;
         text-decoration: none !important;
         display: flex;
         align-items: center;
-        gap: 15px;
-        font-size: 14px;
+        gap: 8px;
+        font-size: 12px;
         font-weight: 600;
         white-space: nowrap;
+        background: transparent;
+        transition: background 0.15s ease;
     }
     .ap-profile-menu-item:hover {
         background: rgba(99,102,241,0.08);
         color: #4f46e5 !important;
     }
+    .ap-profile-menu-item.is-danger {
+        color: #DC2626 !important;
+    }
+    .ap-profile-menu-item.is-danger:hover {
+        background: linear-gradient(135deg, rgba(244,63,94,0.10), rgba(168,85,247,0.10));
+        color: #DC2626 !important;
+    }
     .ap-profile-menu-icon {
-        width: 18px;
-        color: #64748b;
+        width: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: inherit;
         text-align: center;
-        font-size: 16px;
+        font-size: 13px;
     }
     #MainMenu,
     footer,
@@ -444,18 +458,32 @@ def inject_dashboard_css():
         padding-top: 0 !important;
         margin-top: 0 !important;
     }
+
+    /* Pin only the footer to the bottom of the sidebar — position:absolute
+       takes it completely out of normal flow, so it cannot affect (or be
+       affected by) the layout of the brand/nav items above it. */
+    [data-testid="stSidebar"] {
+        position: relative !important;
+    }
+    [data-testid="stSidebarContent"] div[data-testid="stElementContainer"]:has(.ap-sidebar-footer) {
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 18px !important;
+        margin: 0 !important;
+    }
     .ap-brand {
         margin: 0 !important;
-        padding: 13px 24px 13px !important;
+        padding: 16px 24px 16px !important;
         display: flex !important;
         align-items: center !important;
         border-bottom: 1px solid #E5E7EB !important;
     }
 
     .ap-logo {
-        width: 42px !important;
-        height: 42px !important;
-        border-radius: 12px !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 10px !important;
         background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%) !important;
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
         display: flex !important;
@@ -465,18 +493,26 @@ def inject_dashboard_css():
 
     .ap-brand-name {
         color: #0F172A !important;
-        font-size: 15px !important;
+        font-size: 18px !important;
         font-weight: 800 !important;
         letter-spacing: -0.2px !important;
         font-family: 'Poppins', sans-serif !important;
+        white-space: nowrap !important;
+        line-height: 1 !important;
+    }
+
+    .ap-brand-copy {
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
     }
 
     .ap-brand-sub {
         color: #6366F1 !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
         letter-spacing: 0px !important;
-        margin-top: 1px !important;
+        line-height: 1 !important;
+        margin-top: 4px !important;
         font-family: 'Poppins', sans-serif !important;
     }
 
@@ -652,23 +688,23 @@ def inject_dashboard_css():
     }
 
     .ap-sidebar-footer {
-        margin: 0 16px 2px !important;
+        margin: 0 16px 18px !important;
         padding: 0 !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         text-align: center !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
         color: #94A3B8 !important;
         font-family: 'Poppins', sans-serif !important;
-        letter-spacing: 0.3px !important;
-        line-height: 1.35 !important;
+        letter-spacing: 0.2px !important;
+        line-height: 1.5 !important;
         white-space: normal !important;
     }
 
     .ap-sidebar-spacer {
-        height: calc(100vh - 532px) !important;
+        height: 20px !important;
         min-height: 20px !important;
     }
 
@@ -762,9 +798,9 @@ def inject_dashboard_css():
     .ap-profile-avatar {
         width: 42px !important;
         height: 42px !important;
-        background: #E2E8F0 !important;
-        border: 1px solid #CBD5E1 !important;
-        box-shadow: none !important;
+        background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%) !important;
+        border: none !important;
+        box-shadow: 0 3px 10px rgba(99, 102, 241, 0.30) !important;
     }
 
     .ap-user-meta {
@@ -2599,7 +2635,7 @@ st.button = _ap_button
 def _sidebar_brand_logo_svg():
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
-        'width="22" height="22" fill="none" stroke="currentColor" '
+        'width="18" height="18" fill="none" stroke="currentColor" '
         'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
         'style="color: #ffffff;">'
         '<path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 1 0-3-3L13 8 4.8 6.2c-.5-.1-1 .1-1.2.5l-.3.3c-.2.3-.2.7 0 1l6.7 4.1L6 16.2c-.3.3-.4.8-.2 1.1l.3.3c.3.2.8.1 1.1-.2l4.1-4.1 4.1 6.7c.3.2.7.2 1 0l.3-.3c.4-.2.6-.7.5-1.2z"/>'

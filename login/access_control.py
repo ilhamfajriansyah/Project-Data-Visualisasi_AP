@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
 from html import escape
 from typing import Any
 
+import extra_streamlit_components as stx
 import streamlit as st
+
+AUTH_COOKIE_NAME = "ap_auth_session"
+AUTH_COOKIE_MAX_AGE_DAYS = 30
 
 
 class Role(str, Enum):
@@ -141,6 +147,13 @@ def authenticate_user(
             return None, "Password tidak sesuai."
 
         role = normalize_role(demo_account["role"])
+        requested_role = normalize_role(selected_role)
+        if role != requested_role:
+            return None, (
+                f"Akun ini terdaftar sebagai {role.value}, bukan {requested_role.value}. "
+                f"Silakan pilih role {role.value}."
+            )
+
         name = demo_account["name"]
     else:
         # Prototype fallback. For production, replace this with a database lookup
@@ -151,7 +164,7 @@ def authenticate_user(
     return AuthUser(email=normalized_email, name=name, role=role), ""
 
 
-def login_user(user: AuthUser) -> None:
+def login_user(user: AuthUser, remember: bool = False) -> None:
     init_auth_state()
     st.session_state.is_authenticated = True
     st.session_state.auth_user = user.to_session()
@@ -159,6 +172,12 @@ def login_user(user: AuthUser) -> None:
     st.session_state.user_email = user.email
     st.session_state.user_role = user.role.value
     st.session_state.login_role = user.role.value
+    st.session_state.remember_me = remember
+
+    if remember:
+        persist_session(user)
+    else:
+        clear_persisted_session()
 
 
 def logout_user() -> None:
@@ -168,6 +187,101 @@ def logout_user() -> None:
     st.session_state.user_email = ""
     st.session_state.user_role = ""
     st.session_state.login_role = Role.USER.value
+    clear_persisted_session()
+
+
+def get_cookie_manager() -> stx.CookieManager:
+    """Singleton CookieManager — must reuse the same instance/key across
+    reruns, otherwise extra_streamlit_components re-mounts the underlying
+    component and cookie reads become unreliable.
+
+    Note: the manager's own __init__ only snapshots the browser's cookies
+    once, at construction time. Don't rely on that snapshot (via .get()) —
+    always call .get_all() explicitly when you need a fresh read, since
+    that's the only method that actually re-queries the browser."""
+    if "_ap_cookie_manager" not in st.session_state:
+        st.session_state["_ap_cookie_manager"] = stx.CookieManager(key="ap_cookie_manager")
+    return st.session_state["_ap_cookie_manager"]
+
+
+def ensure_session_persisted() -> None:
+    """Re-assert the remember-me cookie on every authenticated render.
+
+    Setting the cookie once, right before the st.rerun() that follows a
+    successful login, is unreliable: the cookie-writing component is an
+    iframe that needs a round-trip to the browser to actually execute its
+    JS, and the immediate rerun can cut that short before it finishes.
+    Calling this on every dashboard render (it's a cheap no-op once the
+    cookie already matches) gives it many more chances to actually stick
+    before the user ever hits refresh."""
+    if not st.session_state.get("is_authenticated"):
+        return
+    if not st.session_state.get("remember_me"):
+        return
+
+    user = get_current_user()
+    if user:
+        persist_session(user)
+
+
+def persist_session(user: AuthUser) -> None:
+    """Only called when the user ticks "Remember Me" at login — writes the
+    session to a browser cookie so a page refresh (or new browser session,
+    within the cookie's lifetime) doesn't bounce back to the login page."""
+    cookie_manager = get_cookie_manager()
+    expires_at = datetime.now() + timedelta(days=AUTH_COOKIE_MAX_AGE_DAYS)
+    cookie_manager.set(
+        AUTH_COOKIE_NAME,
+        json.dumps(user.to_session()),
+        expires_at=expires_at,
+        key="ap_set_auth_cookie",
+    )
+
+
+def clear_persisted_session() -> None:
+    cookie_manager = get_cookie_manager()
+    cookies = cookie_manager.get_all(key="ap_cookie_refresh_clear")
+    if AUTH_COOKIE_NAME in cookies:
+        cookie_manager.delete(AUTH_COOKIE_NAME, key="ap_delete_auth_cookie")
+
+
+def restore_session_from_cookie() -> bool:
+    """Call once near the top of the app, before any login check. If the
+    user isn't already authenticated in this session but a valid "Remember
+    Me" cookie exists from a previous session, transparently log them back
+    in instead of showing the login page after a refresh."""
+    init_auth_state()
+    if st.session_state.is_authenticated:
+        return True
+
+    cookie_manager = get_cookie_manager()
+    # Force a fresh read from the browser — the snapshot taken when the
+    # manager was constructed is frequently stale/empty on the very first
+    # rerun after the underlying component finishes loading.
+    cookies = cookie_manager.get_all(key="ap_cookie_refresh_restore")
+    raw_value = cookies.get(AUTH_COOKIE_NAME)
+    if not raw_value:
+        return False
+
+    try:
+        data = json.loads(raw_value)
+        user = AuthUser.from_session(data)
+    except (ValueError, TypeError):
+        user = None
+
+    if not user:
+        cookie_manager.delete(AUTH_COOKIE_NAME, key="ap_delete_invalid_cookie")
+        return False
+
+    # Re-validate against the demo account table so a stale/edited cookie
+    # can't grant a role the account no longer has.
+    demo_account = DEMO_ACCOUNTS.get(user.email)
+    if demo_account and normalize_role(demo_account["role"]) != user.role:
+        cookie_manager.delete(AUTH_COOKIE_NAME, key="ap_delete_mismatched_cookie")
+        return False
+
+    login_user(user, remember=True)
+    return True
 
 
 def is_authenticated() -> bool:

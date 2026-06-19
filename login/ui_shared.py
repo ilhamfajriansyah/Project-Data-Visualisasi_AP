@@ -1257,67 +1257,74 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
         }}
 
         .error-alert {{
-            position: relative;
-            width: 100%;
-            margin-top: 12px !important;
-            padding: 12px 14px 12px 16px !important;
-            background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%) !important;
-            border: 1px solid #f3c8c8 !important;
-            border-left: 4px solid #dc2626 !important;
-            border-radius: 16px !important;
+            position: fixed !important;
+            top: 18px !important;
+            right: 18px !important;
+            left: auto !important;
+            width: auto !important;
+            max-width: min(420px, calc(100vw - 36px)) !important;
+            z-index: 99999 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 14px !important;
+            margin: 0 !important;
+            padding: 14px 16px !important;
+            background: #DC2626 !important;
+            border: none !important;
+            border-radius: 12px !important;
             box-shadow:
-                0 1px 2px rgba(15, 23, 42, 0.04),
-                0 12px 28px rgba(15, 23, 42, 0.07) !important;
+                0 8px 16px rgba(220, 38, 38, 0.20),
+                0 16px 32px rgba(15, 23, 42, 0.14) !important;
             box-sizing: border-box !important;
-            transform-origin: center;
-            animation: error-alert-trigger 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            transform-origin: top right;
+            animation: error-alert-trigger 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
             will-change: transform, opacity;
         }}
 
         @keyframes error-alert-trigger {{
             0% {{
                 opacity: 0;
-                transform: translateY(-6px) scale(0.985);
-            }}
-            35% {{
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }}
-            48% {{
-                transform: translateX(-5px);
-            }}
-            62% {{
-                transform: translateX(4px);
-            }}
-            76% {{
-                transform: translateX(-2px);
-            }}
-            90% {{
-                transform: translateX(1px);
+                transform: translateY(-10px) scale(0.97);
             }}
             100% {{
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateY(0) scale(1);
             }}
         }}
 
         .error-alert-title {{
-            margin: 0 0 4px 0;
-            color: #b91c1c !important;
-            font-size: 11px;
-            font-weight: 700;
-            line-height: 1.2;
-            letter-spacing: 0;
-            text-transform: uppercase;
+            display: none;
         }}
 
         .error-alert-content {{
-            color: #7f1d1d !important;
-            font-size: 13px;
-            font-weight: 500;
-            line-height: 1.55;
+            color: #ffffff !important;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.4;
             margin: 0;
             text-align: left !important;
+        }}
+
+        .error-alert-close {{
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: #ffffff;
+            opacity: 0.85;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+        }}
+
+        .error-alert-close:hover {{
+            opacity: 1;
         }}
 
         div[data-testid="stSpinner"] {{
@@ -1449,14 +1456,14 @@ def render_role_selector(role_options: list[str], selected_role: str) -> str:
 
 
 def show_error(message: str, title: str = "Periksa kembali") -> None:
-    safe_title = escape(title.strip())
     safe_message = escape(message.lstrip("*").strip())
 
     st.markdown(
         f"""
         <div class="error-alert" role="alert" aria-live="polite">
-            <div class="error-alert-title">{safe_title}</div>
             <div class="error-alert-content">{safe_message}</div>
+            <button type="button" class="error-alert-close" aria-label="Tutup"
+                    onclick="this.closest('.error-alert').style.display='none';">&times;</button>
         </div>
         """,
         unsafe_allow_html=True,
