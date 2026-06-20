@@ -3,152 +3,72 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import date, datetime
 from textwrap import dedent
+import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+from datetime import date, datetime
+from textwrap import dedent
 
 # ──────────────────────────────────────────────────────────────────────────────
-# DUMMY DATA GENERATOR (RETAINS ORIGINAL DATA & STRUCTURE, EXPANDS TO 247 ROWS)
+# DATA FROM EXCEL
 # ──────────────────────────────────────────────────────────────────────────────
-def _get_contract_data() -> pd.DataFrame:
-    # Important specific records required by the new design
-    data = [
-        # Critical (Status = Expiring Soon / Critical, Sisa <= 30)
-        {"No": 1, "Name/Tenant": "7-Eleven", "Sub": "Critical - Expires Soon", "Valid Period": "01 Jan 2023 - 31 Jan 2025", "Unit Name/Loc": "T1 - Area A", "Status": "Anomaly", "Conflict Info": True, "Kode": "FB-01-01", "Skema": "Revenue Sharing", "Sisa": 16, "Terminal": "T1"},
-        {"No": 2, "Name/Tenant": "Sari Roti", "Sub": "Critical - Expires Soon", "Valid Period": "15 Feb 2023 - 14 Feb 2025", "Unit Name/Loc": "T2 - Area B", "Status": "Anomaly", "Conflict Info": True, "Kode": "RT-02-07", "Skema": "Revenue Sharing", "Sisa": 30, "Terminal": "T2"},
-        
-        # Expiring Soon (Status = Anomaly, 31 <= Sisa <= 90)
-        {"No": 3, "Name/Tenant": "KFC", "Sub": "Expiring Soon", "Valid Period": "01 Mar 2023 - 01 Mar 2025", "Unit Name/Loc": "T3 - Area A", "Status": "Anomaly", "Conflict Info": False, "Kode": "FB-01-03", "Skema": "Revenue Sharing", "Sisa": 44, "Terminal": "T3"},
-        {"No": 4, "Name/Tenant": "Timezone", "Sub": "Expiring Soon", "Valid Period": "02 Apr 2023 - 02 Apr 2025", "Unit Name/Loc": "T1 - Area C", "Status": "Anomaly", "Conflict Info": True, "Kode": "RT-01-02", "Skema": "RS+MO", "Sisa": 75, "Terminal": "T1"},
-        {"No": 5, "Name/Tenant": "Lion Lounge", "Sub": "Expiring Soon", "Valid Period": "16 Apr 2023 - 16 Apr 2025", "Unit Name/Loc": "T1 - Area VIP", "Status": "Anomaly", "Conflict Info": True, "Kode": "LG-01-12", "Skema": "MGRS", "Sisa": 89, "Terminal": "T1"},
-        
-        # Approaching Renewal (Status = Valid, Sisa > 90)
-        {"No": 6, "Name/Tenant": "Burger King", "Sub": "Approaching Renewal", "Valid Period": "02 May 2023 - 02 May 2025", "Unit Name/Loc": "T2 - Area D", "Status": "Valid", "Conflict Info": False, "Kode": "FB-02-05", "Skema": "RS+MO", "Sisa": 105, "Terminal": "T2"},
-        {"No": 7, "Name/Tenant": "Mie Ayam 99", "Sub": "Approaching Renewal", "Valid Period": "02 Jun 2023 - 02 Jun 2025", "Unit Name/Loc": "T3 - Area B", "Status": "Valid", "Conflict Info": False, "Kode": "RT-03-02", "Skema": "Revenue Sharing", "Sisa": 136, "Terminal": "T3"},
-        {"No": 8, "Name/Tenant": "Gramedia", "Sub": "Approaching Renewal", "Valid Period": "02 Jul 2023 - 02 Jul 2025", "Unit Name/Loc": "T1 - Area E", "Status": "Valid", "Conflict Info": False, "Kode": "SV-01-09", "Skema": "MGRS", "Sisa": 166, "Terminal": "T1"},
-        
-        # Expired (Status = Expired)
-        {"No": 9, "Name/Tenant": "Dunkin", "Sub": "Contract Expired", "Valid Period": "01 Jan 2022 - 31 Dec 2024", "Unit Name/Loc": "T1 - Area F", "Status": "Expired", "Conflict Info": True, "Kode": "FB-01-09", "Skema": "Revenue Sharing", "Sisa": -15, "Terminal": "T1"},
-        {"No": 10, "Name/Tenant": "HokBen", "Sub": "Contract Expired", "Valid Period": "01 Jan 2022 - 31 Dec 2024", "Unit Name/Loc": "T2 - Area A", "Status": "Expired", "Conflict Info": True, "Kode": "RT-02-11", "Skema": "Revenue Sharing", "Sisa": -20, "Terminal": "T2"},
-        {"No": 11, "Name/Tenant": "Optik Seis", "Sub": "Contract Expired", "Valid Period": "01 Jan 2022 - 31 Dec 2024", "Unit Name/Loc": "T3 - Area C", "Status": "Expired", "Conflict Info": True, "Kode": "SV-03-01", "Skema": "RS+MO", "Sisa": -30, "Terminal": "T3"},
-    ]
-    
-    # We will generate the rest of the 247 rows programmatically to match the exact counts:
-    # Terminals: T1 (48), T2 (112), T3 (61), T3U (26)
-    # Skema: Revenue Sharing (128), RS+MO (81), MGRS (38)
-    # Status: Valid (218), Anomaly (18), Expired (11)
-    
-    current_t1 = 5 # 7-Eleven, Timezone, Lion Lounge, Gramedia, Dunkin
-    current_t2 = 3 # Sari Roti, Burger King, HokBen
-    current_t3 = 3 # KFC, Mie Ayam 99, Optik Seis
-    current_t3u = 0
-    
-    current_rs = 6 # 7-Eleven, Sari Roti, KFC, Mie Ayam 99, Dunkin, HokBen
-    current_rs_mo = 3 # Timezone, Burger King, Optik Seis
-    current_mgrs = 2 # Lion Lounge, Gramedia
-    
-    current_valid = 3 # Burger King, Mie Ayam 99, Gramedia
-    current_anomaly = 5 # 7-Eleven, Sari Roti, KFC, Timezone, Lion Lounge
-    current_expired = 3 # Dunkin, HokBen, Optik Seis
-    
-    for i in range(12, 248):
-        # Assign status
-        if current_valid < 218:
-            status = "Valid"
-            sisa = 100 + (i % 500)
-            current_valid += 1
-        elif current_anomaly < 18:
-            status = "Anomaly"
-            sisa = 10 + (i % 80)
-            current_anomaly += 1
-        else:
-            status = "Expired"
-            sisa = -1 * (10 + (i % 300))
-            current_expired += 1
-            
-        # Assign terminal
-        if current_t1 < 48:
-            terminal = "T1"
-            current_t1 += 1
-        elif current_t2 < 112:
-            terminal = "T2"
-            current_t2 += 1
-        elif current_t3 < 61:
-            terminal = "T3"
-            current_t3 += 1
-        else:
-            terminal = "T3U"
-            current_t3u += 1
-            
-        # Assign skema
-        if current_rs < 128:
-            skema = "Revenue Sharing"
-            current_rs += 1
-        elif current_rs_mo < 81:
-            skema = "RS+MO"
-            current_rs_mo += 1
-        else:
-            skema = "MGRS"
-            current_mgrs += 1
-            
-        tenant_name = f"Tenant {i}"
-        unit_name = f"{terminal} - Loc {i}"
-        valid_period = f"01 Jan 2024 - 31 Dec 2025"
-        
+from .shared_import import get_mapped_column
+
+LC_CONTRACT_COLUMNS = [
+    "No",
+    "Name/Tenant",
+    "Sub",
+    "Valid Period",
+    "Unit Name/Loc",
+    "Status",
+    "Conflict Info",
+    "Kode",
+    "Skema",
+    "Sisa",
+    "Terminal",
+]
+
+
+def _get_contract_data(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame(columns=LC_CONTRACT_COLUMNS)
+
+    col_perusahaan = get_mapped_column("perusahaan") or "perusahaan"
+    col_terminal = get_mapped_column("terminal") or "terminal"
+    col_kode = get_mapped_column("kode_ruang") or "kode_ruang"
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+
+    data = []
+    for i, row in df.iterrows():
         data.append({
-            "No": i,
-            "Name/Tenant": tenant_name,
+            "No": i + 1,
+            "Name/Tenant": row.get(col_perusahaan, "-"),
             "Sub": "General Contract",
-            "Valid Period": valid_period,
-            "Unit Name/Loc": unit_name,
-            "Status": status,
-            "Conflict Info": (i % 11 == 0),
-            "Kode": f"KD-{i:03d}",
-            "Skema": skema,
-            "Sisa": sisa,
-            "Terminal": terminal
+            "Valid Period": "N/A",
+            "Unit Name/Loc": row.get(col_kode, "-"),
+            "Status": "Valid",
+            "Conflict Info": False,
+            "Kode": row.get(col_kode, "-"),
+            "Skema": row.get(col_bidang, "-"),
+            "Sisa": 365,
+            "Terminal": row.get(col_terminal, "-")
         })
         
-    return pd.DataFrame(data)
+    return pd.DataFrame(data, columns=LC_CONTRACT_COLUMNS)
+    return pd.DataFrame({
+        "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        "Expiring": [0]*12,
+        "Renewed": [0]*12
+    })
 
-
-# Expiry Timeline Data (Next 12 Months: Jan - Dec)
-EXPIRY_TIMELINE_DATA = pd.DataFrame({
-    "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    "Expiring": [5, 8, 4, 3, 6, 7, 2, 5, 8, 4, 4, 11],
-    "Renewed": [3, 5, 3, 2, 4, 4, 1, 3, 5, 3, 2, 4]
-})
-
-# Contract Type Distribution Data
-CONTRACT_TYPES = {
-    "RS": 128,
-    "RS+MO": 81,
-    "MGRS": 38
-}
-
-# Critical Contracts (Expires within 30 days)
-CRITICAL_CONTRACTS = [
-    {"tenant": "7-Eleven", "terminal": "T1", "type": "Revenue Sharing", "end_date": "31 Jan 2025", "remaining": "16d", "value": "Rp 2.8B", "status": "Critical"},
-    {"tenant": "Sari Roti", "terminal": "T2", "type": "Revenue Sharing", "end_date": "14 Feb 2025", "remaining": "30d", "value": "Rp 3.7B", "status": "Critical"}
-]
-
-# Expiring Soon (31 - 90 days)
-EXPIRING_SOON_CONTRACTS = [
-    {"tenant": "KFC", "terminal": "T3", "type": "Revenue Sharing", "end_date": "01 Mar 2025", "remaining": "44d", "value": "Rp 4.2B", "status": "Expiring Soon"},
-    {"tenant": "Timezone", "terminal": "T1", "type": "Rental", "end_date": "02 Apr 2025", "remaining": "75d", "value": "Rp 7.3B", "status": "Expiring Soon"},
-    {"tenant": "Lion Lounge", "terminal": "T1", "type": "MGRS", "end_date": "16 Apr 2025", "remaining": "89d", "value": "Rp 10.2B", "status": "Expiring Soon"}
-]
-
-# Approaching Renewal (91+ days)
-APPROACHING_RENEWAL_CONTRACTS = [
-    {"tenant": "Burger King", "terminal": "T2", "type": "Rental", "end_date": "02 May 2025", "remaining": "105d", "value": "Rp 5.5B", "status": "Approaching"},
-    {"tenant": "Mie Ayam 99", "terminal": "T3", "type": "Revenue Sharing", "end_date": "02 Jun 2025", "remaining": "136d", "value": "Rp 2.2B", "status": "Approaching"},
-    {"tenant": "Gramedia", "terminal": "T1", "type": "MGRS", "end_date": "02 Jul 2025", "remaining": "166d", "value": "Rp 6.8B", "status": "Approaching"}
-]
-
-# Sidebar Pipeline Data
-RENEWAL_PIPELINE = [
-    {"tenant": "DFS Indonesia", "value": "Rp 42.7B", "status": "Low"},
-    {"tenant": "Garuda Exec", "value": "Rp 14.8B", "status": "Low"},
-    {"tenant": "Gramedia", "value": "Rp 6.8B", "status": "Medium"}
-]
+def _get_contract_types(df):
+    if df is None or df.empty:
+        return {"Revenue Sharing": 0, "Rental": 0, "MGRS": 0}
+        
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+    if col_bidang in df.columns:
+        return df[col_bidang].value_counts().to_dict()
+    return {}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1510,8 +1430,8 @@ div[data-testid="stElementContainer"]:has(.btn-apply-marker) + div[data-testid="
 # ──────────────────────────────────────────────────────────────────────────────
 # INIT STATE
 # ──────────────────────────────────────────────────────────────────────────────
-def _init_state():
-    if "lc_df"          not in st.session_state: st.session_state.lc_df          = _get_contract_data()
+def _init_state(df_raw=None):
+    if "lc_df"          not in st.session_state: st.session_state.lc_df          = _get_contract_data(df_raw)
     if "lc_page"        not in st.session_state: st.session_state.lc_page        = 0
     if "lc_show_form"   not in st.session_state: st.session_state.lc_show_form   = False
     if "lc_selected"    not in st.session_state: st.session_state.lc_selected    = set()
@@ -2093,10 +2013,10 @@ def render_executive_insights():
 # ──────────────────────────────────────────────────────────────────────────────
 # MAIN RENDER FUNCTION
 # ──────────────────────────────────────────────────────────────────────────────
-def render_lease_contract():
-    _init_state()
-    
-    # Load custom Poppins layout CSS and page marker
+def render_lease_contract(df_raw=None):
+    from .navigation import show_topnav
+
+    _init_state(df_raw)
     st.markdown(_PAGE_CSS + '<div class="lc-page-marker"></div>', unsafe_allow_html=True)
 
     df_all = st.session_state.lc_filtered_df
@@ -2460,15 +2380,20 @@ def render_lease_contract():
             st.markdown('<div class="premium-card-marker"></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="card-title">Contract Type Distribution</div><div class="card-subtitle">By revenue model · {len(df_all)} active contracts</div>', unsafe_allow_html=True)
             
-            # Calculate dynamic percentages
-            d_rs = len(df_all[df_all["Skema"] == "Revenue Sharing"])
-            d_rs_mo = len(df_all[df_all["Skema"] == "RS+MO"])
-            d_mgrs = len(df_all[df_all["Skema"] == "MGRS"])
-            t_dist = d_rs + d_rs_mo + d_mgrs
+            c_types = _get_contract_types(df_raw)
+            keys = list(c_types.keys())
+            d_rs = c_types.get(keys[0] if len(keys) > 0 else "N/A", 0)
+            d_rs_mo = c_types.get(keys[1] if len(keys) > 1 else "N/A", 0)
+            d_mgrs = c_types.get(keys[2] if len(keys) > 2 else "N/A", 0)
             
-            d_rs_pct = (d_rs / t_dist) * 100 if t_dist > 0 else 0
-            d_rs_mo_pct = (d_rs_mo / t_dist) * 100 if t_dist > 0 else 0
-            d_mgrs_pct = (d_mgrs / t_dist) * 100 if t_dist > 0 else 0
+            d_total = sum(c_types.values()) if sum(c_types.values()) > 0 else 1
+            d_rs_pct = (d_rs / d_total) * 100
+            d_rs_mo_pct = (d_rs_mo / d_total) * 100
+            d_mgrs_pct = (d_mgrs / d_total) * 100
+            
+            label_rs = keys[0] if len(keys) > 0 else "Type 1"
+            label_rs_mo = keys[1] if len(keys) > 1 else "Type 2"
+            label_mgrs = keys[2] if len(keys) > 2 else "Type 3"
             
             sub_left, sub_right = st.columns([1, 1])
             with sub_left:
@@ -2478,7 +2403,7 @@ def render_lease_contract():
                 <div class="dist-stack">
                     <div class="dist-card rs">
                         <div class="dist-card-header">
-                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS</span>
+                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>{label_rs}</span>
                             <span class="dist-card-pct">{d_rs_pct:.1f}%</span>
                         </div>
                         <div class="dist-card-body">
@@ -2488,7 +2413,7 @@ def render_lease_contract():
                     </div>
                     <div class="dist-card rs_mo">
                         <div class="dist-card-header">
-                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS+MO</span>
+                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>{label_rs_mo}</span>
                             <span class="dist-card-pct">{d_rs_mo_pct:.1f}%</span>
                         </div>
                         <div class="dist-card-body">
@@ -2498,7 +2423,7 @@ def render_lease_contract():
                     </div>
                     <div class="dist-card mgrs">
                         <div class="dist-card-header">
-                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>MGRS</span>
+                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>{label_mgrs}</span>
                             <span class="dist-card-pct">{d_mgrs_pct:.1f}%</span>
                         </div>
                         <div class="dist-card-body">

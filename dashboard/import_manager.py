@@ -24,43 +24,15 @@ DEADLINE      = date(2026, 4, 30)
 SBU_LIST = ["Cikarang", "Bali", "Ginung", "Lombok", "Manado", "Kupang", "Jayapura", "Sorong"]
 
 def _get_pic_history() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"Periode": "Apr 2026", "Tanggal Upload": "26 Apr 2026 - 14:22", "Nama File": "tenant_registry_2026.xlsx", "Rows": 1734, "Status": "Approve"},
-        {"Periode": "Mar 2026", "Tanggal Upload": "25 Mar 2026 - 09:10", "Nama File": "tenant_registry_mar.xlsx",  "Rows": 1698, "Status": "Approve"},
-        {"Periode": "Feb 2026", "Tanggal Upload": "24 Feb 2026 - 11:45", "Nama File": "tenant_data_feb.csv",       "Rows": 1710, "Status": "Rejected"},
-        {"Periode": "Jan 2026", "Tanggal Upload": "22 Jan 2026 - 08:30", "Nama File": "tenant_jan_2026.xlsx",      "Rows": 1650, "Status": "Approve"},
-        {"Periode": "Des 2025", "Tanggal Upload": "20 Des 2025 - 16:00", "Nama File": "tenant_des_2025.xlsx",      "Rows": 1589, "Status": "Approve"},
-    ])
+    return pd.DataFrame(columns=["Periode", "Tanggal Upload", "Nama File", "Rows", "Status"])
 
 def _get_admin_history() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"PIC": "Cikarang",  "Periode": "Apr 2026", "File": "tenant_registry_2023.xlsx", "Rows": 1734, "Status": "Success",  "Anomali": 0},
-        {"PIC": "Bali",      "Periode": "Apr 2026", "File": "sap_attributes_file.csv",   "Rows": 420,  "Status": "Failed",   "Anomali": 12},
-        {"PIC": "Ginung",    "Periode": "Apr 2026", "File": "ginung_apr_2026.xlsx",       "Rows": 980,  "Status": "Pending",  "Anomali": 3},
-        {"PIC": "Lombok",    "Periode": "Apr 2026", "File": "lombok_data.xlsx",           "Rows": 670,  "Status": "Approve",  "Anomali": 0},
-        {"PIC": "Manado",    "Periode": "Mar 2026", "File": "manado_mar_2026.csv",        "Rows": 510,  "Status": "Approve",  "Anomali": 0},
-        {"PIC": "Kupang",    "Periode": "Mar 2026", "File": "kupang_mar.xlsx",            "Rows": 340,  "Status": "Rejected", "Anomali": 8},
-        {"PIC": "Jayapura",  "Periode": "Apr 2026", "File": "jayapura_apr.xlsx",          "Rows": 290,  "Status": "Pending",  "Anomali": 5},
-        {"PIC": "Sorong",    "Periode": "Apr 2026", "File": "—",                          "Rows": 0,    "Status": "Pending",  "Anomali": 0},
-    ])
+    return pd.DataFrame(columns=["PIC", "Periode", "File", "Rows", "Status", "Anomali"])
 
-UPLOAD_HISTORY_DATA = [
-    {"period": "Dec 2024", "upload_date": "03 Jan 2025", "upload_time": "09:14 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1842, "tenants": 247, "file_size": "2.4 MB", "rs_total": "Rp 24.2B", "status": "Success"},
-    {"period": "Nov 2024", "upload_date": "04 Dec 2024", "upload_time": "06:52 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1836, "tenants": 244, "file_size": "2.3 MB", "rs_total": "Rp 18.9B", "status": "Success"},
-    {"period": "Oct 2024", "upload_date": "05 Nov 2024", "upload_time": "10:03 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1858, "tenants": 246, "file_size": "2.4 MB", "rs_total": "Rp 20.7B", "status": "Warning"},
-    {"period": "Sep 2024", "upload_date": "03 Oct 2024", "upload_time": "09:44 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1792, "tenants": 243, "file_size": "2.2 MB", "rs_total": "Rp 19.2B", "status": "Success"},
-    {"period": "Aug 2024", "upload_date": "04 Sep 2024", "upload_time": "11:21 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1801, "tenants": 245, "file_size": "2.3 MB", "rs_total": "Rp 18.4B", "status": "Success"},
-    {"period": "Jul 2024", "upload_date": "05 Aug 2024", "upload_time": "08:33 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1776, "tenants": 241, "file_size": "2.2 MB", "rs_total": None,        "status": "Failed"},
-    {"period": "Jun 2024", "upload_date": "03 Jul 2024", "upload_time": "09:58 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1748, "tenants": 239, "file_size": "2.1 MB", "rs_total": "Rp 17.1B", "status": "Success"},
-    {"period": "May 2024", "upload_date": "04 Jun 2024", "upload_time": "14:05 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1715, "tenants": 237, "file_size": "2.1 MB", "rs_total": "Rp 16.8B", "status": "Success"},
-    {"period": "Apr 2024", "upload_date": "03 May 2024", "upload_time": "10:30 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1690, "tenants": 235, "file_size": "2.0 MB", "rs_total": "Rp 16.2B", "status": "Success"},
-    {"period": "Mar 2024", "upload_date": "02 Apr 2024", "upload_time": "08:15 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1665, "tenants": 233, "file_size": "2.0 MB", "rs_total": "Rp 15.9B", "status": "Warning"},
-    {"period": "Feb 2024", "upload_date": "04 Mar 2024", "upload_time": "11:42 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1638, "tenants": 231, "file_size": "1.9 MB", "rs_total": "Rp 15.3B", "status": "Success"},
-    {"period": "Jan 2024", "upload_date": "02 Feb 2024", "upload_time": "09:22 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1610, "tenants": 229, "file_size": "1.9 MB", "rs_total": "Rp 14.8B", "status": "Success"},
-]
+UPLOAD_HISTORY_DATA = []
 
 def _get_belum_submit():
-    return ["Manado", "Kupang", "Sorong"]
+    return []
 
 
 # ─────────────────────────────────────────────
@@ -1865,11 +1837,15 @@ def _render_pic_view():
                     st.session_state.im_step = 3; st.rerun()
             with c2:
                 if st.button("🚀 SUBMIT", use_container_width=True, key="im_step4_submit"):
-                    with st.spinner("Mengirim data..."):
-                        time.sleep(1)
-                    st.session_state.im_submitted = True
-                    st.success("✅ Data berhasil dikirim! Menunggu review Admin.")
-                    st.balloons()
+                    with st.spinner("Menyimpan data ke database..."):
+                        success, msg = _save_to_database()
+                    
+                    if success:
+                        st.session_state.im_submitted = True
+                        st.success("✅ " + msg)
+                        st.balloons()
+                    else:
+                        st.error(f"❌ Gagal menyimpan: {msg}")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2049,12 +2025,57 @@ def _render_admin_view():
         st.markdown('<div class="admin-ctrl-sub">Publikasikan semua data valid ke dashboard produksi.</div>', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Periode aktif: <strong style="color:#4f46e5;">{PERIOD_ACTIVE}</strong></div>', unsafe_allow_html=True)
         if st.button("🚀 Approve & Publish Semua", use_container_width=True, key="adm_publish_all"):
-            with st.spinner("Mempublikasikan..."):
-                time.sleep(1)
-            st.success("✅ Semua data valid berhasil dipublikasikan!")
-            st.balloons()
+            with st.spinner("Mempublikasikan ke database..."):
+                success, msg = _save_to_database()
+            if success:
+                st.success("✅ Semua data valid berhasil dipublikasikan ke database!")
+                st.balloons()
+            else:
+                st.error(f"❌ Gagal mempublikasikan: {msg}")
         st.markdown('</div>', unsafe_allow_html=True)
 
+
+def _save_to_database():
+    from .shared_import import SHARED_DATA_KEY
+    df = st.session_state.get(SHARED_DATA_KEY)
+    if df is None or df.empty:
+        return False, "Tidak ada data untuk disimpan."
+    
+    mapping = st.session_state.get("shared_import_mapping", {})
+    # Rename matching columns
+    df_to_save = df.rename(columns={v: k for k, v in mapping.items()})
+    
+    from .connection import get_engine
+    from sqlalchemy import inspect
+    import time
+    
+    try:
+        engine = get_engine()
+        inspector = inspect(engine)
+        db_columns = [col['name'] for col in inspector.get_columns('transaction_revenue')]
+        
+        # Add import_id if missing
+        if 'import_id' not in df_to_save.columns and 'import_id' in db_columns:
+            df_to_save['import_id'] = int(time.time())
+            
+        save_cols = [c for c in df_to_save.columns if c in db_columns]
+        df_final = df_to_save[save_cols].copy()
+        
+        # Remove duplicate columns to prevent SQLAlchemy/Pandas errors
+        df_final = df_final.loc[:, ~df_final.columns.duplicated()]
+        
+        # Prevent UniqueViolation by allowing DB to auto-generate 'id'
+        if 'id' in df_final.columns:
+            df_final = df_final.drop(columns=['id'])
+        
+        df_final.to_sql("transaction_revenue", con=engine, if_exists="append", index=False)
+        
+        # Clear Streamlit cache to force Data Verification & Dashboard to reload DB
+        st.cache_data.clear()
+        
+        return True, "Data berhasil disimpan ke database."
+    except Exception as e:
+        return False, f"Error DB: {str(e)}"
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -2504,6 +2525,13 @@ def _render_new_workspace():
                     df_imported, missing_columns = store_shared_import(uploaded, current_sbu)
                     st.session_state.im_file = uploaded.name
                     st.session_state.im_import_ready = len(missing_columns) == 0
+                    
+                    if st.session_state.im_import_ready and st.session_state.get("im_file_saved_name") != uploaded.name:
+                        success, msg = _save_to_database()
+                        if success:
+                            st.session_state.im_file_saved_name = uploaded.name
+                        else:
+                            st.error(f"Gagal otomatis menyimpan ke database: {msg}")
 
                     total_records = len(df_imported)
                     

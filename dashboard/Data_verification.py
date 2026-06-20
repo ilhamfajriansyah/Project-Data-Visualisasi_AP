@@ -2,76 +2,47 @@ import streamlit as st
 import pandas as pd
 from datetime import date, datetime
 
-from .shared_import import get_shared_import_data, get_shared_import_meta
 
 # ─────────────────────────────────────────────
-# DUMMY DATA — nanti diganti dari session_state import_manager
+# DATA PROCESSING
 # ─────────────────────────────────────────────
-def _get_verification_data() -> pd.DataFrame:
-    """
-    DATA SOURCE:
-    Saat ini menggunakan dummy data.
-    Nanti sambungkan ke st.session_state['im_imported_data']
-    yang di-set dari import_manager.py setelah Execute Import.
-    
-    Contoh integrasi:
-        if 'im_imported_data' in st.session_state:
-            return st.session_state['im_imported_data']
-        return _dummy_data()
-    """
-    imported_df = get_shared_import_data()
-    if imported_df is not None:
-        meta = get_shared_import_meta()
-        df = imported_df.copy()
-        rows = []
-        for idx, r in df.iterrows():
-            real_omzet = r.get("real_omzet", r.get("omzet", 0))
-            try:
-                conflict_info = f"Rp {float(real_omzet) / 1_000_000_000:.2f}B"
-            except (TypeError, ValueError):
-                conflict_info = str(real_omzet or "-")
+def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
+    if df_raw is None or df_raw.empty:
+        return pd.DataFrame(columns=[
+            "Kode Ruang", "Brand/Tenant", "Perusahaan", "Real Onset", 
+            "Status", "Skema", "Conflict Info", "Anomali", 
+            "SAP ID", "Legal ID"
+        ])
 
-            brand = r.get("brand", r.get("perusahaan", r.get("tenant_name", "-")))
-            kode_ruang = r.get("kode_ruang", r.get("unit", "-"))
-            periode = r.get("masa_jasa", r.get("periode", meta.get("period", "April 2026")))
-            rows.append({
-                "Kode Ruang": kode_ruang if pd.notna(kode_ruang) else "-",
-                "Brand/Tenant": brand if pd.notna(brand) else "-",
-                "SAP ID": str(r.get("sap_id", "SAP: -")),
-                "Legal ID": str(r.get("legal_id", "Legal: -")),
-                "Real Onset": str(periode),
-                "End Kontrak": str(r.get("end_kontrak", "-")),
-                "Status": "Active",
-                "Skema": str(r.get("skema", r.get("bidang_usaha", "-"))),
-                "Conflict Info": conflict_info,
-                "Anomali": bool(pd.isna(real_omzet) or pd.isna(kode_ruang) or pd.isna(brand)),
-            })
-        return pd.DataFrame(rows)
+    df = df_raw.copy()
+    rows = []
+    for idx, r in df.iterrows():
+        real_omzet = r.get("real_omzet", 0)
+        try:
+            conflict_info = f"Rp {float(real_omzet) / 1_000_000_000:.2f}B"
+        except (TypeError, ValueError):
+            conflict_info = str(real_omzet or "-")
 
-    data = [
-        {"Kode Ruang": "FB-01-01", "Brand/Tenant": "Starbucks Corp",  "SAP ID": "SAP: 10233",  "Legal ID": "Legal 4C-2021-001", "Real Onset": "01 Jun 2023 – 31 Dec 2023", "End Kontrak": "31 Dec 2023", "Status": "Active",       "Skema": "Rental", "Conflict Info": "Rp 152B", "Anomali": False},
-        {"Kode Ruang": "RT-02-07", "Brand/Tenant": "Burger King",     "SAP ID": "SAP: 10233",  "Legal ID": "Legal 4C-2021-003", "Real Onset": "01 Jul 2026 – 30 Dec 2024", "End Kontrak": "30 Dec 2024", "Status": "Expired Soon",  "Skema": "RS",     "Conflict Info": "Rp 95B",  "Anomali": True},
-        {"Kode Ruang": "LG-01-12", "Brand/Tenant": "Local Cafe",      "SAP ID": "SAP: 10223",  "Legal ID": "Legal 4C-2021-005", "Real Onset": "01 Jun 2026 – 31 Dec 2024", "End Kontrak": "31 Dec 2024", "Status": "Expired",       "Skema": "MG45",   "Conflict Info": "Rp 80B",  "Anomali": True},
-        {"Kode Ruang": "SV-01-03", "Brand/Tenant": "Rod Boy",         "SAP ID": "SAP: 10233",  "Legal ID": "Legal 4C-2021-006", "Real Onset": "01 Jun 2026 – 31 Dec 2024", "End Kontrak": "31 Dec 2024", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 75B",  "Anomali": False},
-        {"Kode Ruang": "FB-03-02", "Brand/Tenant": "KFC Outlet",      "SAP ID": "SAP: 10244",  "Legal ID": "Legal 4C-2022-001", "Real Onset": "15 Mar 2023 – 14 Mar 2025", "End Kontrak": "14 Mar 2025", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 110B", "Anomali": False},
-        {"Kode Ruang": "RT-03-08", "Brand/Tenant": "Majapahit Store", "SAP ID": "SAP: 10255",  "Legal ID": "Legal 4C-2022-003", "Real Onset": "01 Jun 2022 – 31 May 2025", "End Kontrak": "31 May 2025", "Status": "Expired Soon",  "Skema": "RS",     "Conflict Info": "Rp 88B",  "Anomali": True},
-        {"Kode Ruang": "LG-02-01", "Brand/Tenant": "GAUSD VIP",       "SAP ID": "SAP: 10266",  "Legal ID": "Legal 4C-2023-001", "Real Onset": "01 Jan 2023 – 31 Dec 2025", "End Kontrak": "31 Dec 2025", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 200B", "Anomali": False},
-        {"Kode Ruang": "SV-02-05", "Brand/Tenant": "Pertamina Outlet","SAP ID": "SAP: 10277",  "Legal ID": "Legal 4C-2023-002", "Real Onset": "01 May 2023 – 30 Apr 2025", "End Kontrak": "30 Apr 2025", "Status": "Expired",       "Skema": "MG45",   "Conflict Info": "Rp 60B",  "Anomali": True},
-        {"Kode Ruang": "FB-02-07", "Brand/Tenant": "Wingman Bistro",  "SAP ID": "SAP: 10288",  "Legal ID": "Legal 4C-2023-004", "Real Onset": "01 Apr 2024 – 31 Mar 2026", "End Kontrak": "31 Mar 2026", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 92B",  "Anomali": False},
-        {"Kode Ruang": "RT-01-11", "Brand/Tenant": "Aquarus Cafe",    "SAP ID": "SAP: 10299",  "Legal ID": "Legal 4C-2023-005", "Real Onset": "14 Feb 2023 – 13 Feb 2026", "End Kontrak": "13 Feb 2026", "Status": "Active",        "Skema": "RS",     "Conflict Info": "Rp 78B",  "Anomali": False},
-        {"Kode Ruang": "SV-03-04", "Brand/Tenant": "Bon Bon Express", "SAP ID": "SAP: 10310",  "Legal ID": "Legal 4C-2024-001", "Real Onset": "01 Aug 2024 – 31 Jul 2026", "End Kontrak": "31 Jul 2026", "Status": "Expired Soon",  "Skema": "Rental", "Conflict Info": "Rp 45B",  "Anomali": True},
-        {"Kode Ruang": "LG-03-06", "Brand/Tenant": "Bakso Corner",    "SAP ID": "SAP: 10321",  "Legal ID": "Legal 4C-2024-002", "Real Onset": "01 Jan 2024 – 31 Dec 2025", "End Kontrak": "31 Dec 2025", "Status": "Active",        "Skema": "MG45",   "Conflict Info": "Rp 55B",  "Anomali": False},
-        {"Kode Ruang": "FB-01-09", "Brand/Tenant": "Pizza Hut",       "SAP ID": "SAP: 10332",  "Legal ID": "Legal 4C-2024-003", "Real Onset": "01 Mar 2024 – 28 Feb 2026", "End Kontrak": "28 Feb 2026", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 130B", "Anomali": False},
-        {"Kode Ruang": "RT-02-14", "Brand/Tenant": "Indomaret",       "SAP ID": "SAP: 10343",  "Legal ID": "Legal 4C-2024-004", "Real Onset": "01 Jun 2024 – 31 May 2026", "End Kontrak": "31 May 2026", "Status": "Expired Soon",  "Skema": "RS",     "Conflict Info": "Rp 67B",  "Anomali": True},
-        {"Kode Ruang": "SV-01-07", "Brand/Tenant": "Alfamart",        "SAP ID": "SAP: 10354",  "Legal ID": "Legal 4C-2024-005", "Real Onset": "15 Sep 2024 – 14 Sep 2026", "End Kontrak": "14 Sep 2026", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 48B",  "Anomali": False},
-        {"Kode Ruang": "LG-01-04", "Brand/Tenant": "J.CO Donuts",     "SAP ID": "SAP: 10365",  "Legal ID": "Legal 4C-2024-006", "Real Onset": "01 Oct 2024 – 30 Sep 2026", "End Kontrak": "30 Sep 2026", "Status": "Active",        "Skema": "MG45",   "Conflict Info": "Rp 72B",  "Anomali": False},
-        {"Kode Ruang": "FB-03-11", "Brand/Tenant": "Solaria",         "SAP ID": "SAP: 10376",  "Legal ID": "Legal 4C-2025-001", "Real Onset": "01 Jan 2025 – 31 Dec 2026", "End Kontrak": "31 Dec 2026", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 98B",  "Anomali": False},
-        {"Kode Ruang": "RT-03-05", "Brand/Tenant": "Gramedia",        "SAP ID": "SAP: 10387",  "Legal ID": "Legal 4C-2025-002", "Real Onset": "01 Feb 2025 – 31 Jan 2027", "End Kontrak": "31 Jan 2027", "Status": "Active",        "Skema": "RS",     "Conflict Info": "Rp 85B",  "Anomali": False},
-        {"Kode Ruang": "SV-02-09", "Brand/Tenant": "Timezone",        "SAP ID": "SAP: 10398",  "Legal ID": "Legal 4C-2025-003", "Real Onset": "01 Mar 2025 – 28 Feb 2027", "End Kontrak": "28 Feb 2027", "Status": "Active",        "Skema": "Rental", "Conflict Info": "Rp 115B", "Anomali": False},
-        {"Kode Ruang": "LG-02-08", "Brand/Tenant": "Hypermart",       "SAP ID": "SAP: 10409",  "Legal ID": "Legal 4C-2025-004", "Real Onset": "15 Apr 2025 – 14 Apr 2027", "End Kontrak": "14 Apr 2027", "Status": "Expired",       "Skema": "MG45",   "Conflict Info": "Rp 140B", "Anomali": True},
-    ]
-    return pd.DataFrame(data)
-
+        brand = r.get("brand", "-")
+        perusahaan = r.get("perusahaan", "-")
+        kode_ruang = r.get("kode_ruang", "-")
+        periode = r.get("masa_jasa", "-")
+        
+        status = "Active" if pd.notna(real_omzet) and float(real_omzet) > 0 else "Pending"
+        
+        rows.append({
+            "Kode Ruang": kode_ruang if pd.notna(kode_ruang) else "-",
+            "Brand/Tenant": brand if pd.notna(brand) else "-",
+            "Perusahaan": perusahaan if pd.notna(perusahaan) else "-",
+            "SAP ID": str(r.get("sap_id", "SAP: -")),
+            "Legal ID": str(r.get("legal_id", "Legal: -")),
+            "Real Onset": str(periode),
+            "Status": status,
+            "Skema": str(r.get("bidang_usaha", "-")),
+            "Conflict Info": conflict_info,
+            "Anomali": bool(pd.isna(real_omzet) or pd.isna(kode_ruang) or pd.isna(brand)),
+        })
+    return pd.DataFrame(rows)
 
 # ─────────────────────────────────────────────
 # CSS
@@ -171,13 +142,17 @@ _PAGE_CSS = """
 # ─────────────────────────────────────────────
 # INIT STATE
 # ─────────────────────────────────────────────
-def _init_state():
+def _init_state(df_raw: pd.DataFrame | None = None):
     if "dv_page"   not in st.session_state: st.session_state.dv_page   = 0
-    current_data = _get_verification_data()
-    if get_shared_import_data() is not None:
+    current_data = _get_verification_data(df_raw)
+    current_import_id = (
+        int(pd.to_numeric(df_raw["import_id"], errors="coerce").max())
+        if df_raw is not None and "import_id" in df_raw.columns and not df_raw.empty
+        else None
+    )
+    if "dv_df" not in st.session_state or st.session_state.get("dv_source_import_id") != current_import_id:
         st.session_state.dv_df = current_data
-    elif "dv_df" not in st.session_state:
-        st.session_state.dv_df = current_data
+        st.session_state.dv_source_import_id = current_import_id
 
 
 # ─────────────────────────────────────────────
@@ -249,9 +224,9 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
-def render_data_verification():
+def render_data_verification(df_raw: pd.DataFrame | None = None):
     """Call this from dashboard.py router."""
-    _init_state()
+    _init_state(df_raw)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
 
     # ── Header + Topnav ──

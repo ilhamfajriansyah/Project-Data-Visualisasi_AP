@@ -12,57 +12,21 @@ RS_DONUT_COLORS = ["#6366F1", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EC48
 RS_SETTLEMENT_FILTER_OPTIONS = ["All", "Settled", "Pending", "Failed", "Conflict"]
 
 
+from .shared_import import get_mapped_column
+
+
 # ─────────────────────────────────────────────
-# DUMMY DATA (unchanged business data sources)
+# STATUS BADGE FORMATTER
 # ─────────────────────────────────────────────
-def get_services_data():
-    return pd.DataFrame({
-        "Service/SBU":      ["Ground Handling", "PSC", "VIP Services", "Commercial Area", "Cargo Area", "Parking Area", "Ground Handling Services"],
-        "Gross Revenue":    ["Rp 12.1B", "Rp 6.4B", "Rp 4.2B", "Rp 3.9B", "Rp 12.1B", "Rp 12.1B", "Rp 12.1B"],
-        "SBU Share Rule %": ["70%", "100%", "65%", "50%", "70%", "70%", "70%"],
-        "Management Share": ["Rp 8.47B", "Rp 6.4B", "Rp 2.73B", "Rp 1.95B", "Rp 8.47B", "Rp 8.47B", "Rp 8.47B"],
-        "Status":           ["SUCCESS", "SUCCESS", "CONFLICT", "CONFLICT", "FAILED", "FAILED", "FAILED"],
-    })
-
-
-def get_transaction_data():
-    return pd.DataFrame({
-        "Transaction ID": ["7007001001"] * 7,
-        "Revenue/SBU":    ["Ground Handling"] * 7,
-        "Type":           ["Revenue"] * 7,
-        "Date":           ["12 Jun 2026"] * 7,
-        "Amount":         ["Rp 12.1B"] * 7,
-        "Status":         ["SUCCESS"] * 7,
-    })
-
-
-def get_terminal_files():
-    return pd.DataFrame({
-        "File Name":  ["Prod_Jun_Terminal1.xlsx", "Prod_Jun_Terminal2.xlsx"],
-        "Tenant/SBU": ["Terminal 1", "Terminal 2"],
-        "Date":       ["12 Jun 2026", "17 Jun 2026"],
-        "Status":     ["SUCCESS", "FAILED"],
-    })
-
-
-def get_trend_data():
-    return pd.DataFrame({
-        "Bulan":           ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
-        "Ground Handling": [0.9, 1.0, 0.95, 1.1, 1.05, 1.2],
-        "PSC":             [0.7, 0.8, 0.75, 0.85, 0.9, 0.95],
-        "Others":          [0.5, 0.6, 0.55, 0.65, 0.7, 0.8],
-    })
-
-
 def fmt_status_badge(status):
     colors = {
         "SUCCESS":  ("rgba(16,185,129,0.12)", "#059669", "rgba(16,185,129,0.24)"),
-        "FAILED":   ("rgba(244,63,94,0.11)", "#e11d48", "rgba(244,63,94,0.22)"),
+        "FAILED":   ("rgba(244,63,94,0.11)",  "#e11d48", "rgba(244,63,94,0.22)"),
         "CONFLICT": ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
         "WARNING":  ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
         "Settled":  ("rgba(16,185,129,0.12)", "#059669", "rgba(16,185,129,0.24)"),
         "Pending":  ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
-        "Failed":   ("rgba(244,63,94,0.11)", "#e11d48", "rgba(244,63,94,0.22)"),
+        "Failed":   ("rgba(244,63,94,0.11)",  "#e11d48", "rgba(244,63,94,0.22)"),
         "Conflict": ("rgba(250,204,21,0.16)", "#ca8a04", "rgba(250,204,21,0.28)"),
     }
     bg, fg, border = colors.get(status, ("rgba(148,163,184,0.12)", "#64748b", "rgba(148,163,184,0.22)"))
@@ -72,41 +36,93 @@ def fmt_status_badge(status):
         f'font-weight:700;letter-spacing:0.2px;white-space:nowrap;">{status}</span>'
     )
 
+# ─────────────────────────────────────────────
+# DATA TRANSFORMATION FROM REAL EXCEL
+# ─────────────────────────────────────────────
+def get_services_data(df: pd.DataFrame):
+    if df is None or df.empty:
+        return pd.DataFrame()
+        
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+    col_rs = get_mapped_column("pendapatan_rs") or "pendapatan_rs"
+    col_kontribusi = get_mapped_column("total_kontribusi") or "total_kontribusi"
+    
+    # Ensure columns exist
+    for col in [col_bidang, col_rs, col_kontribusi]:
+        if col not in df.columns:
+            df[col] = 0 if col != col_bidang else "Unknown"
 
-def _map_settlement_status(raw_status, index):
-    if raw_status == "SUCCESS":
-        return "Pending" if index % 5 == 0 else "Settled"
-    if raw_status == "CONFLICT":
-        return "Conflict"
-    return "Failed"
+    grouped = df.groupby(col_bidang, as_index=False).agg({
+        col_rs: "sum",
+        col_kontribusi: "sum"
+    })
+    
+    grouped["Gross Revenue"] = grouped[col_rs].apply(lambda x: f"Rp {x:,.0f}")
+    grouped["Management Share"] = grouped[col_kontribusi].apply(lambda x: f"Rp {x:,.0f}")
+    grouped["SBU Share Rule %"] = "N/A"
+    grouped["Status"] = "SUCCESS"
+    grouped.rename(columns={col_bidang: "Service/SBU"}, inplace=True)
+    
+    return grouped
 
+def get_trend_data(df: pd.DataFrame):
+    if df is None or df.empty:
+        return pd.DataFrame(columns=["Bulan"])
+        
+    col_masa = get_mapped_column("masa_jasa") or "masa_jasa"
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+    col_rs = get_mapped_column("pendapatan_rs") or "pendapatan_rs"
+    
+    for col in [col_masa, col_bidang, col_rs]:
+        if col not in df.columns:
+            df[col] = 0 if col == col_rs else "Unknown"
+            
+    pivot = df.pivot_table(index=col_masa, columns=col_bidang, values=col_rs, aggfunc="sum", fill_value=0)
+    pivot = pivot.reset_index().rename(columns={col_masa: "Bulan"})
+    
+    # Scale down values to billions for trend chart
+    for col in pivot.columns:
+        if col != "Bulan":
+            pivot[col] = pivot[col] / 1_000_000_000
+            
+    # Map 'Others' if too many columns
+    if len(pivot.columns) > 4:
+        top_cols = pivot.drop("Bulan", axis=1).sum().nlargest(2).index
+        others = pivot.drop(["Bulan"] + list(top_cols), axis=1).sum(axis=1)
+        pivot = pivot[["Bulan"] + list(top_cols)].copy()
+        pivot["Others"] = others
+        
+    return pivot
 
-def get_detail_revenue_sharing_data():
-    """Detail rows derived from service and transaction dummy sources."""
-    rng = np.random.default_rng(42)
-    services = get_services_data()
-    trx = get_transaction_data()
-    terminals = ["Terminal 1", "Terminal 2", "Terminal 3"]
-    remarks = ["", "Review variance", "Pending SBU confirmation", "Awaiting finance approval", "Reconciled"]
-    rows = []
-    for i in range(128):
-        svc = services.iloc[i % len(services)]
-        trx_row = trx.iloc[i % len(trx)]
-        raw_status = svc["Status"]
-        settlement = _map_settlement_status(raw_status, i)
-        rows.append({
-            "Date": trx_row["Date"] if i % 4 else f"{1 + (i % 28)} Jun 2026",
-            "Service/SBU": svc["Service/SBU"],
-            "Terminal": terminals[i % len(terminals)],
-            "Revenue": svc["Gross Revenue"],
-            "Share %": svc["SBU Share Rule %"],
-            "Management Share": svc["Management Share"],
-            "Settlement Status": settlement,
-            "Variance": round(rng.uniform(-14.5, 16.8), 1),
-            "Remark": remarks[i % len(remarks)],
-            "_raw_status": raw_status,
-        })
-    return pd.DataFrame(rows)
+def get_detail_revenue_sharing_data(df: pd.DataFrame):
+    if df is None or df.empty:
+        return pd.DataFrame()
+        
+    col_masa = get_mapped_column("masa_jasa") or "masa_jasa"
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+    col_terminal = get_mapped_column("terminal") or "terminal"
+    col_rs = get_mapped_column("pendapatan_rs") or "pendapatan_rs"
+    col_kontribusi = get_mapped_column("kontribusi") or "kontribusi"
+    
+    for col in [col_masa, col_bidang, col_terminal, col_rs, col_kontribusi]:
+        if col not in df.columns:
+            df[col] = 0 if col in [col_rs, col_kontribusi] else "Unknown"
+
+    result = pd.DataFrame({
+        "Date": df[col_masa],
+        "Service/SBU": df[col_bidang],
+        "Terminal": df[col_terminal],
+        "Revenue": df[col_rs].apply(lambda x: f"Rp {x:,.0f}"),
+        "Share %": "N/A",
+        "Management Share": df[col_kontribusi].apply(lambda x: f"Rp {x:,.0f}"),
+        "Settlement Status": "Settled",
+        "Variance": 0.0,
+        "Remark": "Reconciled",
+        "_raw_status": "SUCCESS"
+    })
+    
+    return result
+
 
 
 # ─────────────────────────────────────────────
@@ -522,32 +538,13 @@ def _build_settlement_summary(services_df):
 
 def _build_revenue_alerts(services_df):
     alerts = []
-    cargo = services_df[services_df["Service/SBU"] == "Cargo Area"]
-    if not cargo.empty:
-        alerts.append(_alert_card_html(
-            "critical", "↓",
-            "Cargo Area revenue turun 18%",
-            "Perlu investigasi penyebab penurunan kontribusi bulan ini",
-        ))
-
-    unsettled = services_df[services_df["Status"].isin(["FAILED", "CONFLICT"])]
-    if len(unsettled):
-        alerts.append(_alert_card_html(
-            "warning", "!",
-            f"{len(unsettled)} layanan belum selesai settlement",
-            "Revenue sharing masih In Progress atau Unsettled",
-        ))
-
-    alerts.append(_alert_card_html(
-        "warning", "A",
-        "VIP Services ACV di bawah target 80%",
-        "Monitor performa kontrak dan realisasi omzet",
-    ))
-
+    if services_df.empty:
+        return alerts
+        
     top_svc = services_df.iloc[services_df["Gross Revenue"].map(_parse_rp).argmax()]
     alerts.append(_alert_card_html(
         "positive", "✓",
-        f"{top_svc['Service/SBU']} melampaui target revenue",
+        f"{top_svc['Service/SBU']} memiliki revenue tertinggi",
         f"Kontribusi management share {top_svc['Management Share']}",
     ))
     return alerts
@@ -582,16 +579,33 @@ def _donut_figure(services_df, total_revenue):
 
 def _trend_figure(df_trend):
     fig = go.Figure()
-    line_colors = {"Ground Handling": "#6366F1", "PSC": "#06B6D4", "Others": "#F59E0B"}
-    for col in ["Ground Handling", "PSC", "Others"]:
+    if df_trend is None or df_trend.empty or "Bulan" not in df_trend.columns:
+        trend_columns = []
+    else:
+        trend_columns = [col for col in df_trend.columns if col != "Bulan"]
+
+    line_colors = {
+        "Ground Handling": "#6366F1",
+        "Ground Handling Services": "#6366F1",
+        "PSC": "#06B6D4",
+        "Others": "#F59E0B",
+    }
+    fallback_colors = ["#6366F1", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#64748B"]
+    for idx, col in enumerate(trend_columns):
+        color = line_colors.get(col, fallback_colors[idx % len(fallback_colors)])
         fig.add_trace(go.Scatter(
             x=df_trend["Bulan"],
             y=df_trend[col],
             mode="lines+markers",
             name=col,
-            line=dict(color=line_colors[col], width=2.5),
-            marker=dict(size=6, color="#ffffff", line=dict(color=line_colors[col], width=2)),
+            line=dict(color=color, width=2.5),
+            marker=dict(size=6, color="#ffffff", line=dict(color=color, width=2)),
         ))
+    y_max = 1.6
+    if trend_columns:
+        max_value = df_trend[trend_columns].max(numeric_only=True).max()
+        if pd.notna(max_value) and max_value > 0:
+            y_max = max(1.6, float(max_value) * 1.2)
     fig.update_layout(
         autosize=True,
         height=300,
@@ -616,7 +630,7 @@ def _trend_figure(df_trend):
             zeroline=False,
             tickfont=dict(family=RS_FONT, size=11, color="#64748B"),
             fixedrange=True,
-            range=[0, 1.6],
+            range=[0, y_max],
         ),
     )
     return fig
@@ -644,7 +658,7 @@ def _donut_legend_html(services_df, total_revenue):
 # ══════════════════════════════════════════════
 # PAGE: REVENUE SHARING
 # ══════════════════════════════════════════════
-def page_revenue_sharing():
+def page_revenue_sharing(df_raw):
     from .navigation import show_topnav
 
     st.markdown('<div class="overview-page-marker rs-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
@@ -669,7 +683,7 @@ def page_revenue_sharing():
             unsafe_allow_html=True,
         )
 
-    services_df = get_services_data()
+    services_df = get_services_data(df_raw)
     total_revenue, revenue_share, settlement_rate, issues = _compute_kpis(services_df)
 
     st.markdown(
@@ -719,7 +733,7 @@ def page_revenue_sharing():
         with th2:
             st.selectbox("Trend period", ["Monthly"], key="rs_trend_period", label_visibility="collapsed")
         st.plotly_chart(
-            _trend_figure(get_trend_data()),
+            _trend_figure(get_trend_data(df_raw)),
             use_container_width=True,
             config={"displayModeBar": False},
         )
@@ -790,7 +804,7 @@ def page_revenue_sharing():
                 on_change=lambda: st.session_state.update({"rs_detail_page": 1}),
             )
 
-        detail_df = get_detail_revenue_sharing_data()
+        detail_df = get_detail_revenue_sharing_data(df_raw)
         if search_query:
             q = search_query.lower().strip()
             detail_df = detail_df[

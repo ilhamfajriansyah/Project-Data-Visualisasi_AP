@@ -1,3 +1,4 @@
+from .shared_import import get_mapped_column
 from .navigation import show_topnav
 from .accrual_billing import page_accrual_billing
 from .revenue_sharing import page_revenue_sharing
@@ -8,12 +9,12 @@ from .Data_verification import render_data_verification
 from .traffic_monitor import page_traffic_monitor
 from .dashboard_style import DASHBOARD_CSS
 from login.access_control import Role, get_current_role, init_auth_state, is_authenticated, logout_user
-from .shared_import import get_shared_import_data, has_dashboard_ready_import, import_status_html
+from .connection import get_engine
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from sqlalchemy import create_engine
+from sqlalchemy import text
 from html import escape
 from textwrap import dedent
 import os
@@ -1924,6 +1925,7 @@ ROLE_MENUS = {
         "Revenue Sharing",
         "Lease Contract",
         "Traffic Monitor",
+        "Room Database",
         "Import Manager",
         "Data Verification",
     ],
@@ -1932,6 +1934,7 @@ ROLE_MENUS = {
         "Revenue Sharing",
         "Lease Contract",
         "Traffic Monitor",
+        "Room Database",
         "Import Manager",
         "Data Verification",
     ],
@@ -1949,66 +1952,81 @@ def can_access_menu(menu_name):
 # ─────────────────────────────────────────────
 # DATABASE & DATA
 # ─────────────────────────────────────────────
-@st.cache_resource
-def get_engine():
-    url = (
-        f"postgresql://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASSWORD','postgres')}"
-        f"@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}"
-        f"/{os.getenv('DB_NAME','dashboard_tenant')}"
-    )
-    return create_engine(url)
-
 @st.cache_data(ttl=300)
-def load_data():
+def load_dashboard_data():
+    query = text("""
+        SELECT
+            document_date,
+            masa_jasa,
+            tahun,
+            perusahaan,
+            brand,
+            kode_ruang,
+            pic,
+            ro_number,
+            terminal,
+            sub_terminal,
+            area,
+            lokasi,
+            lantai,
+            gate,
+            smoking_status,
+            sub_bidang_usaha,
+            bidang_usaha,
+            coa,
+            nomor_kontrak_sistem,
+            nomor_kontrak_legal,
+            start_kontrak,
+            end_kontrak,
+            csp_non_csp,
+            kerja_sama,
+            pemilihan_mitra_usaha,
+            produksi_m2,
+            produksi_m2 AS luas_sqm,
+            tarif_sewa_ruang_m2,
+            rs_percent,
+            min_omzet,
+            real_omzet,
+            mgrs_per_pax,
+            real_pax,
+            real_pax AS jumlah_pax,
+            pendapatan_rs,
+            pendapatan_sewa,
+            total_kontribusi,
+            total_kontribusi AS kontribusi,
+            acv,
+            rev_per_sqm,
+            rev_per_sqm AS rev_sqm,
+            spending_per_pax,
+            doc_number_rs,
+            doc_number_sewa,
+            variant_no,
+            catatan,
+            trafik_int_arr,
+            trafik_int_dep,
+            subtotal_trafik_int,
+            trafik_dom_arr,
+            trafik_dom_dep,
+            subtotal_trafik_dom,
+            total_trafik,
+            tenant_id,
+            import_id
+        FROM transaction_revenue
+        ORDER BY import_id DESC NULLS LAST, tahun DESC NULLS LAST, masa_jasa
+    """)
+
     try:
-        return pd.read_sql("SELECT * FROM pendapatan_tenant", get_engine())
-    except Exception:
-        return generate_dummy_data()
+        with get_engine().connect() as conn:
+            df = pd.read_sql(query, conn)
+    except Exception as exc:
+        st.session_state["dashboard_data_error"] = str(exc)
+        return None
+
+    st.session_state.pop("dashboard_data_error", None)
+    return df if not df.empty else None
 
 def get_active_dashboard_data():
-    imported_df = get_shared_import_data()
-    if imported_df is not None and has_dashboard_ready_import():
-        return imported_df
-    return load_data()
-
-def generate_dummy_data():
-    np.random.seed(42)
-    perusahaan = [
-        "PT BUDI PUTRA BOGAJAYA", "PT DEWATAAGUNG WIBAWA", "PT PERTAMINA PATRA NIAGA",
-        "PT KIJANG WAHANA KREATIFA", "PT BOGAJAYA MEGAH ABADI", "PT AQUARUS GEMILANG",
-        "PT TAURUS GEMILANG", "PT GAPURA ANGKASA", "PT GARUDA MAINTENANCE"
-    ]
-    brands = [
-        "Bakso Pak Dj", "Bon Bon Voy", "Pertamina", "Bon Bon Voy", "Kepompong",
-        "Majapahit", "Wingman", "GAUSD", "GMFA"
-    ]
-    bulan = [
-        "January","February","March","April","May","June",
-        "July","August","September","October","November","December"
-    ]
-    rows = []
-    for _ in range(600):
-        idx = np.random.randint(0, len(perusahaan))
-        rows.append({
-            "perusahaan":      perusahaan[idx],
-            "brand":           brands[idx],
-            "terminal":        np.random.choice(["Terminal 1","Terminal 2"], p=[0.5,0.5]),
-            "kode_ruang":      np.random.choice(["FB-02-02","POP-22-9","FTC","POP-22-8","P1"]),
-            "bidang_usaha":    np.random.choice(["Food & Beverage","Retail","Services","Banking"]),
-            "masa_jasa":       np.random.choice(bulan),
-            "tahun":           np.random.choice([2025, 2026]),
-            "min_omzet":       np.random.randint(10_000_000, 200_000_000),
-            "real_omzet":      np.random.randint(10_000_000, 300_000_000),
-            "pendapatan_sewa": np.random.randint(5_000_000, 70_000_000),
-            "pendapatan_rs":   np.random.randint(1_000_000, 30_000_000),
-            "kontribusi":      np.random.randint(5_000_000, 80_000_000),
-            "luas_sqm":        np.random.randint(10, 200),
-            "jumlah_pax":      np.random.randint(500, 3000),
-        })
-    df = pd.DataFrame(rows)
-    df["rev_sqm"] = df["real_omzet"] / df["luas_sqm"]
-    df["acv"]     = (df["real_omzet"] / df["min_omzet"] * 100).round(2)
-    return df
+    return load_dashboard_data()
 
 def fmt_rp(v):
     if v >= 1_000_000_000_000: return f"Rp {v/1_000_000_000_000:.2f}T"
@@ -2523,34 +2541,317 @@ def _nav_sub(icon, label):
 # PAGE: OVERVIEW
 # ══════════════════════════════════════════════
 def page_overview(df_raw):
-    st.markdown('<div class="overview-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+    df = df_raw.copy()
+
+    # =========================================================
+    # 1. NORMALISASI NAMA KOLOM
+    # =========================================================
+    def _normalize_colname(col):
+        return (
+            str(col)
+            .strip()
+            .lower()
+            .replace("\n", " ")
+            .replace("\r", " ")
+            .replace("-", "_")
+            .replace("/", "_")
+            .replace(" ", "_")
+        )
+
+    df.columns = [_normalize_colname(col) for col in df.columns]
+
+    # Hindari duplicate column setelah normalisasi
+    df = df.loc[:, ~df.columns.duplicated()].copy()
+
+    # =========================================================
+    # 2. HELPER UNTUK MEMASTIKAN KOLOM ADA
+    # =========================================================
+    def _ensure_column(target_col, aliases=None, default_value=0, numeric=False):
+        target_col = _normalize_colname(target_col)
+        aliases = aliases or []
+        aliases = [_normalize_colname(alias) for alias in aliases]
+
+        if target_col not in df.columns:
+            found_col = None
+
+            for alias in aliases:
+                if alias in df.columns:
+                    found_col = alias
+                    break
+
+            if found_col:
+                df[target_col] = df[found_col]
+            else:
+                df[target_col] = default_value
+
+        if numeric:
+            df[target_col] = pd.to_numeric(df[target_col], errors="coerce").fillna(0)
+        else:
+            df[target_col] = df[target_col].fillna(default_value)
+
+    # =========================================================
+    # 3. KOLOM ANGKA WAJIB OVERVIEW
+    # =========================================================
+    _ensure_column(
+        "real_omzet",
+        aliases=[
+            "real omzet",
+            "omzet",
+            "realisasi_omzet",
+            "realisasi omzet",
+            "realomzet",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    _ensure_column(
+        "pendapatan_rs",
+        aliases=[
+            "pendapatan rs",
+            "revenue_sharing",
+            "revenue sharing",
+            "rs",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    _ensure_column(
+        "kontribusi",
+        aliases=[
+            "total_kontribusi",
+            "total kontribusi",
+            "nilai_kontribusi",
+            "nilai kontribusi",
+            "contribution",
+            "pendapatan_kontribusi",
+            "pendapatan kontribusi",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    _ensure_column(
+        "pendapatan_sewa",
+        aliases=[
+            "pendapatan sewa",
+            "sewa",
+            "revenue_sewa",
+            "rental_revenue",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    _ensure_column(
+        "min_omzet",
+        aliases=[
+            "minimum_omzet",
+            "minimum omzet",
+            "min omzet",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    _ensure_column(
+        "luas_sqm",
+        aliases=[
+            "luas sqm",
+            "sqm",
+            "luas",
+            "luas_m2",
+            "luas m2",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    _ensure_column(
+        "jumlah_pax",
+        aliases=[
+            "jumlah pax",
+            "pax",
+            "traffic",
+            "jumlah_traffic",
+            "jumlah traffic",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
+    # =========================================================
+    # 4. KOLOM KATEGORI WAJIB OVERVIEW
+    # =========================================================
+    _ensure_column(
+        "terminal",
+        aliases=["nama_terminal", "nama terminal"],
+        default_value="Tidak diketahui",
+        numeric=False,
+    )
+
+    _ensure_column(
+        "tahun",
+        aliases=["year"],
+        default_value="Tidak diketahui",
+        numeric=False,
+    )
+
+    _ensure_column(
+        "masa_jasa",
+        aliases=["masa jasa", "masa", "bulan", "month"],
+        default_value="Tidak diketahui",
+        numeric=False,
+    )
+
+    _ensure_column(
+        "perusahaan",
+        aliases=["nama_perusahaan", "nama perusahaan", "company"],
+        default_value="Tidak diketahui",
+        numeric=False,
+    )
+
+    _ensure_column(
+        "brand",
+        aliases=["nama_brand", "nama brand"],
+        default_value="Tidak diketahui",
+        numeric=False,
+    )
+
+    _ensure_column(
+        "kode_ruang",
+        aliases=["kode ruang", "room_code", "kode_lokasi"],
+        default_value="Tidak diketahui",
+        numeric=False,
+    )
+
+    # =========================================================
+    # 5. UI HEADER
+    # =========================================================
+    st.markdown(
+        '<div class="overview-page-marker" aria-hidden="true"></div>',
+        unsafe_allow_html=True,
+    )
+
     show_topnav("Overview", show_search=False)
 
     for key in ["show_all_rev", "show_all_best", "show_all_detail", "overview_detail_page"]:
         if key not in st.session_state:
             st.session_state[key] = 1 if key == "overview_detail_page" else False
 
-    terminal_options = ["All Terminal"] + sorted(df_raw["terminal"].dropna().unique().tolist())
-    year_options = ["Semua Tahun"] + sorted(df_raw["tahun"].dropna().unique().tolist(), reverse=True)
-    month_options = ["Semua Bulan"] + BULAN
+    # =========================================================
+    # 6. RESOLVE COLUMN MAPPING
+    # =========================================================
+    def _resolve_column(mapping_key, fallback):
+        mapped_col = get_mapped_column(mapping_key)
+
+        if mapped_col:
+            mapped_col = _normalize_colname(mapped_col)
+            if mapped_col in df.columns:
+                return mapped_col
+
+        fallback = _normalize_colname(fallback)
+
+        if fallback in df.columns:
+            return fallback
+
+        return fallback
+
+    c_terminal   = _resolve_column("terminal", "terminal")
+    c_tahun      = _resolve_column("tahun", "tahun")
+    c_masa       = _resolve_column("masa_jasa", "masa_jasa")
+    c_omzet      = _resolve_column("real_omzet", "real_omzet")
+    c_min_omzet  = _resolve_column("min_omzet", "min_omzet")
+    c_rs         = _resolve_column("pendapatan_rs", "pendapatan_rs")
+    c_sewa       = _resolve_column("pendapatan_sewa", "pendapatan_sewa")
+    c_kontribusi = _resolve_column("kontribusi", "kontribusi")
+    c_sqm        = _resolve_column("luas_sqm", "luas_sqm")
+    c_pax        = _resolve_column("jumlah_pax", "jumlah_pax")
+    c_perusahaan = _resolve_column("perusahaan", "perusahaan")
+    c_brand      = _resolve_column("brand", "brand")
+    c_kode       = _resolve_column("kode_ruang", "kode_ruang")
+
+    # =========================================================
+    # 7. COMPUTED HELPER COLUMNS
+    # =========================================================
+    df["rev_sqm"] = df[c_omzet] / df[c_sqm].replace(0, 1)
+    df["rev_sqm"] = pd.to_numeric(df["rev_sqm"], errors="coerce").fillna(0)
+
+    df["acv"] = (df[c_omzet] / df[c_min_omzet].replace(0, 1) * 100).round(2)
+    df["acv"] = pd.to_numeric(df["acv"], errors="coerce").fillna(0)
+    df_all = df.copy()
+
+    # =========================================================
+    # 8. FILTER OPTIONS
+    # =========================================================
+    def _col_vals(col):
+        if col not in df.columns:
+            return []
+
+        values = (
+            df[col]
+            .dropna()
+            .astype(str)
+            .replace(["nan", "None", "NaT", ""], pd.NA)
+            .dropna()
+            .unique()
+            .tolist()
+        )
+
+        return values
+
+    def _safe_sorted(values, reverse=False):
+        try:
+            return sorted(values, reverse=reverse)
+        except Exception:
+            return sorted([str(v) for v in values], reverse=reverse)
+
+    terminal_options = ["All Terminal"] + _safe_sorted(_col_vals(c_terminal))
+    year_options     = ["Semua Tahun"] + _safe_sorted(_col_vals(c_tahun), reverse=True)
+    month_options    = ["Semua Bulan"] + BULAN
 
     if st.session_state.get("f_terminal") not in terminal_options:
         st.session_state.f_terminal = terminal_options[0]
+
     if st.session_state.get("f_tahun") not in year_options:
         st.session_state.f_tahun = year_options[0]
+
     if st.session_state.get("f_masa") not in month_options:
         st.session_state.f_masa = month_options[0]
 
+    # =========================================================
+    # 9. FILTER UI
+    # =========================================================
     f1, f2, f3, f4 = st.columns([1.45, 1.35, 1.55, 2.65])
+
     with f1:
         st.markdown(_overview_filter_label("Terminal"), unsafe_allow_html=True)
-        sel_terminal = st.selectbox("Terminal", terminal_options, key="f_terminal", label_visibility="collapsed")
+        sel_terminal = st.selectbox(
+            "Terminal",
+            terminal_options,
+            key="f_terminal",
+            label_visibility="collapsed",
+        )
+
     with f2:
         st.markdown(_overview_filter_label("Tahun"), unsafe_allow_html=True)
-        sel_tahun = st.selectbox("Tahun", year_options, key="f_tahun", label_visibility="collapsed")
+        sel_tahun = st.selectbox(
+            "Tahun",
+            year_options,
+            key="f_tahun",
+            label_visibility="collapsed",
+        )
+
     with f3:
         st.markdown(_overview_filter_label("Bulan"), unsafe_allow_html=True)
-        sel_masa = st.selectbox("Bulan", month_options, key="f_masa", label_visibility="collapsed")
+        sel_masa = st.selectbox(
+            "Bulan",
+            month_options,
+            key="f_masa",
+            label_visibility="collapsed",
+        )
+
     with f4:
         st.markdown(
             '<div style="height:52px;display:flex;align-items:end;justify-content:flex-end;'
@@ -2559,38 +2860,79 @@ def page_overview(df_raw):
             unsafe_allow_html=True,
         )
 
-    df = df_raw.copy()
-    if sel_terminal != "All Terminal": df = df[df["terminal"]  == sel_terminal]
-    if sel_tahun    != "Semua Tahun":  df = df[df["tahun"]     == int(sel_tahun)]
-    if sel_masa     != "Semua Bulan":  df = df[df["masa_jasa"] == sel_masa]
+    # =========================================================
+    # 10. APPLY FILTER KE DATAFRAME
+    # =========================================================
+    if sel_terminal != "All Terminal":
+        df = df[df[c_terminal].astype(str) == str(sel_terminal)]
 
-    real_revenue = df["real_omzet"].sum()
-    revenue_sharing = df["pendapatan_rs"].sum()
-    rental_revenue = df["pendapatan_sewa"].sum()
-    total_contribution = df["kontribusi"].sum()
-    total_sqm = df["luas_sqm"].sum()
-    total_pax = df["jumlah_pax"].sum() if "jumlah_pax" in df.columns else 0
-    target_omzet = df["min_omzet"].sum()
-    avg_contract_value = df["min_omzet"].mean() if not df.empty else 0
-    rev_per_sqm = (real_revenue / total_sqm) if total_sqm else 0
-    spending_per_pax = (real_revenue / total_pax) if total_pax else 0
+    if sel_tahun != "Semua Tahun":
+        df = df[df[c_tahun].astype(str) == str(sel_tahun)]
 
-    # Periode pembanding (tahun sebelumnya, dengan filter terminal & bulan yang sama)
-    current_year = int(sel_tahun) if sel_tahun != "Semua Tahun" else (int(df["tahun"].max()) if not df.empty else None)
-    prior_df = df_raw.iloc[0:0]
-    if current_year is not None:
-        prior_df = df_raw[df_raw["tahun"] == current_year - 1]
-        if sel_terminal != "All Terminal": prior_df = prior_df[prior_df["terminal"]  == sel_terminal]
-        if sel_masa     != "Semua Bulan":  prior_df = prior_df[prior_df["masa_jasa"] == sel_masa]
+    if sel_masa != "Semua Bulan":
+        df = df[df[c_masa].astype(str).str.lower() == str(sel_masa).lower()]
 
-    prior_real_revenue = prior_df["real_omzet"].sum()
-    prior_revenue_sharing = prior_df["pendapatan_rs"].sum()
-    prior_rental_revenue = prior_df["pendapatan_sewa"].sum()
-    prior_contribution = prior_df["kontribusi"].sum()
-    prior_sqm = prior_df["luas_sqm"].sum()
-    prior_pax = prior_df["jumlah_pax"].sum() if "jumlah_pax" in prior_df.columns else 0
-    prior_avg_contract = prior_df["min_omzet"].mean() if not prior_df.empty else 0
-    prior_rev_per_sqm = (prior_real_revenue / prior_sqm) if prior_sqm else 0
+    # =========================================================
+    # 11. SAFETY FINAL SEBELUM CHART / GROUPBY
+    # =========================================================
+    for col in ["real_omzet", "pendapatan_rs", "kontribusi", "pendapatan_sewa", "min_omzet", "luas_sqm", "jumlah_pax"]:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    for col in ["terminal", "tahun", "masa_jasa", "perusahaan", "brand", "kode_ruang"]:
+        if col not in df.columns:
+            df[col] = "Tidak diketahui"
+        df[col] = df[col].fillna("Tidak diketahui").astype(str)
+
+    df = df_all.copy()
+    if sel_terminal != "All Terminal" and c_terminal in df.columns: df = df[df[c_terminal] == sel_terminal]
+    if sel_tahun    != "Semua Tahun"  and c_tahun    in df.columns: df = df[df[c_tahun].astype(str) == str(sel_tahun)]
+    if sel_masa     != "Semua Bulan"  and c_masa     in df.columns: df = df[df[c_masa] == sel_masa]
+
+    def _safe_sum(col):  return df[col].sum() if col in df.columns else 0
+    def _safe_mean(col): return df[col].mean() if col in df.columns and not df.empty else 0
+
+    real_revenue       = _safe_sum(c_omzet)
+    revenue_sharing    = _safe_sum(c_rs)
+    rental_revenue     = _safe_sum(c_sewa)
+    total_contribution = _safe_sum(c_kontribusi)
+    total_sqm          = _safe_sum(c_sqm)
+    total_pax          = _safe_sum(c_pax)
+    target_omzet       = _safe_sum(c_min_omzet)
+    avg_contract_value = _safe_mean(c_min_omzet)
+    rev_per_sqm        = (real_revenue / total_sqm) if total_sqm else 0
+    spending_per_pax   = (real_revenue / total_pax) if total_pax else 0
+
+    # Periode pembanding (tahun sebelumnya)
+    current_year = None
+    if sel_tahun != "Semua Tahun":
+        try: current_year = int(sel_tahun)
+        except: pass
+    elif c_tahun in df.columns and not df.empty:
+        try: current_year = int(df[c_tahun].mode()[0])
+        except: pass
+
+    prior_df = df_all.iloc[0:0]
+    if current_year is not None and c_tahun in df_all.columns:
+        try: prior_df = df_all[df_all[c_tahun].astype(int) == current_year - 1]
+        except: pass
+        if sel_terminal != "All Terminal" and c_terminal in prior_df.columns:
+            prior_df = prior_df[prior_df[c_terminal] == sel_terminal]
+        if sel_masa != "Semua Bulan" and c_masa in prior_df.columns:
+            prior_df = prior_df[prior_df[c_masa] == sel_masa]
+
+    def _psum(col):  return prior_df[col].sum()  if col in prior_df.columns else 0
+    def _pmean(col): return prior_df[col].mean() if col in prior_df.columns and not prior_df.empty else 0
+
+    prior_real_revenue     = _psum(c_omzet)
+    prior_revenue_sharing  = _psum(c_rs)
+    prior_rental_revenue   = _psum(c_sewa)
+    prior_contribution     = _psum(c_kontribusi)
+    prior_sqm              = _psum(c_sqm)
+    prior_pax              = _psum(c_pax)
+    prior_avg_contract     = _pmean(c_min_omzet)
+    prior_rev_per_sqm      = (prior_real_revenue / prior_sqm) if prior_sqm else 0
     prior_spending_per_pax = (prior_real_revenue / prior_pax) if prior_pax else 0
 
     omzet_val, omzet_scale = _compact_number(real_revenue)
@@ -2882,15 +3224,15 @@ def page_overview(df_raw):
         detail_view = detail_df.iloc[start_idx:end_idx].copy()
         detail_view["Min Omzet"] = detail_view["min_omzet"].apply(_fmt_rp_full)
         detail_view["Real Omzet"] = detail_view["real_omzet"].apply(_fmt_rp_full)
-        detail_view["Kontribusi"] = detail_view["kontribusi"].apply(_fmt_rp_full)
+        detail_view["total_Kontribusi"] = detail_view["kontribusi"].apply(_fmt_rp_full)
         detail_view["Ach %"] = detail_view["Ach %"].apply(lambda x: f"{x:.1f}%")
         detail_view["ACV"] = detail_view["acv"].apply(lambda x: f"{x:.1f}%")
-        detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "Kontribusi", "Ach %", "ACV"]]
-        detail_view.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "Kontribusi", "Ach %", "ACV"]
+        detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]]
+        detail_view.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
         detail_col_align = {
             "Min Omzet": "right",
             "Real Omzet": "right",
-            "Kontribusi": "right",
+            "total_Kontribusi": "right",
             "Ach %": "right",
             "ACV": "right",
         }
@@ -2925,30 +3267,7 @@ def page_overview(df_raw):
 # PAGE: IMPORT MANAGER
 # ══════════════════════════════════════════════
 def page_import():
-    show_topnav("Import Manager")
-    st.markdown('<div class="nad-card">', unsafe_allow_html=True)
-    st.markdown('<p class="nad-card-title">Central Import Source</p>', unsafe_allow_html=True)
-    st.markdown('<p class="nad-card-sub">Upload data dipusatkan di halaman Import Manager.</p>', unsafe_allow_html=True)
-    uploaded = None
-    st.markdown(
-        import_status_html("nad-card", "nad-card-title", "nad-card-sub"),
-        unsafe_allow_html=True,
-    )
-    if uploaded:
-        try:
-            df_up = pd.read_excel(uploaded)
-            st.success(f"✅ {len(df_up)} baris berhasil dibaca")
-            st.dataframe(df_up.head(10), use_container_width=True)
-            if st.button("💾 Simpan ke Database", type="primary"):
-                try:
-                    df_up.to_sql("pendapatan_tenant", get_engine(), if_exists="append", index=False)
-                    st.success("✅ Data berhasil disimpan!")
-                    st.cache_data.clear()
-                except Exception as e:
-                    st.error(f"❌ Gagal simpan: {e}")
-        except Exception as e:
-            st.error(f"❌ Gagal baca file: {e}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    render_import_manager()
 
 
 # ══════════════════════════════════════════════
@@ -3007,21 +3326,37 @@ def render_dashboard_app():
 
     menu = st.session_state.active_menu
 
+    if df_raw is None and menu != "Import Manager":
+        show_topnav(menu, show_search=False)
+        st.markdown(f"<div style='padding:40px;text-align:center;'>", unsafe_allow_html=True)
+        data_error = st.session_state.get("dashboard_data_error")
+        if data_error:
+            st.error(f"Gagal membaca data PostgreSQL: {data_error}")
+        else:
+            st.warning("Belum ada data aktif di PostgreSQL. Silakan import file melalui Import Manager.")
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+        st.warning("⚠️ No Excel data has been uploaded yet. Please upload an Excel file from the Import Manager page.")
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
     if menu == "Overview":
         page_overview(df_raw)
     elif menu == "Revenue Sharing":
-        page_revenue_sharing()
+        page_revenue_sharing(df_raw)
     elif menu == "Lease Contract":
-        render_lease_contract()
+        render_lease_contract(df_raw)
     elif menu == "Traffic Monitor":
-        page_traffic_monitor()
+        page_traffic_monitor(df_raw)
+    elif menu == "Room Database":
+        render_room_database(df_raw)
     elif menu == "Import Manager":
         render_import_manager()
     elif menu == "Data Verification":
-        render_data_verification()
+        render_data_verification(df_raw)
     else:
-        page_overview(df_raw)
-
+        if df_raw is not None:
+            page_overview(df_raw)
 
 def main():
     st.set_page_config(
