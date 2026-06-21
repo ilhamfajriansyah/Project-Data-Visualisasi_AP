@@ -251,6 +251,14 @@ body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new
     margin-top: -4px !important;
 }
 
+/* The premium-card columns are each wrapped in their own st.container(),
+   which (unlike the plain st.markdown() cards in the KPI row above) ends
+   up with a narrower effective gap between columns — force it back to
+   the same 16px used between other major sections/cards. */
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) {
+    gap: 16px !important;
+}
+
 /* Premium Card Design */
 .premium-card,
 div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .premium-card-marker) {
@@ -260,7 +268,10 @@ div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .
     padding: 20px;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.015);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    margin-bottom: 20px;
+    /* No margin-bottom here — inter-section spacing is handled solely by
+       the explicit 16px spacer divs between rows, so it stays consistent
+       with sections that use other card classes (e.g. .kpi-card-new),
+       which don't have a baked-in margin of their own. */
     box-sizing: border-box;
 }
 div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .premium-card-marker) > div[data-testid="stElementContainer"]:has(.premium-card-marker) {
@@ -949,6 +960,93 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
 .badge-warning { background: #FFFBEB; color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.2); }
 .badge-success { background: #F0FDF4; color: #10B981; border: 1px solid rgba(16, 185, 129, 0.2); }
 
+/* ── Contracts Expiring Soon — outer card wraps the title + all 3 pills ── */
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .lc-exp-outer-marker) {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.015);
+}
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .lc-exp-outer-marker) > div[data-testid="stElementContainer"]:has(.lc-exp-outer-marker) {
+    display: none;
+}
+.lc-exp-header-card {
+    background: transparent;
+    border: none;
+    padding: 14px 18px;
+    box-sizing: border-box;
+}
+.lc-exp-header-title { font-size: 16px; font-weight: 800; color: #0F172A; }
+.lc-exp-header-sub { font-size: 12px; color: #64748B; margin-top: 2px; }
+.lc-exp-stat {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; border-radius: 14px; min-width: 0;
+    height: 100%; box-sizing: border-box;
+}
+.lc-exp-stat.danger { background: #FEF2F2; border: 1px solid #FCA5A5; }
+.lc-exp-stat.warning { background: #FFFBEB; border: 1px solid #FCD34D; }
+.lc-exp-stat.success { background: #F0FDF4; border: 1px solid #86EFAC; }
+.lc-exp-stat-icon {
+    width: 32px; height: 32px; border-radius: 50%; background: #FFFFFF;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.lc-exp-stat-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lc-exp-stat-label {
+    display: block; font-size: 12.5px; font-weight: 800; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lc-exp-stat-label.danger { color: #B91C1C; }
+.lc-exp-stat-label.warning { color: #B45309; }
+.lc-exp-stat-label.success { color: #15803D; }
+.lc-exp-stat-caption {
+    display: block; font-size: 10.5px; color: #64748B; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lc-exp-stat-value { font-size: 22px; font-weight: 800; color: #0F172A; margin-left: auto; padding-left: 8px; }
+
+/* ── Contracts Expiring Soon — per-severity section cards ── */
+.lc-exp-section-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 18px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+.lc-exp-section-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+}
+.lc-exp-section-head.danger { background: #FEF2F2; }
+.lc-exp-section-head.warning { background: #FFFBEB; }
+.lc-exp-section-head.success { background: #F0FDF4; }
+.lc-exp-section-icon {
+    width: 26px; height: 26px; border-radius: 50%; background: #FFFFFF;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.lc-exp-section-title { font-size: 13.5px; font-weight: 800; }
+.lc-exp-section-title.danger { color: #B91C1C; }
+.lc-exp-section-title.warning { color: #B45309; }
+.lc-exp-section-title.success { color: #15803D; }
+.lc-exp-table-wrap { padding: 4px 18px 6px; }
+.lc-tenant-cell { display: flex; align-items: center; gap: 10px; }
+.lc-tenant-avatar {
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #FFFFFF;
+}
+
+/* "Show more / Show less" toggle — real st.button widget, ghost-styled */
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .lc-exp-show-more-marker) div[data-testid="stButton"] > button {
+    background: transparent !important;
+    color: #64748B !important;
+    border: none !important;
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
 /* Left Sidebar Action Required & Renewal Pipeline cards */
 div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .action-required-marker) {
     background: #FFFFFF !important;
@@ -1608,6 +1706,11 @@ def _init_state():
     if "f_month"        not in st.session_state: st.session_state.f_month        = "All Month"
     if "lc_filtered_df" not in st.session_state: st.session_state.lc_filtered_df = st.session_state.lc_df
 
+    # "Show more" toggles for the Contracts Expiring Soon cards
+    for _key in ("lc_show_all_critical", "lc_show_all_expiring", "lc_show_all_approaching"):
+        if _key not in st.session_state:
+            st.session_state[_key] = False
+
 # ──────────────────────────────────────────────────────────────────────────────
 # SPARKLINE & CHART GENERATION
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1868,311 +1971,6 @@ def _render_add_form():
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
-
-
-
-def _render_action_required():
-    with st.container():
-        st.markdown('<div class="action-required-marker"></div>', unsafe_allow_html=True)
-        
-        # Header Box
-        st.markdown("""
-        <div class="sidebar-header-box">
-            <div class="sidebar-header-icon danger">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-            </div>
-            <div class="sidebar-header-text">
-                <div class="sidebar-title">Action Required</div>
-                <div class="sidebar-subtitle">8 contracts need attention</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Badges Grid
-        st.markdown("""
-        <div class="sidebar-badges-grid">
-            <div class="sidebar-badge-box danger">
-                <div class="sidebar-badge-number">2</div>
-                <div class="sidebar-badge-label">This Month</div>
-            </div>
-            <div class="sidebar-badge-box warning">
-                <div class="sidebar-badge-number">3</div>
-                <div class="sidebar-badge-label">Renewal</div>
-            </div>
-            <div class="sidebar-badge-box danger">
-                <div class="sidebar-badge-number">3</div>
-                <div class="sidebar-badge-label">Expired</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Section 1: Expiring This Month
-        st.markdown("""
-        <div class="sidebar-section-container" style="border-top: none; padding-top: 0; margin-top: 0;">
-            <div class="sidebar-section-header">
-                <span class="sidebar-section-title-left">
-                    <span class="section-icon-wrap danger">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                            <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                    </span>
-                    Expiring This Month
-                </span>
-                <span class="sidebar-section-badge danger">2</span>
-            </div>
-            <ul class="sidebar-list danger">
-                <li>7-Eleven (T1) — 16 days</li>
-                <li>Sari Roti (T2) — 30 days</li>
-            </ul>
-        </div>
-        <div class="sb-btn-danger-marker"></div>
-        """, unsafe_allow_html=True)
-        if st.button("Renew Immediately >", key="sb_renew_imm_new", use_container_width=True):
-            st.toast("⚡ Initiating immediate renewals...")
-            
-        # Section 2: Requiring Renewal
-        st.markdown("""
-        <div class="sidebar-section-container">
-            <div class="sidebar-section-header">
-                <span class="sidebar-section-title-left">
-                    <span class="section-icon-wrap warning">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-                        </svg>
-                    </span>
-                    Requiring Renewal
-                </span>
-                <span class="sidebar-section-badge warning">3</span>
-            </div>
-            <ul class="sidebar-list warning">
-                <li>KFC (T3) — 44 days</li>
-                <li>Timezone (T1) — 75 days</li>
-                <li>Lion Lounge (T1) — 89 days</li>
-            </ul>
-        </div>
-        <div class="sb-btn-warning-marker"></div>
-        """, unsafe_allow_html=True)
-        if st.button("Initiate Renewal >", key="sb_init_renew_new", use_container_width=True):
-            st.toast("🔄 Launching renewal pipeline processes...")
-            
-        # Section 3: Expired Contracts
-        st.markdown("""
-        <div class="sidebar-section-container">
-            <div class="sidebar-section-header">
-                <span class="sidebar-section-title-left">
-                    <span class="section-icon-wrap danger">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                    </span>
-                    Expired Contracts
-                </span>
-                <span class="sidebar-section-badge danger">3</span>
-            </div>
-            <ul class="sidebar-list danger">
-                <li>Dunkin' (T1) — 15 days overdue</li>
-                <li>HokBen (T2) — 1 day overdue</li>
-                <li>Optik Seis (T3) — 14 days overdue</li>
-            </ul>
-        </div>
-        <div class="sb-btn-danger-marker"></div>
-        """, unsafe_allow_html=True)
-        if st.button("Resolve Urgently >", key="sb_resolve_urg_new", use_container_width=True):
-            st.toast("🚨 Notifying legal and commercial teams...")
-
-def _render_renewal_pipeline():
-    with st.container():
-        st.markdown('<div class="renewal-pipeline-marker"></div>', unsafe_allow_html=True)
-        
-        # Header
-        st.markdown("""
-        <div class="pipeline-header">
-            <span class="pipeline-icon-wrap">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            </span>
-            Renewal Pipeline
-        </div>
-        
-        <div class="pipeline-list">
-            <div class="pipeline-item">
-                <div class="pipeline-row-top">
-                    <span class="pipeline-tenant">DFS Indonesia</span>
-                    <span class="pipeline-value">Rp 42.7B</span>
-                </div>
-                <div class="pipeline-row-bottom">
-                    <span class="pipeline-due">Due: Mar 2025</span>
-                    <span class="pipeline-badge low">LOW</span>
-                </div>
-            </div>
-            <div class="pipeline-divider"></div>
-            <div class="pipeline-item">
-                <div class="pipeline-row-top">
-                    <span class="pipeline-tenant">Garuda Exec</span>
-                    <span class="pipeline-value">Rp 14.8B</span>
-                </div>
-                <div class="pipeline-row-bottom">
-                    <span class="pipeline-due">Due: Jun 2025</span>
-                    <span class="pipeline-badge low">LOW</span>
-                </div>
-            </div>
-            <div class="pipeline-divider"></div>
-            <div class="pipeline-item">
-                <div class="pipeline-row-top">
-                    <span class="pipeline-tenant">Gramedia</span>
-                    <span class="pipeline-value">Rp 6.8B</span>
-                </div>
-                <div class="pipeline-row-bottom">
-                    <span class="pipeline-due">Due: Jun 2025</span>
-                    <span class="pipeline-badge medium">MEDIUM</span>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-def render_executive_insights():
-    with st.container():
-        st.markdown('<div class="executive-insights-marker"></div>', unsafe_allow_html=True)
-        
-        # Header
-        st.markdown("""
-        <div class="insights-header-box">
-            <div class="insights-header-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" />
-                </svg>
-            </div>
-            <div class="insights-header-text">
-                <div class="insights-title">Executive Insights</div>
-                <div class="insights-subtitle">Contract risk & opportunity analysis</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            # Card 1: UPCOMING RISKS
-            st.markdown("""
-            <div class="insight-grid-card danger">
-                <div class="insight-lbl-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Upcoming Risks
-                </div>
-                <div class="insight-grid-title">5 high-value contracts expiring Q1 2025</div>
-                <div class="insight-grid-desc">
-                    Contracts worth Rp 28.2B expire within 90 days. DFS (Rp 42.7B) and Garuda (Rp 14.8B) renewals due by Q2 2025 — initiate negotiations now.
-                </div>
-                <span class="insight-grid-pill">Rp 28.2B at risk</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Card 2: RENEWAL RECOMMENDATIONS
-            st.markdown("""
-            <div class="insight-grid-card warning">
-                <div class="insight-lbl-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                        <polyline points="17 6 23 6 23 12"></polyline>
-                    </svg>
-                    Renewal Recommendations
-                </div>
-                <div class="insight-grid-title">Prioritize 3 expired contracts this week</div>
-                <div class="insight-grid-desc">
-                    Dunkin', HokBen, and Optik Seis contracts are already expired. Each day without resolution risks revenue leakage and operational disruption at T1, T2, and T3.
-                </div>
-                <span class="insight-grid-pill">3 immediate actions</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Card 3: STRATEGIC INSIGHT
-            st.markdown("""
-            <div class="insight-grid-card info">
-                <div class="insight-lbl-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 10a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
-                    Strategic Insight
-                </div>
-                <div class="insight-grid-title">T2 renewal risk is highest value</div>
-                <div class="insight-grid-desc">
-                    Terminal 2 hosts 112 of 247 contracts (45.3%). 4 T2 contracts expire in 2025 totaling Rp 68.4B — a structured renewal calendar is recommended.
-                </div>
-                <span class="insight-grid-pill">Rp 68.4B renewal</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col2:
-            # Card 4: CONTRACT DISTRIBUTION
-            st.markdown("""
-            <div class="insight-grid-card info">
-                <div class="insight-lbl-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="20" x2="18" y2="10"></line>
-                        <line x1="12" y1="20" x2="12" y2="4"></line>
-                        <line x1="6" y1="20" x2="6" y2="14"></line>
-                    </svg>
-                    Contract Distribution
-                </div>
-                <div class="insight-grid-title">RS dominates at 51.8% of portfolio</div>
-                <div class="insight-grid-desc">
-                    128 Revenue Sharing contracts hold 51.8% share. RS + Min Omzet contracts (81) provide Rp 60.4B — consider converting 8 volatile RS tenants for revenue stability.
-                </div>
-                <span class="insight-grid-pill">247 total contracts</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Card 5: PORTFOLIO HEALTH
-            st.markdown("""
-            <div class="insight-grid-card success">
-                <div class="insight-lbl-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    </svg>
-                    Portfolio Health
-                </div>
-                <div class="insight-grid-title">88.3% active rate — target 90%</div>
-                <div class="insight-grid-desc">
-                    Active contract rate of 88.3% is 1.7% below the 90% KPI target. Closing the 11 expired and 2 critical contracts would bring the rate to 96.4%.
-                </div>
-                <span class="insight-grid-pill">Target: 90%</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Card 6: TIMING
-            st.markdown("""
-            <div class="insight-grid-card purple-card">
-                <div class="insight-lbl-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    Timing
-                </div>
-                <div class="insight-grid-title">December 2025 is the peak expiry month</div>
-                <div class="insight-grid-desc">
-                    11 contracts expire in December 2025 — the highest risk month. Begin advance preparation in Q3 2025 to avoid year-end operational disruptions.
-                </div>
-                <span class="insight-grid-pill">11 contracts · Dec 25</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        st.markdown('<div class="insights-cta-marker"></div>', unsafe_allow_html=True)
-        if st.button("✨ Generate Contract Risk Report >", key="bottom_cta_gen_report_inside", use_container_width=True):
-            st.toast("✨ Generating comprehensive contract risk audit report...")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MAIN RENDER FUNCTION
@@ -2517,7 +2315,7 @@ def render_lease_contract():
         )
         st.markdown(html_expired, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # CONTRACT EXPIRY TIMELINE & DONUT CHARTS (3-COLUMN REDESIGN)
@@ -2705,17 +2503,76 @@ def render_lease_contract():
             """
             st.markdown(html_status_score, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
-    # CRITICAL / EXPIRING TABLES (SECTION 1-3 DYNAMIC GENERATION)
+    # CONTRACTS EXPIRING SOON — header card + 3 stat pills, then one
+    # bordered card per severity (icon + colored title + "View all (N)"
+    # strip, table, and a "Show more" toggle past the first 5 rows).
     # ─────────────────────────────────────────────
-    st.markdown(
-        f'<div class="premium-card">'
-        f'<div class="card-title">Contracts Expiring Soon</div>'
-        f'<div class="card-subtitle">Sorted by remaining days</div>',
-        unsafe_allow_html=True
-    )
+    AVATAR_PALETTE = ["#6366F1", "#EC4899", "#10B981", "#F59E0B", "#0EA5E9", "#8B5CF6", "#EF4444", "#14B8A6"]
+    VARIANT_COLOR = {"danger": "#EF4444", "warning": "#F59E0B", "success": "#10B981"}
+
+    def _tenant_avatar_html(name: str) -> str:
+        initial = (name or "?").strip()[:1].upper() or "?"
+        color = AVATAR_PALETTE[abs(hash(name)) % len(AVATAR_PALETTE)]
+        return f'<span class="lc-tenant-avatar" style="background:{color};">{initial}</span>'
+
+    def _render_exp_section(key, variant, icon, title, items):
+        show_all_key = f"lc_show_all_{key}"
+        total = len(items)
+        visible_items = items if st.session_state[show_all_key] else items[:5]
+
+        rows_html = ""
+        for item in visible_items:
+            rows_html += (
+                "<tr>"
+                f"<td><div class='lc-tenant-cell'>{_tenant_avatar_html(item['tenant'])}"
+                f"<span style='font-weight:700;color:#0F172A;'>{item['tenant']}</span></div></td>"
+                f"<td>{item['terminal']}</td>"
+                f"<td style='color:#64748B;'>{item['type']}</td>"
+                f"<td style='font-weight:600;'>{item['end_date']}</td>"
+                f"<td style='font-weight:800;color:{VARIANT_COLOR[variant]};'>{item['remaining']}</td>"
+                f"<td style='font-weight:700;color:#0F172A;'>{item['value']}</td>"
+                f"<td><span class='status-badge badge-{variant}'>{item['status']}</span></td>"
+                "</tr>"
+            )
+        if not rows_html:
+            rows_html = (
+                "<tr><td colspan=7 style='text-align:center;color:#64748B;'>"
+                "No contracts found for current filters</td></tr>"
+            )
+
+        with st.container():
+            st.markdown(f'<div class="lc-exp-section-marker-{key}"></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="lc-exp-section-card">'
+                f'<div class="lc-exp-section-head {variant}">'
+                f'<span class="lc-exp-section-icon">{icon}</span>'
+                f'<span class="lc-exp-section-title {variant}">{title}</span>'
+                f'<span style="margin-left:auto;font-size:11px;font-weight:700;color:#334155;'
+                f'background:#fff;border:1px solid rgba(15,23,42,0.08);border-radius:10px;'
+                f'padding:5px 12px;white-space:nowrap;">View all ({total})</span>'
+                f'</div>'
+                f'<div class="lc-exp-table-wrap">'
+                f'<table class="custom-table">'
+                f'<thead><tr><th>Tenant</th><th>Terminal</th><th>Contract Type</th>'
+                f'<th>End Date</th><th>Remaining</th><th>Value</th><th>Status</th></tr></thead>'
+                f'<tbody>{rows_html}</tbody>'
+                f'</table>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            if total > 5:
+                st.markdown('<div class="lc-exp-show-more-marker"></div>', unsafe_allow_html=True)
+                _, mid, _ = st.columns([2, 1, 2])
+                with mid:
+                    label = "Show less ▲" if st.session_state[show_all_key] else "Show more ▾"
+                    if st.button(label, key=f"lc_toggle_{key}", use_container_width=True):
+                        st.session_state[show_all_key] = not st.session_state[show_all_key]
+                        st.rerun()
 
     # Build dynamic list of critical contracts
     dynamic_critical = []
@@ -2739,10 +2596,11 @@ def render_lease_contract():
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Expiring Soon"
         })
 
-    # Build dynamic list of approaching renewal contracts
+    # Build dynamic list of approaching renewal contracts (no cap here —
+    # the "Show more" toggle controls how many rows are visible)
     dynamic_approaching = []
     app_df = df_all[(df_all["Status"] == "Valid") & (df_all["Sisa"] > 90)].sort_values(by="Sisa")
-    for _, r in app_df.head(5).iterrows():
+    for _, r in app_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "02 May 2025"
         val_m = f"Rp {2.0 + (r['No'] % 5) * 1.5:.1f}B"
         dynamic_approaching.append({
@@ -2750,89 +2608,42 @@ def render_lease_contract():
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Approaching"
         })
 
-    # Critical Contracts Banner & Table
-    st.markdown('<div class="alert-banner alert-danger"><span style="font-size: 15px;">⚠️</span> Critical — Expires within 30 days</div>', unsafe_allow_html=True)
-    crit_rows = ""
-    for item in dynamic_critical:
-        crit_rows += (
-            f"<tr>"
-            f"<td style='font-weight: 700; color: #0F172A;'>{item['tenant']}</td>"
-            f"<td>{item['terminal']}</td>"
-            f"<td style='color: #64748B;'>{item['type']}</td>"
-            f"<td style='font-weight: 600;'>{item['end_date']}</td>"
-            f"<td style='font-weight: 800; color: #EF4444;'>{item['remaining']}</td>"
-            f"<td style='font-weight: 700; color: #0F172A;'>{item['value']}</td>"
-            f"<td><span class='status-badge badge-danger'>{item['status']}</span></td>"
-            f"</tr>"
-        )
-    st.markdown(
-        f'<table class="custom-table" style="margin-bottom: 24px;">'
-        f'<thead><tr><th>Tenant</th><th>Terminal</th><th>Contract Type</th><th>End Date</th><th>Remaining</th><th>Value</th><th>Status</th></tr></thead>'
-        f'<tbody>{crit_rows if crit_rows else "<tr><td colspan=7 style=\'text-align:center;color:#64748B;\'>No critical contracts found for current filters</td></tr>"}</tbody>'
-        f'</table>',
-        unsafe_allow_html=True
-    )
+    # Header card: title + 3 stat pills, all wrapped in one outer card
+    with st.container():
+        st.markdown('<div class="lc-exp-outer-marker"></div>', unsafe_allow_html=True)
+        h_left, h_s1, h_s2, h_s3 = st.columns(4)
+        with h_left:
+            st.markdown(
+                '<div class="lc-exp-header-card" style="height:100%;box-sizing:border-box;">'
+                '<div class="lc-exp-header-title">Contracts Expiring Soon</div>'
+                '<div class="lc-exp-header-sub">Sorted by remaining days</div>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        stat_defs = [
+            (h_s1, "danger", "⚠️", "Critical", "Expires within 30 days", len(dynamic_critical)),
+            (h_s2, "warning", "⏳", "Expiring Soon", "Expires in 31 to 90 days", len(dynamic_expiring)),
+            (h_s3, "success", "🛡️", "Approaching Renewal", "Expires in 90+ days", len(dynamic_approaching)),
+        ]
+        for col, variant, icon, label, caption, count in stat_defs:
+            with col:
+                st.markdown(
+                    f'<div class="lc-exp-stat {variant}" style="height:100%;box-sizing:border-box;">'
+                    f'<span class="lc-exp-stat-icon">{icon}</span>'
+                    f'<span class="lc-exp-stat-text">'
+                    f'<span class="lc-exp-stat-label {variant}">{label}</span>'
+                    f'<span class="lc-exp-stat-caption">{caption}</span>'
+                    f'</span>'
+                    f'<span class="lc-exp-stat-value">{count}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-    # Expiring Soon Banner & Table
-    st.markdown('<div class="alert-banner alert-warning"><span style="font-size: 15px;">⏳</span> Expiring Soon — Expires within 31 to 90 days</div>', unsafe_allow_html=True)
-    exp_rows = ""
-    for item in dynamic_expiring:
-        exp_rows += (
-            f"<tr>"
-            f"<td style='font-weight: 700; color: #0F172A;'>{item['tenant']}</td>"
-            f"<td>{item['terminal']}</td>"
-            f"<td style='color: #64748B;'>{item['type']}</td>"
-            f"<td style='font-weight: 600;'>{item['end_date']}</td>"
-            f"<td style='font-weight: 800; color: #F59E0B;'>{item['remaining']}</td>"
-            f"<td style='font-weight: 700; color: #0F172A;'>{item['value']}</td>"
-            f"<td><span class='status-badge badge-warning'>{item['status']}</span></td>"
-            f"</tr>"
-        )
-    st.markdown(
-        f'<table class="custom-table" style="margin-bottom: 24px;">'
-        f'<thead><tr><th>Tenant</th><th>Terminal</th><th>Contract Type</th><th>End Date</th><th>Remaining</th><th>Value</th><th>Status</th></tr></thead>'
-        f'<tbody>{exp_rows if exp_rows else "<tr><td colspan=7 style=\'text-align:center;color:#64748B;\'>No expiring soon contracts found for current filters</td></tr>"}</tbody>'
-        f'</table>',
-        unsafe_allow_html=True
-    )
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    # Approaching Renewal Banner & Table
-    st.markdown('<div class="alert-banner alert-success"><span style="font-size: 15px;">🛡️</span> Approaching Renewal — Expires in 90+ days</div>', unsafe_allow_html=True)
-    app_rows = ""
-    for item in dynamic_approaching:
-        app_rows += (
-            f"<tr>"
-            f"<td style='font-weight: 700; color: #0F172A;'>{item['tenant']}</td>"
-            f"<td>{item['terminal']}</td>"
-            f"<td style='color: #64748B;'>{item['type']}</td>"
-            f"<td style='font-weight: 600;'>{item['end_date']}</td>"
-            f"<td style='font-weight: 800; color: #10B981;'>{item['remaining']}</td>"
-            f"<td style='font-weight: 700; color: #0F172A;'>{item['value']}</td>"
-            f"<td><span class='status-badge badge-success'>{item['status']}</span></td>"
-            f"</tr>"
-        )
-    st.markdown(
-        f'<table class="custom-table">'
-        f'<thead><tr><th>Tenant</th><th>Terminal</th><th>Contract Type</th><th>End Date</th><th>Remaining</th><th>Value</th><th>Status</th></tr></thead>'
-        f'<tbody>{app_rows if app_rows else "<tr><td colspan=7 style=\'text-align:center;color:#64748B;\'>No approaching renewal contracts found for current filters</td></tr>"}</tbody>'
-        f'</table>'
-        f'</div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-    # ─────────────────────────────────────────────
-    # BOTTOM SECTION: SIDE-BY-SIDE PANELS
-    # ─────────────────────────────────────────────
-    col_left, col_right = st.columns([1.1, 2.5])
-    
-    with col_left:
-        _render_action_required()
-        _render_renewal_pipeline()
-        
-    with col_right:
-        render_executive_insights()
+    _render_exp_section("critical", "danger", "⚠️", "Critical — Expires within 30 days", dynamic_critical)
+    _render_exp_section("expiring", "warning", "⏳", "Expiring Soon — Expires within 31 to 90 days", dynamic_expiring)
+    _render_exp_section("approaching", "success", "🛡️", "Approaching Renewal — Expires in 90+ days", dynamic_approaching)
 
 # ── Standalone Running compatibility ─────────
 if __name__ == "__main__":

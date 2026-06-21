@@ -694,7 +694,7 @@ def _inject_tm_css():
         background: #F8FAFC !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-grid {{
-        display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; width: 100%;
+        display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; width: 100%;
         margin-top: -4px !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-card {{
@@ -730,7 +730,7 @@ def _inject_tm_css():
         stroke-linejoin: round !important;
     }}
     body:has(.tm-page-marker) .tm-mini-metrics {{
-        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px;
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 10px 0 12px;
     }}
     body:has(.tm-page-marker) .tm-mini-metric {{
         display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid;
@@ -793,7 +793,7 @@ def _inject_tm_css():
         font-family: {TM_FONT} !important;
     }}
     body:has(.tm-page-marker) .tm-insight-grid {{
-        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px;
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px;
     }}
     body:has(.tm-page-marker) .tm-insight-card {{
         padding: 16px; border-radius: 12px; border: 1px solid; min-height: 148px;
@@ -1144,7 +1144,7 @@ def page_traffic_monitor():
                      "Weighted terminal average", 6.6, "#EA580C", "🛍", spark_spp),
     ])
     st.markdown(f'<div class="tm-kpi-grid">{kpi_html}</div>', unsafe_allow_html=True)
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     row1_left, row1_right = st.columns([1.55, 1], gap="small")
     peak_month = trend_df.loc[trend_df["FY 2024"].idxmax(), "Month"]
@@ -1200,7 +1200,7 @@ def page_traffic_monitor():
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     row2_a, row2_b, row2_c = st.columns([1.15, 1.05, 0.95], gap="small")
     spp_avg = spp_df["SPP"].mean()
@@ -1261,7 +1261,7 @@ def page_traffic_monitor():
         st.plotly_chart(_yoy_bar_figure(all_metrics["rows"]), use_container_width=True,
                         config={"displayModeBar": False})
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     t2 = TERMINAL_PROFILES["Terminal 2"]
     t1 = TERMINAL_PROFILES["Terminal 1"]
@@ -1305,7 +1305,7 @@ def page_traffic_monitor():
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     table_df = get_terminal_table_df()
     display_df = table_df.drop(columns=["_share", "_total"]).copy()

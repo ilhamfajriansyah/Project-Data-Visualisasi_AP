@@ -353,7 +353,7 @@ def render_data_verification():
         if st.button("✅ Approve & Publish", use_container_width=True, key="dv_approve"):
             st.toast("✅ Data berhasil dipublikasikan!", icon="✅")
 
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── 4 KPI Cards ── (mirip screenshot: Total Records, Valid, Anomalies, Conflicts)
     df_all = st.session_state.dv_df
@@ -380,7 +380,7 @@ def render_data_verification():
                 <div class="dv-kpi-icon" style="--icon-bg:{icon_bg};">{icon}</div>
             </div>""", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── Filter Row ──
     fc1, fc2, fsp = st.columns([2, 2.4, 5.6])
@@ -431,7 +431,7 @@ def render_data_verification():
                 st.rerun()
 
     # ── INFO BOX: Integrasi Import Manager ──
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
     st.markdown("""
     <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.16);
         border-radius:14px;padding:13px 18px;display:flex;align-items:flex-start;gap:10px;">

@@ -226,7 +226,7 @@ def inject_enterprise_page_css(page_marker_class, extra_css=""):
     body:has(.{page_marker_class}) .ed-alert-grid {{
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 12px;
         margin-top: 12px;
     }}
     body:has(.{page_marker_class}) .ed-alert-card {{

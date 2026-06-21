@@ -1954,7 +1954,7 @@ def _render_pic_view():
         _render_ketentuan_import(st.session_state.get("im_validation"))
 
     # ── Import History (PIC) ──
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
     st.markdown('<div class="nad-card" style="padding:0;overflow:hidden;">', unsafe_allow_html=True)
     st.markdown('<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;">'
                 '<div class="nad-card-title">Import History</div>'
@@ -2011,7 +2011,7 @@ def _render_admin_view():
                 <div class="adm-kpi-sub">{sub}</div>
             </div>""", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # Reminder Banner
     if belum:
@@ -2026,7 +2026,7 @@ def _render_admin_view():
         if st.button("📣 Kirim Reminder ke Semua PIC Belum Submit", key="im_remind"):
             st.toast(f"Reminder dikirim ke: {belum_str}", icon="📣")
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # Filter Row
     fc1, fc2, fsp = st.columns([2, 2, 6])
@@ -2079,7 +2079,7 @@ def _render_admin_view():
     """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── Admin Controls ──
     st.markdown('<div class="nad-card-title" style="margin-bottom:10px;">⚙️ Kontrol Admin</div>', unsafe_allow_html=True)

@@ -2331,11 +2331,11 @@ def _overview_kpi_card(label, value, delta, accent, icon):
 # ══════════════════════════════════════════════
 KPI_PRO_ICON_PATHS = {
     "omzet":  '<line x1="12" y1="2" x2="12" y2="22"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
-    "layers": '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 5.64a1 1 0 0 0 0 1.84l8.58 3.44a2 2 0 0 0 1.66 0l8.58-3.44a1 1 0 0 0 0-1.84Z"></path><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.44a2 2 0 0 0 1.65 0l8.58-3.44A1 1 0 0 0 22 12"></path><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.44a2 2 0 0 0 1.65 0l8.58-3.44A1 1 0 0 0 22 17"></path>',
-    "file":   '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>',
-    "bars":   '<path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M7 11h12"></path><path d="M11 16h8"></path><path d="M11 6h4"></path>',
-    "users":  '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
-    "expand": '<path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path>',
+    "layers": '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>',
+    "file":   '<path d="m3 9 9-7 9 7"></path><path d="M4 10v10a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"></path>',
+    "bars":   '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>',
+    "users":  '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line>',
+    "expand": '<rect width="18" height="18" x="3" y="3" rx="2"></rect>',
     "award":  '<circle cx="12" cy="8" r="6"></circle><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>',
     "plane":  '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"></path>',
 }
@@ -3075,7 +3075,7 @@ def page_overview(df_raw):
         with col:
             st.markdown(card_html, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     main_left, main_right = st.columns([65, 35], gap="small")
     with main_left:
@@ -3175,7 +3175,7 @@ def page_overview(df_raw):
         ]
         st.markdown(f'<div class="ed-alert-list">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     tenant_summary = (
         df.groupby(["perusahaan", "brand"])
@@ -3255,7 +3255,7 @@ def page_overview(df_raw):
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:

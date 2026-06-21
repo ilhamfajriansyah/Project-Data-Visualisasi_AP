@@ -621,7 +621,7 @@ def _inject_rs_page_css():
     .rs-alert-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 12px;
         margin-top: 12px;
     }
     .rs-alert-card {
@@ -988,7 +988,7 @@ def page_revenue_sharing():
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     chart_left, chart_right = st.columns([46, 54], gap="small")
     with chart_left:
@@ -1030,7 +1030,7 @@ def page_revenue_sharing():
             config={"displayModeBar": False},
         )
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     alert_card = st.container()
     with alert_card:
@@ -1045,7 +1045,7 @@ def page_revenue_sharing():
         alerts = _build_revenue_alerts(services_df)
         st.markdown(f'<div class="rs-alert-grid">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:
