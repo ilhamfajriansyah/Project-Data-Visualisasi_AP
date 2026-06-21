@@ -204,7 +204,7 @@ body:has(.dv-page-marker) .ed-section-title {
     color: #0F172A !important;
     font-size: 15px !important;
     font-weight: 700 !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Montserrat', sans-serif !important;
 }
 
 body:has(.dv-page-marker) .ed-section-sub {
@@ -212,12 +212,12 @@ body:has(.dv-page-marker) .ed-section-sub {
     color: #64748B !important;
     font-size: 11px !important;
     font-weight: 500 !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(.ed-card-marker),
 body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(.ed-card-marker) * {
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 /* ── Fixed Header Override (Matches Overview) ── */
@@ -323,13 +323,13 @@ body:has(.dv-page-marker) .dv-page-title-row {
 body:has(.dv-page-marker) h2.dv-page-title {
     margin: 0 !important; padding: 0 !important;
     font-size: 18px; line-height: 1 !important; font-weight: 800;
-    color: #0F172A; font-family: 'Poppins', sans-serif !important;
+    color: #0F172A; font-family: 'Montserrat', sans-serif !important;
 }
 
 body:has(.dv-page-marker) p.dv-page-sub {
     margin: 0 !important; padding: 0 !important;
     color: #64748B; font-size: 12px; line-height: 1 !important;
-    font-weight: 500; font-family: 'Poppins', sans-serif !important;
+    font-weight: 500; font-family: 'Inter', sans-serif !important;
 }
 
 body:has(.dv-page-marker) .ap-top-actions {
@@ -510,7 +510,7 @@ div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testi
     justify-content: center !important;
     cursor: pointer !important;
     transition: all 0.15s !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }
 div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button p,
 div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button p,
@@ -579,7 +579,7 @@ div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testi
     justify-content: center !important;
     cursor: pointer !important;
     transition: all 0.15s !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }
 div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button p,
 div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button p,
@@ -660,7 +660,7 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
     font-weight: 500 !important;
     color: #475569 !important;
     margin: 0 !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }
 </style>
 """

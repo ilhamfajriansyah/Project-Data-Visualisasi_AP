@@ -199,7 +199,7 @@ _PAGE_CSS = """
     font-weight: 700;
     color: #4f46e5;
     font-size: 12.5px;
-    font-family: 'Poppins', monospace;
+    font-family: 'Inter', monospace;
 }
 .location-text { font-weight: 500; }
 .gate-text { color: #64748b; font-size: 12px; }

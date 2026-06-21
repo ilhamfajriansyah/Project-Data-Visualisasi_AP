@@ -229,10 +229,14 @@ RENEWAL_PIPELINE = [
 # ──────────────────────────────────────────────────────────────────────────────
 _PAGE_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 .stApp, .stApp * {
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
+}
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+.stApp [class*="-title"], .stApp [class*="-header"], .stApp [class*="title-"] {
+    font-family: 'Montserrat', sans-serif !important;
 }
 
 body:has(.lc-page-marker) .stApp {
@@ -1844,12 +1848,12 @@ def _build_timeline_chart(df):
         height=210,
         xaxis=dict(
             showgrid=False,
-            tickfont=dict(family="Poppins", size=9, color="#94A3B8"),
+            tickfont=dict(family="Inter", size=9, color="#94A3B8"),
             linecolor="#E2E8F0"
         ),
         yaxis=dict(
             gridcolor="#F1F5F9",
-            tickfont=dict(family="Poppins", size=9, color="#94A3B8"),
+            tickfont=dict(family="Inter", size=9, color="#94A3B8"),
             zeroline=False
         )
     )
@@ -1876,7 +1880,7 @@ def _build_donut_chart(data_dict, colors):
         plot_bgcolor="rgba(0,0,0,0)",
         height=145,
         width=145,
-        annotations=[dict(text=f"{sum(values)}<br><span style='font-size:9px;color:#94A3B8;font-weight:bold;'>TOTAL</span>", x=0.5, y=0.5, font_size=14, font_weight="bold", font_family="Poppins", showarrow=False)]
+        annotations=[dict(text=f"{sum(values)}<br><span style='font-size:9px;color:#94A3B8;font-weight:bold;'>TOTAL</span>", x=0.5, y=0.5, font_size=14, font_weight="bold", font_family="Inter", showarrow=False)]
     )
     return fig
 
@@ -2072,7 +2076,7 @@ def _get_lc_extra_css():
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
         font-size: 13px; font-weight: 700; color: #475569;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
         height: 38px !important;
         box-sizing: border-box !important;
     }
@@ -2130,7 +2134,7 @@ def _get_lc_extra_css():
         padding: 2px 8px; border-radius: 999px;
         background: #F0FDF4; border: 1px solid #BBF7D0;
         font-size: 10.5px; font-weight: 700; color: #16A34A;
-        white-space: nowrap; font-family: Poppins, sans-serif !important;
+        white-space: nowrap; font-family: Inter, sans-serif !important;
         flex-shrink: 0;
     }
     body:has(.lc-page-marker) .lc-filter-v2-dot {
@@ -2178,7 +2182,7 @@ def _get_lc_extra_css():
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
         font-size: 13px !important; font-weight: 600 !important;
-        color: #94A3B8 !important; font-family: Poppins, sans-serif !important;
+        color: #94A3B8 !important; font-family: Inter, sans-serif !important;
         transition: all 0.2s ease !important;
     }
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
@@ -2200,7 +2204,7 @@ def _get_lc_extra_css():
         font-size: 13px !important; font-weight: 700 !important;
         min-height: 38px !important; height: 38px !important;
         width: auto !important; padding: 0 16px !important;
-        font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+        font-family: Inter, sans-serif !important; white-space: nowrap !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
         margin: 0 !important;

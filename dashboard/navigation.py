@@ -52,7 +52,7 @@ def show_topnav(title="Non Aeronautical Dashboard", subtitle=None, show_search=T
         if subtitle:
             subtitle_html = (
                 f'<p style="margin:4px 0 0;color:#64748B;font-size:12px;font-weight:500;'
-                f'font-family:Poppins,sans-serif;">{escape(subtitle)}</p>'
+                f'font-family:Inter,sans-serif;">{escape(subtitle)}</p>'
             )
         st.markdown(
             f'<h2 style="margin:0;font-size:19px;font-weight:800;color:#0f172a;'

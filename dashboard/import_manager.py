@@ -310,10 +310,14 @@ body:has(.im-page-marker) div[data-testid="stElementContainer"]:has(.im-manager-
 
 _REFINED_IMPORT_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 .stApp, .stApp * {
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
+}
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+.stApp [class*="-title"], .stApp [class*="-header"], .stApp [class*="title-"] {
+    font-family: 'Montserrat', sans-serif !important;
 }
 .im-manager-surface {
     margin-top: -8px !important;
@@ -1497,7 +1501,7 @@ _NEW_DESIGN_CSS = """
     font-size: 15px !important;
     font-weight: 700 !important;
     color: #1E293B !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
 }
 [data-testid="stFileUploadDropzoneInstructions"] small,
 [data-testid="stFileUploadDropzoneInstructions"] > div > small {

@@ -92,7 +92,7 @@ def inject_session_watchdog(
                         position: fixed; inset: 0; z-index: 100000;
                         background: rgba(15, 23, 42, 0.45);
                         display: flex; align-items: center; justify-content: center;
-                        font-family: 'Poppins', sans-serif;
+                        font-family: 'Inter', sans-serif;
                     }}
                     .ap-session-modal-card {{
                         width: 360px; max-width: calc(100vw - 32px);
@@ -109,6 +109,7 @@ def inject_session_watchdog(
                     }}
                     .ap-session-modal-title {{
                         font-size: 17px; font-weight: 800; color: #0F172A; margin-bottom: 8px;
+                        font-family: 'Montserrat', sans-serif;
                     }}
                     .ap-session-modal-message {{
                         font-size: 13.5px; color: #475569; line-height: 1.55; margin: 0 0 20px;
@@ -122,7 +123,7 @@ def inject_session_watchdog(
                     .ap-session-modal-btn {{
                         flex: 1; height: 40px; border-radius: 10px; border: none;
                         font-size: 13px; font-weight: 700; cursor: pointer;
-                        font-family: 'Poppins', sans-serif;
+                        font-family: 'Inter', sans-serif;
                     }}
                     .ap-session-modal-btn-primary {{
                         background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);

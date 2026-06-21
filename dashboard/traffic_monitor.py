@@ -578,7 +578,7 @@ def _inject_tm_css():
     body:has(.tm-page-marker) h2.tm-page-title {{
         margin: 0 !important; padding: 0 !important;
         font-size: 18px; line-height: 1 !important; font-weight: 800;
-        color: #0F172A; font-family: {TM_FONT} !important;
+        color: #0F172A; font-family: 'Montserrat', sans-serif !important;
     }}
     body:has(.tm-page-marker) p.tm-page-sub {{
         margin: 0 !important; padding: 0 !important;
@@ -839,7 +839,7 @@ def _inject_tm_css():
     }}
     body:has(.tm-page-marker) .tm-insight-title {{
         margin: 0; font-size: 13px; font-weight: 800; color: #0F172A; line-height: 1.35;
-        font-family: {TM_FONT} !important;
+        font-family: 'Montserrat', sans-serif !important;
     }}
     body:has(.tm-page-marker) .tm-insight-body {{
         margin: 0; font-size: 11px; color: #64748B; line-height: 1.5; flex: 1;

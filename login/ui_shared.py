@@ -72,10 +72,10 @@ def inject_shared_css() -> None:
     st.markdown(
         f"""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
         html, body, [class*="css"] {{
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Inter', sans-serif;
         }}
 
         html, body {{
@@ -123,7 +123,7 @@ def inject_shared_css() -> None:
             max-width: 100vw !important;
         }}
 
-        [data-testid="column"] {{
+        [data-testid="column"], [data-testid="stColumn"] {{
             padding: 0 !important;
         }}
 
@@ -133,7 +133,10 @@ def inject_shared_css() -> None:
 
         [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
         [data-testid="stMain"] .block-container > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
-        [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) {{
+        [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
+        [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        [data-testid="stMain"] .block-container > div[data-testid="stVerticalBlock"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+        [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {{
             display: flex;
             align-items: stretch;
             justify-content: stretch;
@@ -145,7 +148,9 @@ def inject_shared_css() -> None:
 
         [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div,
         [data-testid="stMain"] .block-container > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div,
-        [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div {{
+        [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div,
+        [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) > div,
+        [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) > div {{
             width: 100%;
             min-height: 100vh;
             margin: 0 !important;
@@ -153,17 +158,19 @@ def inject_shared_css() -> None:
         }}
 
         /* ── Right panel column ── */
-        div[data-testid="column"]:nth-child(2) {{
+        div[data-testid="column"]:nth-child(2),
+        div[data-testid="stColumn"]:nth-child(2) {{
             min-height: 100vh;
             background: #f2f5fa !important;
-            padding: 44px 56px !important;
+            padding: 20px 40px !important;
             box-sizing: border-box !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
         }}
 
-        div[data-testid="column"]:nth-child(2) > div:first-child {{
+        div[data-testid="column"]:nth-child(2) > div:first-child,
+        div[data-testid="stColumn"]:nth-child(2) > div:first-child {{
             width: 100% !important;
             min-height: 100vh;
             display: flex !important;
@@ -171,22 +178,38 @@ def inject_shared_css() -> None:
             justify-content: center !important;
         }}
 
+        /* -- Reset for nested columns inside the right panel (e.g. form helpers) -- */
+        div[data-testid="column"]:nth-child(2) div[data-testid="column"],
+        div[data-testid="stColumn"]:nth-child(2) div[data-testid="stColumn"] {{
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            display: block !important;
+            overflow: visible !important;
+        }}
+        div[data-testid="column"]:nth-child(2) div[data-testid="column"] > div:first-child,
+        div[data-testid="stColumn"]:nth-child(2) div[data-testid="stColumn"] > div:first-child {{
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            display: block !important;
+            overflow: visible !important;
+        }}
 
         /* ── Form card: target the border-wrapper Streamlit creates for container(border=True) ── */
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"] {{
+        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stColumn"]:nth-child(2) > div[data-testid="stVerticalBlock"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"] {{
             width: 100% !important;
             max-width: 520px !important;
             margin: 0 auto !important;
             background: #ffffff !important;
-            border: 2px solid #d8dee8 !important;
-            outline: 1px solid #e9edf3 !important;
-            outline-offset: 0;
+            border: none !important;
+            outline: none !important;
             border-radius: 28px !important;
-            box-shadow:
-                0 2px 6px rgba(15, 23, 42, 0.04),
-                0 12px 28px rgba(15, 23, 42, 0.10),
-                0 28px 56px rgba(15, 23, 42, 0.07) !important;
-            padding: 36px 36px 34px !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04) !important;
+            padding: 22px 32px 20px !important;
             box-sizing: border-box !important;
             transform-origin: center;
             animation: auth-form-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -205,7 +228,8 @@ def inject_shared_css() -> None:
         }}
 
         /* ── Reset Streamlit's default border inside our card ── */
-        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {{
+        div[data-testid="column"]:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stColumn"]:nth-child(2) > div[data-testid="stVerticalBlock"] > div[data-testid="stLayoutWrapper"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {{
             gap: 0 !important;
         }}
 
@@ -218,8 +242,8 @@ def inject_shared_css() -> None:
             padding: 0 !important;
             overflow: hidden;
             {get_left_panel_background_css()}
-            border-right: 1px solid rgba(255, 255, 255, 0.72);
-            box-shadow: inset -1px 0 0 rgba(203, 220, 245, 0.28);
+            border-right: none;
+            box-shadow: none;
             animation: airport-image-enter 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
             will-change: transform, opacity;
         }}
@@ -249,23 +273,12 @@ def inject_shared_css() -> None:
         }}
 
         .left-panel::after {{
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 24px;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                rgba(255,255,255,0) 0%,
-                rgba(255,255,255,0.55) 100%
-            );
-            pointer-events: none;
+            display: none;
         }}
 
         .login-top {{
             text-align: center;
-            margin: 0 0 26px;
+            margin: 0 0 14px;
         }}
 
         .brand-mark {{
@@ -274,7 +287,7 @@ def inject_shared_css() -> None:
             align-items: center;
             justify-content: center;
             gap: 4px;
-            margin: 0 0 10px;
+            margin: 0 0 4px;
         }}
 
         .brand-logo-row {{
@@ -283,36 +296,37 @@ def inject_shared_css() -> None:
             justify-content: center;
             gap: 18px;
             width: 100%;
-            margin: 14px auto 12px;
+            margin: 4px auto 6px;
             flex-wrap: wrap;
             transform: translateY(10px);
         }}
 
         .brand-logo {{
             width: auto;
-            max-width: 190px;
-            max-height: 74px;
+            max-width: 150px;
+            max-height: 52px;
             height: auto;
             display: block;
             object-fit: contain;
         }}
 
         .brand-logo-2 {{
-            max-width: 150px;
+            max-width: 120px;
         }}
 
         .hero-title {{
             margin: 0;
             color: #000000 !important;
-            font-size: 28px;
+            font-size: 24px;
             line-height: 1.15;
             font-weight: 700;
+            font-family: 'Montserrat', sans-serif;
         }}
 
         .hero-subtitle {{
-            margin: 10px 0 0;
+            margin: 6px 0 0;
             color: #64748b;
-            font-size: 14px;
+            font-size: 13px;
         }}
 
         .forgot-form-top-gap {{
@@ -323,28 +337,74 @@ def inject_shared_css() -> None:
             height: 8px;
         }}
 
+        [data-testid="stElementContainer"]:has(.field-label) {{
+            margin: 0 !important;
+            padding: 0 0 10px 0 !important;
+        }}
+
         .field-label {{
+            display: block;
             color: #334155;
             font-size: 13px;
             font-weight: 600;
-            margin: 15px 0 15px;
+            line-height: 1.2;
+            margin: 0 !important;
+            padding: 0 !important;
         }}
 
-        div[data-testid="stForm"] {{
+        /* ── Native widget label for Email/Password (more reliable than a
+           separately-positioned .field-label markdown, which Streamlit's
+           layout engine could overlap with the input below it). Targets
+           the standard <label> tag directly — not a Streamlit-version-
+           specific data-testid — plus an explicit flex gap on the widget
+           container itself, so the spacing can't collapse or get clipped
+           regardless of DOM nesting differences across Streamlit versions. ── */
+        [data-testid="stTextInput"] {{
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }}
+
+        [data-testid="stTextInput"] label,
+        div[data-testid="stForm"] [data-testid="stWidgetLabel"] {{
+            position: static !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+        }}
+
+        [data-testid="stTextInput"] label p,
+        div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {{
+            color: #334155 !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            line-height: 1.2 !important;
+            margin: 0 !important;
+        }}
+
+        div[data-testid="stForm"], div[data-testid="stForm"] > div[data-testid="stVerticalBlock"] {{
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
             padding: 0 !important;
-            margin-top: 4px !important;
+            margin-top: 2px !important;
         }}
 
         [data-testid="stTextInput"] {{
-            margin-bottom: 6px;
+            margin-top: 0 !important;
+            margin-bottom: 22px !important;
+        }}
+
+        [data-testid="stElementContainer"]:has([data-testid="stTextInput"]) {{
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }}
 
         [data-baseweb="input"] {{
-            min-height: 56px !important;
-            height: 56px !important;
+            min-height: 46px !important;
+            height: 46px !important;
             border-radius: 16px !important;
             background: #ffffff !important;
             box-shadow: inset 0 0 0 1px #d1d5db !important;
@@ -382,8 +442,8 @@ def inject_shared_css() -> None:
 
         [data-baseweb="input"] input {{
             width: 100% !important;
-            height: 56px !important;
-            min-height: 56px !important;
+            height: 46px !important;
+            min-height: 46px !important;
             padding: 0 16px !important;
             margin: 0 !important;
             border: none !important;
@@ -403,8 +463,8 @@ def inject_shared_css() -> None:
         }}
 
         [data-baseweb="input"] button {{
-            height: 56px !important;
-            min-height: 56px !important;
+            height: 46px !important;
+            min-height: 46px !important;
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
@@ -456,8 +516,8 @@ def inject_shared_css() -> None:
             display: block !important;
             width: 100% !important;
             max-width: none !important;
-            min-height: 56px !important;
-            margin: 8px 0 10px !important;
+            min-height: 46px !important;
+            margin: 6px 0 8px !important;
             padding: 0 !important;
             border-radius: 20px !important;
             background: linear-gradient(135deg, #e2e5ec 0%, #eaedf4 100%) !important;
@@ -477,7 +537,7 @@ def inject_shared_css() -> None:
         }}
 
         [data-testid="stRadio"] [role="radiogroup"] {{
-            height: 56px !important;
+            height: 46px !important;
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 0 !important;
@@ -520,8 +580,8 @@ def inject_shared_css() -> None:
             width: 100% !important;
             max-width: none !important;
             flex: 1 1 0 !important;
-            height: 56px !important;
-            min-height: 56px !important;
+            height: 46px !important;
+            min-height: 46px !important;
             margin: 0 !important;
             padding: 0 !important;
             border: 1.5px solid transparent !important;
@@ -939,23 +999,24 @@ def inject_shared_css() -> None:
         div[data-testid="stCheckbox"] {{
             margin: 0 !important;
             padding: 0 !important;
-            min-height: 44px !important;
+            min-height: 36px !important;
             display: flex !important;
             align-items: center !important;
         }}
 
-        div[data-testid="stCheckbox"] > label {{
+        div[data-testid="stCheckbox"] label {{
             display: flex !important;
+            flex-direction: row !important;
             align-items: center !important;
-            gap: 6px !important;
+            gap: 10px !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             cursor: pointer;
         }}
 
-        div[data-testid="stCheckbox"] > label > div:first-child:not(:has(input[type="checkbox"])),
-        div[data-testid="stCheckbox"] > label > span:first-child:not(:has(input[type="checkbox"])) {{
+        div[data-testid="stCheckbox"] label > div:first-child:not(:has(input[type="checkbox"])),
+        div[data-testid="stCheckbox"] label > span:first-child:not(:has(input[type="checkbox"])) {{
             display: none !important;
             width: 0 !important;
             min-width: 0 !important;
@@ -976,6 +1037,9 @@ def inject_shared_css() -> None:
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
+            align-self: center !important;
+            flex-shrink: 0 !important;
+            line-height: 0 !important;
         }}
 
         div[data-testid="stCheckbox"] input[type="checkbox"] {{
@@ -1051,21 +1115,24 @@ def inject_shared_css() -> None:
             }}
         }}
 
-        div[data-testid="stCheckbox"] > label p,
-        div[data-testid="stCheckbox"] > label > div:not(:has(input[type="checkbox"])),
-        div[data-testid="stCheckbox"] > label > span:not(:has(input[type="checkbox"])) {{
+        div[data-testid="stCheckbox"] label p,
+        div[data-testid="stCheckbox"] label > div:not(:has(input[type="checkbox"])),
+        div[data-testid="stCheckbox"] label > span:not(:has(input[type="checkbox"])) {{
             margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+            display: block !important;
+            align-self: center !important;
             color: #111827 !important;
             font-size: 13px !important;
             font-weight: 600 !important;
-            line-height: 1.1 !important;
         }}
 
         [data-testid="stElementContainer"]:has(.forgot-password-link-wrap),
         [data-testid="stMarkdownContainer"]:has(.forgot-password-link-wrap) {{
             width: 100% !important;
-            height: 44px !important;
-            min-height: 44px !important;
+            height: 36px !important;
+            min-height: 36px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: flex-end !important;
@@ -1075,8 +1142,8 @@ def inject_shared_css() -> None:
 
         .forgot-password-link-wrap {{
             width: 100% !important;
-            height: 44px !important;
-            min-height: 44px !important;
+            height: 36px !important;
+            min-height: 36px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: flex-end !important;
@@ -1116,8 +1183,8 @@ def inject_shared_css() -> None:
             box-shadow: none !important;
             padding: 0 !important;
             margin: -1px 0 0 0 !important;
-            min-height: 44px !important;
-            height: 44px !important;
+            min-height: 36px !important;
+            height: 36px !important;
             width: 100% !important;
             border-radius: 0 !important;
             color: #64748b !important;
@@ -1165,14 +1232,14 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
         div[data-testid="stFormSubmitButton"] {{
             width: 100% !important;
             display: block !important;
-            margin-top: 12px !important;
+            margin-top: 8px !important;
         }}
 
         div[data-testid="stFormSubmitButton"] > button {{
             width: 100% !important;
             display: block !important;
-            height: 58px !important;
-            border-radius: 18px !important;
+            height: 48px !important;
+            border-radius: 16px !important;
             border: 1px solid #068585 !important;
             background: linear-gradient(180deg, #0c8b8f 0%, #056a71 100%) !important;
             color: #ffffff !important;
@@ -1425,6 +1492,45 @@ div[data-testid="stButton"] > button[kind="tertiary"] [data-testid="stMarkdownCo
 
             .hero-title {{
                 font-size: 24px;
+            }}
+        }}
+
+        /* ── Desktop: lock the page to exactly one viewport, no scroll ── */
+        @media (min-width: 841px) {{
+            html, body,
+            [data-testid="stApp"],
+            [data-testid="stAppViewContainer"],
+            [data-testid="stMain"] {{
+                height: 100vh !important;
+                overflow: hidden !important;
+            }}
+
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
+            [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+            [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2),
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2),
+            [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2),
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
+            [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
+            .left-panel {{
+                height: 100vh !important;
+                min-height: 100vh !important;
+                max-height: 100vh !important;
+                overflow: hidden !important;
+            }}
+
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) > div:first-child,
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) > div:first-child,
+            [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) > div:first-child,
+            [data-testid="stMain"] .block-container > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) > div:first-child,
+            [data-testid="stMain"] .block-container > div > [data-testid="stVerticalBlock"] > div > [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) > div:first-child {{
+                height: 100vh !important;
+                min-height: 100vh !important;
+                max-height: 100vh !important;
+                overflow: hidden !important;
             }}
         }}
         </style>

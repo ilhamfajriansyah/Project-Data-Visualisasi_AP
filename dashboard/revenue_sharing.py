@@ -79,7 +79,7 @@ def _mount_rs_fixed_header():
         height=0,
     )
 
-RS_FONT = "Poppins, sans-serif"
+RS_FONT = "Inter, sans-serif"
 RS_YEAR_OPTIONS = ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"]
 RS_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -277,7 +277,7 @@ def _parse_rp(text):
         raw = raw[:-1]
     elif raw.endswith("Jt"):
         mult = 1_000_000
-        raw = raw[:-1]
+        raw = raw[:-2]
     elif raw.endswith("T"):
         mult = 1_000_000_000_000
         raw = raw[:-1]
@@ -477,7 +477,7 @@ def _inject_rs_page_css():
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
         font-size: 13px; font-weight: 700; color: #475569;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
         height: 38px !important;
         box-sizing: border-box !important;
     }
@@ -535,7 +535,7 @@ def _inject_rs_page_css():
         padding: 2px 8px; border-radius: 999px;
         background: #F0FDF4; border: 1px solid #BBF7D0;
         font-size: 10.5px; font-weight: 700; color: #16A34A;
-        white-space: nowrap; font-family: Poppins, sans-serif !important;
+        white-space: nowrap; font-family: Inter, sans-serif !important;
         flex-shrink: 0;
     }
     body:has(.rs-page-marker) .rs-filter-v2-dot {
@@ -561,7 +561,7 @@ def _inject_rs_page_css():
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
         font-size: 13px !important; font-weight: 600 !important;
-        color: #94A3B8 !important; font-family: Poppins, sans-serif !important;
+        color: #94A3B8 !important; font-family: Inter, sans-serif !important;
         transition: all 0.2s ease !important;
     }
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
@@ -579,7 +579,7 @@ def _inject_rs_page_css():
         font-size: 13px !important; font-weight: 700 !important;
         min-height: 38px !important; height: 38px !important;
         width: auto !important; padding: 0 16px !important;
-        font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+        font-family: Inter, sans-serif !important; white-space: nowrap !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
         margin: 0 !important;
@@ -662,7 +662,7 @@ def _inject_rs_page_css():
         color: #0F172A;
         font-size: 13px;
         font-weight: 800;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
     }
     .rs-kpi-ring-card .overview-kpi-copy {
         position: relative !important;
@@ -699,14 +699,14 @@ def _inject_rs_page_css():
         font-size: 12.5px;
         font-weight: 700;
         line-height: 1.35;
-        font-family: Poppins, sans-serif !important;
+        font-family: Montserrat, sans-serif !important;
     }
     .rs-alert-sub {
         margin: 3px 0 0;
         color: #64748B;
         font-size: 11px;
         font-weight: 500;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
     }
     .rs-alert-chevron {
         margin-left: auto;
@@ -742,7 +742,7 @@ def _inject_rs_page_css():
         gap: 10px;
         font-size: 11.5px;
         color: #475569;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
     }
     .rs-legend-left {
         display: flex;
@@ -834,7 +834,7 @@ def _inject_rs_page_css():
         color: #4F46E5 !important;
         font-size: 12px !important;
         font-weight: 700 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         margin: 0 !important;
         padding: 0 !important;
     }

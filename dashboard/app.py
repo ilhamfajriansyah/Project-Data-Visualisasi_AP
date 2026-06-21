@@ -32,7 +32,7 @@ import numpy as np
 
 load_dotenv()
 
-OVERVIEW_FONT_FAMILY = "Poppins, sans-serif"
+OVERVIEW_FONT_FAMILY = "Inter, sans-serif"
 
 # ─────────────────────────────────────────────
 # LOAD CSS
@@ -359,7 +359,7 @@ def inject_dashboard_css():
         border-collapse: collapse;
         font-size: 13px;
         color: #1e293b;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .overview-light-table thead {
@@ -513,7 +513,7 @@ def inject_dashboard_css():
         font-size: 18px !important;
         font-weight: 800 !important;
         letter-spacing: -0.2px !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Montserrat', sans-serif !important;
         white-space: nowrap !important;
         line-height: 1 !important;
     }
@@ -530,7 +530,7 @@ def inject_dashboard_css():
         letter-spacing: 0px !important;
         line-height: 1 !important;
         margin-top: 4px !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ap-toolbar-title {
@@ -547,7 +547,7 @@ def inject_dashboard_css():
         letter-spacing: 1.2px !important;
         text-transform: uppercase !important;
         margin: 20px 24px 28px !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Montserrat', sans-serif !important;
     }
 
     .nav-group {
@@ -565,7 +565,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 13px;
         font-weight: 600;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         line-height: 1.2;
         box-sizing: border-box !important;
         width: calc(100% - 28px) !important;
@@ -598,7 +598,7 @@ def inject_dashboard_css():
         white-space: nowrap;
         letter-spacing: -0.15px;
         color: inherit;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .nav-overlay {
@@ -714,7 +714,7 @@ def inject_dashboard_css():
         font-size: 11px !important;
         font-weight: 500 !important;
         color: #94A3B8 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         letter-spacing: 0.2px !important;
         line-height: 1.5 !important;
         white-space: normal !important;
@@ -732,7 +732,7 @@ def inject_dashboard_css():
         color: #475569;
         font-size: 11px;
         font-weight: 600;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ap-status-dot {
@@ -749,7 +749,7 @@ def inject_dashboard_css():
         color: #94A3B8;
         font-size: 10px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
@@ -852,7 +852,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 11px;
         font-weight: 600;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .overview-filter-spacer {
@@ -978,12 +978,12 @@ def inject_dashboard_css():
     body:has(.overview-page-marker) h2.ov-page-title {
         margin: 0 !important; padding: 0 !important;
         font-size: 18px; line-height: 1 !important; font-weight: 800;
-        color: #0F172A; font-family: 'Poppins', sans-serif !important;
+        color: #0F172A; font-family: 'Montserrat', sans-serif !important;
     }
     body:has(.overview-page-marker) p.ov-page-sub {
         margin: 0 !important; padding: 0 !important;
         color: #64748B; font-size: 12px; line-height: 1 !important;
-        font-weight: 500; font-family: 'Poppins', sans-serif !important;
+        font-weight: 500; font-family: 'Inter', sans-serif !important;
     }
     body:has(.overview-page-marker) .ap-top-actions {
         flex-shrink: 0;
@@ -1167,7 +1167,7 @@ def inject_dashboard_css():
         border-radius: 999px;
         font-size: 18px;
         font-weight: 800;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .overview-kpi-copy {
@@ -1180,7 +1180,7 @@ def inject_dashboard_css():
         font-weight: 700;
         letter-spacing: 0.3px;
         text-transform: uppercase;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .overview-kpi-value {
@@ -1190,7 +1190,7 @@ def inject_dashboard_css():
         font-weight: 800;
         line-height: 1.05;
         letter-spacing: 0 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .overview-kpi-delta {
@@ -1198,7 +1198,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 11px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .overview-kpi-delta strong {
@@ -1360,7 +1360,7 @@ def inject_dashboard_css():
         color: #0F172A;
         font-size: 15px;
         font-weight: 700;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Montserrat', sans-serif !important;
     }
 
     .ed-section-sub {
@@ -1368,7 +1368,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 11px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-card-action {
@@ -1376,7 +1376,7 @@ def inject_dashboard_css():
         color: #2563EB;
         font-size: 12px;
         font-weight: 700;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-alert-list {
@@ -1415,7 +1415,7 @@ def inject_dashboard_css():
         font-size: 12.5px;
         font-weight: 700;
         line-height: 1.35;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Montserrat', sans-serif !important;
     }
 
     .ed-alert-sub {
@@ -1423,7 +1423,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 11.5px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-table-card {
@@ -1459,7 +1459,7 @@ def inject_dashboard_css():
         color: #0F172A;
         font-size: 15px;
         font-weight: 700;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Montserrat', sans-serif !important;
     }
 
     .ed-table-subtitle {
@@ -1467,14 +1467,14 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 11px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-table-link {
         color: #2563EB;
         font-size: 12px;
         font-weight: 600;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         text-decoration: none;
         white-space: nowrap;
     }
@@ -1511,7 +1511,7 @@ def inject_dashboard_css():
         border-spacing: 0;
         color: #0F172A;
         font-size: 12px;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-table thead tr {
@@ -1527,7 +1527,7 @@ def inject_dashboard_css():
         font-weight: 600;
         text-align: left;
         white-space: nowrap;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-table th:first-child {
@@ -1557,7 +1557,7 @@ def inject_dashboard_css():
         font-size: 12px;
         font-weight: 500;
         white-space: nowrap;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         background: #ffffff;
     }
 
@@ -1572,7 +1572,7 @@ def inject_dashboard_css():
     .ed-value-blue {
         color: #2563EB;
         font-weight: 600;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-rank-badge {
@@ -1587,7 +1587,7 @@ def inject_dashboard_css():
         margin-right: 8px;
         vertical-align: middle;
         flex: 0 0 22px;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-rank-badge.rank-1 {
@@ -1635,13 +1635,13 @@ def inject_dashboard_css():
     .ed-positive {
         color: #059669;
         font-weight: 700;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-negative {
         color: #DC2626;
         font-weight: 700;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-pagination {
@@ -1654,7 +1654,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 12px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     .ed-chip-row {
@@ -1681,7 +1681,7 @@ def inject_dashboard_css():
     [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
         font-size: 13px !important;
         font-weight: 500 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         color: #0F172A !important;
     }
 
@@ -1723,7 +1723,7 @@ def inject_dashboard_css():
         color: #0F172A !important;
         font-size: 13px !important;
         font-weight: 500 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         padding: 0 12px !important;
     }
 
@@ -1869,7 +1869,7 @@ def inject_dashboard_css():
         box-shadow: none !important;
         font-size: 13px !important;
         font-weight: 500 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease !important;
     }
 
@@ -1877,7 +1877,7 @@ def inject_dashboard_css():
     div[data-testid="stButton"] > button p {
         font-size: 13px !important;
         font-weight: 500 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         color: #0F172A !important;
     }
 
@@ -1889,7 +1889,7 @@ def inject_dashboard_css():
         color: #64748B;
         font-size: 12px;
         font-weight: 500;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         border-top: 1px solid #F1F5F9;
     }
 
@@ -2010,7 +2010,7 @@ def inject_dashboard_css():
         color: #0F172A;
         font-size: 12px;
         font-weight: 600;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         white-space: nowrap;
         border-top: 1px solid #F1F5F9;
     }
@@ -2071,7 +2071,7 @@ def inject_dashboard_css():
     .ed-table-card *,
     div[data-testid="stVerticalBlock"]:has(.ed-card-marker),
     div[data-testid="stVerticalBlock"]:has(.ed-card-marker) * {
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
     div[data-testid="stButton"] > button:hover,
@@ -2534,7 +2534,7 @@ NAV_ICONS = {
     "Overview": _nav_icon(
         '<rect x="3" y="3" width="7" height="7" rx="1.5"/>',
         '<rect x="14" y="3" width="7" height="7" rx="1.5"/>',
-        '<rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+        '<rect x="3" y="14" width="7" height="7" rx="1.5"/>',  
         '<rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     ),
     "Revenue Sharing": _nav_icon(
@@ -2864,7 +2864,7 @@ def _get_overview_extra_css():
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
         font-size: 13px; font-weight: 700; color: #475569;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
         height: 38px !important;
         box-sizing: border-box !important;
     }}
@@ -2922,7 +2922,7 @@ def _get_overview_extra_css():
         padding: 2px 8px; border-radius: 999px;
         background: #F0FDF4; border: 1px solid #BBF7D0;
         font-size: 10.5px; font-weight: 700; color: #16A34A;
-        white-space: nowrap; font-family: Poppins, sans-serif !important;
+        white-space: nowrap; font-family: Inter, sans-serif !important;
         flex-shrink: 0;
     }}
     body:has(.overview-page-marker) .ov-filter-v2-dot {{
@@ -2970,7 +2970,7 @@ def _get_overview_extra_css():
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
         font-size: 13px !important; font-weight: 600 !important;
-        color: #94A3B8 !important; font-family: Poppins, sans-serif !important;
+        color: #94A3B8 !important; font-family: Inter, sans-serif !important;
         transition: all 0.2s ease !important;
     }}
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {{
@@ -2992,7 +2992,7 @@ def _get_overview_extra_css():
         font-size: 13px !important; font-weight: 700 !important;
         min-height: 38px !important; height: 38px !important;
         width: auto !important; padding: 0 16px !important;
-        font-family: Poppins, sans-serif !important; white-space: nowrap !important;
+        font-family: Inter, sans-serif !important; white-space: nowrap !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
         margin: 0 !important;
@@ -3008,7 +3008,7 @@ def _get_overview_extra_css():
         font-size: 13px !important; font-weight: 700 !important;
         min-height: 38px !important; height: 38px !important;
         width: 185px !important; padding: 0 !important;
-        font-family: Poppins, sans-serif !important;
+        font-family: Inter, sans-serif !important;
         box-shadow: 0 2px 8px rgba(79,70,229,0.25) !important;
         white-space: nowrap !important;
     }}
@@ -3049,7 +3049,7 @@ def _get_overview_extra_css():
         color: #4F46E5 !important;
         font-size: 12px !important;
         font-weight: 700 !important;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
         margin: 0 !important;
         padding: 0 !important;
     }}

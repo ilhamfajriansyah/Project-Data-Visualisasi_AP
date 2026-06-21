@@ -23,8 +23,6 @@ if __package__:
         touch_session,
         validate_active_session,
     )
-    from .forgot_pass import render_forgot_panel
-    from .reset_pass import render_reset_panel
     from .ui_shared import app_shell, render_auth_header, render_role_selector, show_error
 else:
     from access_control import (
@@ -38,18 +36,12 @@ else:
         touch_session,
         validate_active_session,
     )
-    from forgot_pass import render_forgot_panel
-    from reset_pass import render_reset_panel
     from ui_shared import app_shell, render_auth_header, render_role_selector, show_error
 
 
 def init_login_page_state() -> None:
     init_auth_state()
     st.session_state.setdefault("auth_page", "login")
-
-    page_param = st.query_params.get("page", "login")
-    if page_param in ["login", "forgot_password", "reset_password"]:
-        st.session_state.auth_page = page_param
 
 
 SESSION_EXPIRED_MESSAGES = {
@@ -102,43 +94,26 @@ def render_login_panel() -> None:
     role_email = "admin@airport.com" if st.session_state.login_role == "Admin" else "user@airport.com"
 
     with st.form("login_form", clear_on_submit=False):
-        st.markdown('<div class="field-label">Email</div>', unsafe_allow_html=True)
         email = st.text_input(
             "Email",
             placeholder=role_email,
-            label_visibility="collapsed",
+            label_visibility="visible",
             key="email_input",
         )
 
-        st.markdown('<div class="field-label">Password</div>', unsafe_allow_html=True)
         password = st.text_input(
             "Password",
             placeholder="••••••••",
             type="password",
-            label_visibility="collapsed",
+            label_visibility="visible",
             key="password_input",
         )
 
-        helper_left, helper_right = st.columns([1, 1], vertical_alignment="center")
-
-        with helper_left:
-            remember = st.checkbox(
-                "Remember Me",
-                value=st.session_state.remember_me,
-                key="remember_me_checkbox",
-            )
-
-        with helper_right:
-            st.markdown(
-                """
-                <div class="forgot-password-link-wrap">
-                    <a class="forgot-password-link" href="?page=forgot_password" target="_self">
-                        Lupa Password?
-                    </a>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        remember = st.checkbox(
+            "Remember Me",
+            value=st.session_state.remember_me,
+            key="remember_me_checkbox",
+        )
 
         sign_in_clicked = st.form_submit_button(
             "Sign In",
@@ -167,17 +142,7 @@ def render_login_panel() -> None:
 
 def render_current_page() -> None:
     init_login_page_state()
-    page = st.session_state.auth_page
-
-    if page == "login":
-        render_login_panel()
-    elif page == "forgot_password":
-        render_forgot_panel()
-    elif page == "reset_password":
-        render_reset_panel()
-    else:
-        st.session_state.auth_page = "login"
-        render_login_panel()
+    render_login_panel()
 
 
 def main() -> None:

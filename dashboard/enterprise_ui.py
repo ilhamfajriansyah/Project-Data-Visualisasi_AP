@@ -6,7 +6,7 @@ from textwrap import dedent
 import numpy as np
 import pandas as pd
 
-ED_FONT = "Poppins, sans-serif"
+ED_FONT = "Inter, sans-serif"
 
 
 def fmt_rp_compact(value):
@@ -254,7 +254,7 @@ def inject_enterprise_page_css(page_marker_class, extra_css=""):
         font-size: 12.5px;
         font-weight: 700;
         line-height: 1.35;
-        font-family: {ED_FONT} !important;
+        font-family: 'Montserrat', sans-serif !important;
     }}
     body:has(.{page_marker_class}) .ed-alert-card-sub {{
         margin: 3px 0 0;
