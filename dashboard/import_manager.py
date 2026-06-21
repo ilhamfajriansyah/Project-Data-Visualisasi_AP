@@ -114,18 +114,18 @@ def _get_admin_history() -> pd.DataFrame:
     ])
 
 UPLOAD_HISTORY_DATA = [
-    {"period": "Dec 2024", "upload_date": "03 Jan 2025", "upload_time": "09:14 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1842, "tenants": 247, "file_size": "2.4 MB", "rs_total": "Rp 24.2B", "status": "Success"},
-    {"period": "Nov 2024", "upload_date": "04 Dec 2024", "upload_time": "06:52 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1836, "tenants": 244, "file_size": "2.3 MB", "rs_total": "Rp 18.9B", "status": "Success"},
-    {"period": "Oct 2024", "upload_date": "05 Nov 2024", "upload_time": "10:03 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1858, "tenants": 246, "file_size": "2.4 MB", "rs_total": "Rp 20.7B", "status": "Warning"},
-    {"period": "Sep 2024", "upload_date": "03 Oct 2024", "upload_time": "09:44 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1792, "tenants": 243, "file_size": "2.2 MB", "rs_total": "Rp 19.2B", "status": "Success"},
-    {"period": "Aug 2024", "upload_date": "04 Sep 2024", "upload_time": "11:21 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1801, "tenants": 245, "file_size": "2.3 MB", "rs_total": "Rp 18.4B", "status": "Success"},
-    {"period": "Jul 2024", "upload_date": "05 Aug 2024", "upload_time": "08:33 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1776, "tenants": 241, "file_size": "2.2 MB", "rs_total": None,        "status": "Failed"},
-    {"period": "Jun 2024", "upload_date": "03 Jul 2024", "upload_time": "09:58 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1748, "tenants": 239, "file_size": "2.1 MB", "rs_total": "Rp 17.1B", "status": "Success"},
-    {"period": "May 2024", "upload_date": "04 Jun 2024", "upload_time": "14:05 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1715, "tenants": 237, "file_size": "2.1 MB", "rs_total": "Rp 16.8B", "status": "Success"},
-    {"period": "Apr 2024", "upload_date": "03 May 2024", "upload_time": "10:30 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1690, "tenants": 235, "file_size": "2.0 MB", "rs_total": "Rp 16.2B", "status": "Success"},
-    {"period": "Mar 2024", "upload_date": "02 Apr 2024", "upload_time": "08:15 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1665, "tenants": 233, "file_size": "2.0 MB", "rs_total": "Rp 15.9B", "status": "Warning"},
-    {"period": "Feb 2024", "upload_date": "04 Mar 2024", "upload_time": "11:42 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1638, "tenants": 231, "file_size": "1.9 MB", "rs_total": "Rp 15.3B", "status": "Success"},
-    {"period": "Jan 2024", "upload_date": "02 Feb 2024", "upload_time": "09:22 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1610, "tenants": 229, "file_size": "1.9 MB", "rs_total": "Rp 14.8B", "status": "Success"},
+    {"period": "Dec 2024", "upload_date": "03 Jan 2025", "upload_time": "09:14 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1842, "tenants": 247, "file_size": "2,4 MB", "rs_total": "Rp 24,2 M", "status": "Success"},
+    {"period": "Nov 2024", "upload_date": "04 Dec 2024", "upload_time": "06:52 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1836, "tenants": 244, "file_size": "2,3 MB", "rs_total": "Rp 18,9 M", "status": "Success"},
+    {"period": "Oct 2024", "upload_date": "05 Nov 2024", "upload_time": "10:03 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1858, "tenants": 246, "file_size": "2,4 MB", "rs_total": "Rp 20,7 M", "status": "Warning"},
+    {"period": "Sep 2024", "upload_date": "03 Oct 2024", "upload_time": "09:44 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1792, "tenants": 243, "file_size": "2,2 MB", "rs_total": "Rp 19,2 M", "status": "Success"},
+    {"period": "Aug 2024", "upload_date": "04 Sep 2024", "upload_time": "11:21 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1801, "tenants": 245, "file_size": "2,3 MB", "rs_total": "Rp 18,4 M", "status": "Success"},
+    {"period": "Jul 2024", "upload_date": "05 Aug 2024", "upload_time": "08:33 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1776, "tenants": 241, "file_size": "2,2 MB", "rs_total": None,        "status": "Failed"},
+    {"period": "Jun 2024", "upload_date": "03 Jul 2024", "upload_time": "09:58 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1748, "tenants": 239, "file_size": "2,1 MB", "rs_total": "Rp 17,1 M", "status": "Success"},
+    {"period": "May 2024", "upload_date": "04 Jun 2024", "upload_time": "14:05 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1715, "tenants": 237, "file_size": "2,1 MB", "rs_total": "Rp 16,8 M", "status": "Success"},
+    {"period": "Apr 2024", "upload_date": "03 May 2024", "upload_time": "10:30 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1690, "tenants": 235, "file_size": "2,0 MB", "rs_total": "Rp 16,2 M", "status": "Success"},
+    {"period": "Mar 2024", "upload_date": "02 Apr 2024", "upload_time": "08:15 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1665, "tenants": 233, "file_size": "2,0 MB", "rs_total": "Rp 15,9 M", "status": "Warning"},
+    {"period": "Feb 2024", "upload_date": "04 Mar 2024", "upload_time": "11:42 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1638, "tenants": 231, "file_size": "1,9 MB", "rs_total": "Rp 15,3 M", "status": "Success"},
+    {"period": "Jan 2024", "upload_date": "02 Feb 2024", "upload_time": "09:22 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1610, "tenants": 229, "file_size": "1,9 MB", "rs_total": "Rp 14,8 M", "status": "Success"},
 ]
 
 def _get_belum_submit():
@@ -1915,8 +1915,8 @@ def _render_pic_view():
             st.markdown('<div class="nad-card-sub">Periksa ringkasan data sebelum melanjutkan ke submit.</div>', unsafe_allow_html=True)
             st.markdown("""
             <div class="preview-kpi-row">
-                <div class="preview-kpi"><div class="preview-kpi-label">Total Rows</div><div class="preview-kpi-val">1,734</div></div>
-                <div class="preview-kpi"><div class="preview-kpi-label">Total Omzet</div><div class="preview-kpi-val">Rp 21.4B</div></div>
+                <div class="preview-kpi"><div class="preview-kpi-label">Total Rows</div><div class="preview-kpi-val">1.734</div></div>
+                <div class="preview-kpi"><div class="preview-kpi-label">Total Omzet</div><div class="preview-kpi-val">Rp 21,4 M</div></div>
                 <div class="preview-kpi"><div class="preview-kpi-label">Periode</div><div class="preview-kpi-val" style="font-size:15px;">Apr 2026</div></div>
                 <div class="preview-kpi"><div class="preview-kpi-label">Errors</div><div class="preview-kpi-val err">0</div></div>
             </div>""", unsafe_allow_html=True)
@@ -1972,10 +1972,11 @@ def _render_pic_view():
     df_h = _get_pic_history()
     rows_html = ""
     for _, r in df_h.iterrows():
+        rows_formatted = f"{r['Rows']:,}".replace(",", ".")
         rows_html += f"""<tr>
           <td>{r['Periode']}</td><td style="color:#64748b;">{r['Tanggal Upload']}</td>
           <td style="font-weight:600;">{r['Nama File']}</td>
-          <td style="font-weight:700;">{r['Rows']:,}</td>
+          <td style="font-weight:700;">{rows_formatted}</td>
           <td>{_status_badge(r['Status'])}</td>
         </tr>"""
 
@@ -2053,12 +2054,14 @@ def _render_admin_view():
     # Table
     rows_html = ""
     for _, r in df.iterrows():
-        anomali_html = f'<span style="color:#dc2626;font-weight:700;">{r["Anomali"]}</span>' if r["Anomali"] > 0 else '<span style="color:#94a3b8;">0</span>'
+        anomali_val = f"{r['Anomali']:,}".replace(",", ".")
+        anomali_html = f'<span style="color:#dc2626;font-weight:700;">{anomali_val}</span>' if r["Anomali"] > 0 else '<span style="color:#94a3b8;">0</span>'
+        rows_formatted = f"{r['Rows']:,}".replace(",", ".")
         rows_html += f"""<tr>
           <td style="font-weight:700;color:#4f46e5;">{r['PIC']}</td>
           <td>{r['Periode']}</td>
           <td style="font-size:12px;">{r['File']}</td>
-          <td style="font-weight:700;">{r['Rows']:,}</td>
+          <td style="font-weight:700;">{rows_formatted}</td>
           <td>{_status_badge(r['Status'])}</td>
           <td>{anomali_html}</td>
           <td>
@@ -2407,10 +2410,10 @@ def _render_import_history_refined():
             '</div>'
             '</td>'
             '<td>'
-            f'<div class="im-records-val">{r["total_records"]:,}</div>'
+            f'<div class="im-records-val">{f"{r["total_records"]:,}".replace(",", ".")}</div>'
             '<div class="im-records-sub">rows</div>'
             '</td>'
-            f'<td><span class="im-tenants-link">{r["tenants"]}</span></td>'
+            f'<td><span class="im-tenants-link">{f"{r["tenants"]:,}".replace(",", ".")}</span></td>'
             f'<td><span class="im-filesize">{r["file_size"]}</span></td>'
             f'<td>{rs_html}</td>'
             f'<td>{_hist_status(r["status"])}</td>'

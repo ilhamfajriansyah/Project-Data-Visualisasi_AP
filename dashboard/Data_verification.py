@@ -95,11 +95,10 @@ def _get_verification_data() -> pd.DataFrame:
         df = imported_df.copy()
         rows = []
         for idx, r in df.iterrows():
-            real_omzet = r.get("real_omzet", r.get("omzet", 0))
             try:
-                conflict_info = f"Rp {float(real_omzet) / 1_000_000_000:.2f}M"
+                conflict_info = f"Rp {float(real_omzet) / 1_000_000_000:.2f}M".replace(".", ",")
             except (TypeError, ValueError):
-                conflict_info = str(real_omzet or "-")
+                conflict_info = str(real_omzet or "-").replace(".", ",")
 
             brand = r.get("brand", r.get("perusahaan", r.get("tenant_name", "-")))
             kode_ruang = r.get("kode_ruang", r.get("unit", "-"))
@@ -831,11 +830,12 @@ def render_data_verification():
     ]
     for col, icon, icon_bg, label, value in kpi_cfg:
         with col:
+            val_formatted = f"{value:,}".replace(",", ".")
             st.markdown(f"""
             <div class="dv-kpi">
                 <div class="dv-kpi-left">
                     <div class="dv-kpi-label">{label}</div>
-                    <div class="dv-kpi-value">{value:,}</div>
+                    <div class="dv-kpi-value">{val_formatted}</div>
                 </div>
                 <div class="dv-kpi-icon" style="--icon-bg:{icon_bg};">{icon}</div>
             </div>""", unsafe_allow_html=True)

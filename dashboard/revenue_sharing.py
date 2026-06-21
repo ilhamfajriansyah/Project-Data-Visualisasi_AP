@@ -161,9 +161,9 @@ RS_SETTLEMENT_FILTER_OPTIONS = ["All", "Settled", "Pending", "Failed", "Conflict
 def get_services_data():
     return pd.DataFrame({
         "Service/SBU":      ["Ground Handling", "PSC", "VIP Services", "Commercial Area", "Cargo Area", "Parking Area", "Ground Handling Services"],
-        "Gross Revenue":    ["Rp 12.1M", "Rp 6.4M", "Rp 4.2M", "Rp 3.9M", "Rp 12.1M", "Rp 12.1M", "Rp 12.1M"],
+        "Gross Revenue":    ["Rp 12,1 M", "Rp 6,4 M", "Rp 4,2 M", "Rp 3,9 M", "Rp 12,1 M", "Rp 12,1 M", "Rp 12,1 M"],
         "SBU Share Rule %": ["70%", "100%", "65%", "50%", "70%", "70%", "70%"],
-        "Management Share": ["Rp 8.47M", "Rp 6.4M", "Rp 2.73M", "Rp 1.95M", "Rp 8.47M", "Rp 8.47M", "Rp 8.47M"],
+        "Management Share": ["Rp 8,47 M", "Rp 6,4 M", "Rp 2,73 M", "Rp 1,95 M", "Rp 8,47 M", "Rp 8,47 M", "Rp 8,47 M"],
         "Status":           ["SUCCESS", "SUCCESS", "CONFLICT", "CONFLICT", "FAILED", "FAILED", "FAILED"],
     })
 
@@ -174,7 +174,7 @@ def get_transaction_data():
         "Revenue/SBU":    ["Ground Handling"] * 7,
         "Type":           ["Revenue"] * 7,
         "Date":           ["12 Jun 2026"] * 7,
-        "Amount":         ["Rp 12.1M"] * 7,
+        "Amount":         ["Rp 12,1 M"] * 7,
         "Status":         ["SUCCESS"] * 7,
     })
 
@@ -270,7 +270,8 @@ def get_detail_revenue_sharing_data():
 # HELPERS
 # ─────────────────────────────────────────────
 def _parse_rp(text):
-    raw = str(text).replace("Rp", "").strip().replace(",", "")
+    raw = str(text).replace("Rp", "").strip()
+    raw = raw.replace(" ", "")
     mult = 1.0
     if raw.endswith("M") or raw.endswith("B"):
         mult = 1_000_000_000
@@ -281,6 +282,17 @@ def _parse_rp(text):
     elif raw.endswith("T"):
         mult = 1_000_000_000_000
         raw = raw[:-1]
+    
+    if "," in raw:
+        raw = raw.replace(".", "").replace(",", ".")
+    else:
+        if raw.count(".") == 1:
+            parts = raw.split(".")
+            if len(parts[1]) == 3:
+                raw = raw.replace(".", "")
+        else:
+            raw = raw.replace(".", "")
+            
     return float(raw) * mult
 
 
@@ -288,18 +300,23 @@ def _fmt_rp_compact(value):
     if pd.isna(value):
         value = 0
     if value >= 1_000_000_000_000:
-        return f"Rp {value / 1_000_000_000_000:.2f}T"
+        val_str = f"{value / 1_000_000_000_000:.2f}"
+        return f"Rp {val_str.replace('.', ',')} T"
     if value >= 1_000_000_000:
-        return f"Rp {value / 1_000_000_000:.2f}M"
+        val_str = f"{value / 1_000_000_000:.2f}"
+        return f"Rp {val_str.replace('.', ',')} M"
     if value >= 1_000_000:
-        return f"Rp {value / 1_000_000:.2f}Jt"
-    return f"Rp {value:,.0f}"
+        val_str = f"{value / 1_000_000:.2f}"
+        return f"Rp {val_str.replace('.', ',')} Jt"
+    val_str = f"{value:,.0f}"
+    return f"Rp {val_str.replace(',', '.')}"
 
 
 def _format_mom(value):
     cls = "ed-positive" if value >= 0 else "ed-negative"
     arrow = "↑" if value >= 0 else "↓"
-    return f'<span class="{cls}">{arrow} {abs(value):.1f}%</span>'
+    val_str = f"{abs(value):.1f}%"
+    return f'<span class="{cls}">{arrow} {val_str.replace(".", ",")}</span>'
 
 
 def _table_col_class(col_name, col_align, prefix="ed-th"):
@@ -373,19 +390,49 @@ def _kpi_card(label, value, delta, delta_up, accent, icon):
     delta_bg = "#DCFCE7" if delta_up else "#FEE2E2"
     delta_fg = "#059669" if delta_up else "#DC2626"
     arrow = "↑" if delta_up else "↓"
-    return dedent(f"""
-    <div class="overview-kpi-card rs-kpi-card">
-        <div class="overview-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>
-        <div class="overview-kpi-copy">
-            <div class="overview-kpi-label">{escape(label)}</div>
-            <div class="overview-kpi-value">{escape(value)}</div>
-            <div class="overview-kpi-delta">
-                <strong style="background:{delta_bg};color:{delta_fg};">{arrow} {escape(delta)}</strong>
-                vs periode sebelumnya
-            </div>
-        </div>
-    </div>
-    """).strip()
+    
+    # Process unit to extract prefix (like "Rp") and suffix (like "M", "Jt", or empty)
+    prefix = ""
+    val_part = value
+    suffix = ""
+    
+    if value.startswith("Rp"):
+        prefix = "Rp "
+        rest = value[2:].strip()
+        # Find if rest ends with a unit suffix (like "M", "Jt", "T")
+        # Let's extract the unit suffix if present
+        for sfx in ["Jt", "M", "T"]:
+            if rest.endswith(sfx):
+                suffix = sfx
+                val_part = rest[:-len(sfx)].strip()
+                break
+        else:
+            val_part = rest
+            
+    # Swap dots and commas for values and deltas
+    if not value.startswith("Rp"):
+        val_part = val_part.translate(str.maketrans({',': '.', '.': ','}))
+    delta_formatted = delta.translate(str.maketrans({',': '.', '.': ','}))
+    
+    unit_span = f'<span class="kpi-pro-unit" style="font-size:14px;color:#64748b;margin-left:4px;font-weight:600;">{escape(suffix)}</span>' if suffix else ""
+    
+    html = (
+        f'<div class="overview-kpi-card rs-kpi-card">'
+        f'<div class="overview-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>'
+        f'<div class="overview-kpi-copy">'
+        f'<div class="overview-kpi-label">{escape(label)}</div>'
+        f'<div class="overview-kpi-value">'
+        f'<span class="kpi-val-num">{escape(prefix)}{escape(val_part)}</span>'
+        f'{unit_span}'
+        f'</div>'
+        f'<div class="overview-kpi-delta">'
+        f'<strong style="background:{delta_bg};color:{delta_fg};">{arrow} {escape(delta_formatted)}</strong> '
+        f'vs periode sebelumnya'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
+    return html
 
 
 def _kpi_ring_card(label, value, delta, accent):
@@ -1211,6 +1258,10 @@ def page_revenue_sharing():
         start_idx = (st.session_state.rs_detail_page - 1) * rows_per_page
         end_idx = start_idx + rows_per_page
         detail_view = detail_df.iloc[start_idx:end_idx].copy()
+        # Translate static numeric strings (e.g. "Rp 12.1M" -> "Rp 12,1M") to Indonesian format
+        detail_view["Revenue"] = detail_view["Revenue"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
+        detail_view["Management Share"] = detail_view["Management Share"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
+        detail_view["Share %"] = detail_view["Share %"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
         detail_view["Variance"] = detail_view["Variance"].apply(_format_mom)
         detail_view["Settlement Status"] = detail_view["Settlement Status"].apply(fmt_status_badge)
         detail_view = detail_view[[

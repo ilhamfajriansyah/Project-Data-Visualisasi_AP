@@ -13,18 +13,21 @@ def fmt_rp_compact(value):
     if pd.isna(value):
         value = 0
     if value >= 1_000_000_000_000:
-        return f"Rp {value / 1_000_000_000_000:.2f}T"
+        val_part = f"{value / 1_000_000_000_000:.2f}".replace(".", ",")
+        return f"Rp {val_part} T"
     if value >= 1_000_000_000:
-        return f"Rp {value / 1_000_000_000:.2f}M"
+        val_part = f"{value / 1_000_000_000:.2f}".replace(".", ",")
+        return f"Rp {val_part} M"
     if value >= 1_000_000:
-        return f"Rp {value / 1_000_000:.2f}Jt"
-    return f"Rp {value:,.0f}"
+        val_part = f"{value / 1_000_000:.2f}".replace(".", ",")
+        return f"Rp {val_part} Jt"
+    return f"Rp {value:,.0f}".replace(",", ".")
 
 
 def fmt_rp_full(value):
     if pd.isna(value):
         value = 0
-    return f"Rp {value:,.0f}"
+    return f"Rp {value:,.0f}".replace(",", ".")
 
 
 def fmt_status_badge(status, extra_colors=None):

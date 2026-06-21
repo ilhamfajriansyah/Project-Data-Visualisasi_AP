@@ -355,9 +355,9 @@ def page_accrual_billing():
         st.markdown(section_title_html("Billing Alerts", "Actionable billing and collection exceptions"), unsafe_allow_html=True)
         st.markdown(
             alert_grid_html(
-                alert_card_html("critical", "!", "12 invoice jatuh tempo", "Total outstanding Rp 1.9M memerlukan tindakan segera"),
-                alert_card_html("warning", "₵", "Outstanding balance Rp 3.3M", "16 tenant dengan piutang terbuka"),
-                alert_card_html("info", "◷", "5 invoice jatuh tempo minggu ini", "Total Rp 780Jt diharapkan terkumpul"),
+                alert_card_html("critical", "!", "12 invoice jatuh tempo", "Total outstanding Rp 1,9 M memerlukan tindakan segera"),
+                alert_card_html("warning", "₵", "Outstanding balance Rp 3,3 M", "16 tenant dengan piutang terbuka"),
+                alert_card_html("info", "◷", "5 invoice jatuh tempo minggu ini", "Total Rp 780 Jt diharapkan terkumpul"),
                 alert_card_html("positive", "↑", "Tingkat penagihan naik 8%", "Jumlah yang terkumpul melampaui bulan sebelumnya"),
             ),
             unsafe_allow_html=True,

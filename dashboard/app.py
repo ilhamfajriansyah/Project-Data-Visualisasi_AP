@@ -2291,18 +2291,23 @@ def _fmt_rp_compact(value):
     if pd.isna(value):
         value = 0
     if value >= 1_000_000_000_000:
-        return f"Rp {value / 1_000_000_000_000:.2f}T"
+        val_str = f"{value / 1_000_000_000_000:.2f}"
+        return f"Rp {val_str.replace('.', ',')} T"
     if value >= 1_000_000_000:
-        return f"Rp {value / 1_000_000_000:.2f}M"
+        val_str = f"{value / 1_000_000_000:.2f}"
+        return f"Rp {val_str.replace('.', ',')} M"
     if value >= 1_000_000:
-        return f"Rp {value / 1_000_000:.2f}Jt"
-    return f"Rp {value:,.0f}"
+        val_str = f"{value / 1_000_000:.2f}"
+        return f"Rp {val_str.replace('.', ',')} Jt"
+    val_str = f"{value:,.0f}"
+    return f"Rp {val_str.replace(',', '.')}"
 
 
 def _fmt_rp_full(value):
     if pd.isna(value):
         value = 0
-    return f"Rp {value:,.0f}"
+    val_str = f"{value:,.0f}"
+    return f"Rp {val_str.replace(',', '.')}"
 
 
 def _format_mom(value):
@@ -2355,14 +2360,19 @@ def _compact_number(value, decimals=1):
     value = float(value)
     abs_value = abs(value)
     if abs_value >= 1_000_000_000_000:
-        return f"{value / 1_000_000_000_000:.{decimals}f}", "T"
+        val_str = f"{value / 1_000_000_000_000:.{decimals}f}"
+        return val_str.replace(".", ","), "T"
     if abs_value >= 1_000_000_000:
-        return f"{value / 1_000_000_000:.{decimals}f}", "M"
+        val_str = f"{value / 1_000_000_000:.{decimals}f}"
+        return val_str.replace(".", ","), "M"
     if abs_value >= 1_000_000:
-        return f"{value / 1_000_000:.{decimals}f}", "Jt"
+        val_str = f"{value / 1_000_000:.{decimals}f}"
+        return val_str.replace(".", ","), "Jt"
     if abs_value >= 1_000:
-        return f"{value:,.0f}", ""
-    return f"{value:.{decimals}f}", ""
+        val_str = f"{value:,.0f}"
+        return val_str.replace(",", "."), ""
+    val_str = f"{value:.{decimals}f}"
+    return val_str.replace(".", ","), ""
 
 
 def _pct_change(current, base):
@@ -2376,31 +2386,45 @@ def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar
     badge_cls = "is-down" if is_down else ""
     arrow = "↘" if is_down else "↗"
     bar_width = min(100, max(6, 50 + delta_pct * 2.2))
-    return dedent(f"""
-    <div class="kpi-pro-card">
-        <div class="kpi-pro-head">
-            <div class="kpi-pro-icon" style="background:{accent}1A;color:{accent};">{_kpi_pro_icon_svg(icon_key)}</div>
-            <div class="kpi-pro-badge {badge_cls}">{arrow} {abs(delta_pct):.1f}%</div>
-        </div>
-        <div class="kpi-pro-body">
-            <div class="kpi-pro-label">{escape(label)}</div>
-            <div class="kpi-pro-value-row">
-                <span class="kpi-pro-value">{escape(value)}</span>
-                <span class="kpi-pro-unit">{escape(unit)}</span>
-            </div>
-            <div class="kpi-pro-sub">{escape(subtitle)}</div>
-        </div>
-        <div class="kpi-pro-foot">
-            <div class="kpi-pro-bar-row">
-                <span>{escape(bar_label)}</span>
-                <span style="color:{accent};">{arrow} {abs(delta_pct):.1f}%</span>
-            </div>
-            <div class="kpi-pro-bar-track">
-                <div class="kpi-pro-bar-fill" style="width:{bar_width:.0f}%;background:{accent};"></div>
-            </div>
-        </div>
-    </div>
-    """).strip()
+    
+    # Process unit to extract prefix (like "Rp") and suffix (like "M", "Jt", or empty)
+    prefix = ""
+    display_unit = unit
+    if unit.startswith("Rp"):
+        prefix = "Rp "
+        display_unit = unit[2:].strip()
+        
+    unit_span = f'<span class="kpi-pro-unit"> {escape(display_unit)}</span>' if display_unit else ""
+    
+    # Format percentage display to Indonesian decimal format
+    formatted_pct = f"{arrow} {abs(delta_pct):.1f}%".replace(".", ",")
+    
+    html = (
+        f'<div class="kpi-pro-card">'
+        f'<div class="kpi-pro-head">'
+        f'<div class="kpi-pro-icon" style="background:{accent}1A;color:{accent};">{_kpi_pro_icon_svg(icon_key)}</div>'
+        f'<div class="kpi-pro-badge {badge_cls}">{formatted_pct}</div>'
+        f'</div>'
+        f'<div class="kpi-pro-body">'
+        f'<div class="kpi-pro-label">{escape(label)}</div>'
+        f'<div class="kpi-pro-value-row">'
+        f'<span class="kpi-pro-value">{escape(prefix)}{escape(value)}</span>'
+        f'{unit_span}'
+        f'</div>'
+        f'<div class="kpi-pro-sub">{escape(subtitle)}</div>'
+        f'</div>'
+        f'<div class="kpi-pro-foot">'
+        f'<div class="kpi-pro-bar-row">'
+        f'<span>{escape(bar_label)}</span>'
+        f'<span style="color:{accent};">{formatted_pct}</span>'
+        f'</div>'
+        f'<div class="kpi-pro-bar-track">'
+        f'<div class="kpi-pro-bar-fill" style="width:{bar_width:.0f}%;background:{accent};"></div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
+    return html
 
 
 def _alert_item_html(icon, accent, title, subtitle):
@@ -3171,16 +3195,16 @@ def page_overview(df_raw):
                        f"Target: {_fmt_rp_compact(target_omzet)}",
                        _pct_change(real_revenue, target_omzet), "#4F46E5", "omzet", "vs target"),
         _kpi_pro_card("Revenue Sharing", rs_val, f"Rp {rs_scale}".strip(),
-                       f"YoY {_pct_change(revenue_sharing, prior_revenue_sharing):+.1f}%",
+                       f"YoY {_pct_change(revenue_sharing, prior_revenue_sharing):+.1f}%".replace(".", ","),
                        _pct_change(revenue_sharing, prior_revenue_sharing), "#0891B2", "layers", "YoY growth"),
         _kpi_pro_card("Rental Revenue", rental_val, f"Rp {rental_scale}".strip(),
                        f"vs {_fmt_rp_compact(prior_rental_revenue)} prior",
                        _pct_change(rental_revenue, prior_rental_revenue), "#2563EB", "file", "vs prior yr"),
         _kpi_pro_card("Total Contribution", contrib_val, f"Rp {contrib_scale}".strip(),
-                       f"{contribution_delta:+.1f}% vs prior period",
+                       f"{contribution_delta:+.1f}% vs prior period".replace(".", ","),
                        contribution_delta, "#059669", "bars", "vs prior yr"),
         _kpi_pro_card("Spending per Pax", spend_val, f"Rp {spend_scale}".strip(),
-                       f"{spending_delta:+.1f}% vs prior period",
+                       f"{spending_delta:+.1f}% vs prior period".replace(".", ","),
                        spending_delta, "#D97706", "users", "vs prior yr"),
         _kpi_pro_card("Rev / SQM", revsqm_val, f"Rp {revsqm_scale}".strip(),
                        "per sqm · annual",
@@ -3289,7 +3313,7 @@ def page_overview(df_raw):
         top_terminal = terminal_sum.idxmax() if len(terminal_sum) else "Terminal 1"
         top_terminal_share = int((terminal_sum.max() / terminal_sum.sum()) * 100) if terminal_sum.sum() else 0
         alerts = [
-            _alert_item_html("!", "#DC2626", f"Revenue {'turun' if rev_change < 0 else 'naik'} {abs(rev_change):.1f}% dibanding periode lalu", f"Realisasi periode aktif: {_fmt_rp_compact(real_revenue)}"),
+            _alert_item_html("!", "#DC2626", f"Revenue {'turun' if rev_change < 0 else 'naik'} {abs(rev_change):.1f}% dibanding periode lalu".replace(".", ","), f"Realisasi periode aktif: {_fmt_rp_compact(real_revenue)}"),
             _alert_item_html("A", "#EA580C", f"{low_acv} tenant memiliki ACV < 80%", "Perlu perhatian untuk potensi risiko"),
             _alert_item_html("i", "#2563EB", f"{top_terminal} menyumbang {top_terminal_share}% kontribusi", "Monitor perubahan komposisi terminal"),
         ]
@@ -3330,7 +3354,7 @@ def page_overview(df_raw):
     best_rows = ""
     for i, (_, row) in enumerate(df_best3.iterrows()):
         badge = f'<span class="ed-rank-badge rank-{i+1}">{i+1}</span>'
-        acv_val = f'<span class="ed-positive">{row["acv"]:.1f}%</span>'
+        acv_val = f'<span class="ed-positive">{row["acv"]:.1f}%</span>'.replace(".", ",")
         best_rows += f"""<tr>
             <td><span class="ed-tenant-with-rank">{badge}{escape(str(row["perusahaan"]))}</span></td>
             <td class="ed-td-center">{escape(str(row["brand"]))}</td>
@@ -3432,8 +3456,8 @@ def page_overview(df_raw):
         detail_view["Min Omzet"] = detail_view["min_omzet"].apply(_fmt_rp_full)
         detail_view["Real Omzet"] = detail_view["real_omzet"].apply(_fmt_rp_full)
         detail_view["Kontribusi"] = detail_view["kontribusi"].apply(_fmt_rp_full)
-        detail_view["Ach %"] = detail_view["Ach %"].apply(lambda x: f"{x:.1f}%")
-        detail_view["ACV"] = detail_view["acv"].apply(lambda x: f"{x:.1f}%")
+        detail_view["Ach %"] = detail_view["Ach %"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+        detail_view["ACV"] = detail_view["acv"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "Kontribusi", "Ach %", "ACV"]]
         detail_view.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "Kontribusi", "Ach %", "ACV"]
         detail_col_align = {

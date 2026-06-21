@@ -68,12 +68,21 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
 
     rows_html = ""
     for _, r in slice_.iterrows():
+        area_val = r['Area (m²)']
+        if isinstance(area_val, (int, float)):
+            if int(area_val) == area_val:
+                area_str = f"{int(area_val):,}".replace(",", ".")
+            else:
+                area_str = f"{area_val:,.2f}".replace(".", "X").replace(",", ".").replace("X", ",")
+        else:
+            area_str = str(area_val)
+
         rows_html += f"""
         <tr>
           <td><span class="room-id">{r['Room ID']}</span></td>
           <td><span class="location-text">{r['Location']}</span></td>
           <td><span class="gate-text">{r['Gate Point']}</span></td>
-          <td><span class="area-text">{r['Area (m²)']} m²</span></td>
+          <td><span class="area-text">{area_str} m²</span></td>
           <td><div class="facilities">{_fac_icons(str(r['Facilities']))}</div></td>
           <td>{_badge(r['Classifications'])}</td>
           <td>{_status_html(r['Status'])}</td>

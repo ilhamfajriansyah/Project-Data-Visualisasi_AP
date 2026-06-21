@@ -89,12 +89,11 @@ def _aggregate_metrics(terminal_filter="All Terminal"):
 
 
 def _fmt_millions(value):
-    return f"{value:.1f}Jt"
-
+    return f"{value:.1f}".replace(".", ",") + " Jt"
 
 
 def _fmt_rp_k(value):
-    return f"Rp {value / 1_000:.1f}K"
+    return f"Rp {value / 1_000:.1f}".replace(".", ",") + " K"
 
 
 def _monthly_traffic_series(total_m, seed=7):
@@ -145,12 +144,12 @@ def get_terminal_table_df():
         spp_status = "Above target" if row["spp"] >= 90_000 else "Below target"
         rows.append({
             "Terminal": f'{row["code"]} {row["name"]}',
-            "Domestic Traffic": f'<div class="tm-cell-stack">{row["domestic"]:.1f}M<span class="tm-subcell">{dom_pct:.0f}% of terminal</span></div>',
-            "International Traffic": f'<div class="tm-cell-stack">{row["international"]:.1f}M<span class="tm-subcell">{intl_pct:.0f}% of terminal</span></div>',
-            "Total Traffic": f'{total:.1f}M',
-            "Traffic Share": f"{share:.1f}%",
+            "Domestic Traffic": f'<div class="tm-cell-stack">{f"{row["domestic"]:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{dom_pct:.0f}% dari terminal</span></div>',
+            "International Traffic": f'<div class="tm-cell-stack">{f"{row["international"]:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{intl_pct:.0f}% dari terminal</span></div>',
+            "Total Traffic": f'{f"{total:.1f}".replace(".", ",")} Jt',
+            "Traffic Share": f"{f"{share:.1f}".replace(".", ",")}%",
             "Spending Per Pax": f'<div class="tm-cell-stack">{_fmt_rp_k(row["spp"])}<span class="tm-spp-tag {"is-above" if row["spp"] >= 90_000 else "is-below"}">{spp_status}</span></div>',
-            "YoY Growth": f'<span class="tm-positive">↑ +{row["yoy"]:.1f}%</span>',
+            "YoY Growth": f'<span class="tm-positive">↑ +{f"{row["yoy"]:.1f}".replace(".", ",")}%</span>',
             "_share": share,
             "_total": total,
         })
@@ -160,12 +159,12 @@ def get_terminal_table_df():
     total_all = metrics["total"]
     rows.append({
         "Terminal": "TOTAL — Terminal 1 & 2",
-        "Domestic Traffic": f"{total_dom:.1f}M",
-        "International Traffic": f"{total_intl:.1f}M",
-        "Total Traffic": f"{total_all:.1f}M",
+        "Domestic Traffic": f"{total_dom:.1f}".replace(".", ",") + " Jt",
+        "International Traffic": f"{total_intl:.1f}".replace(".", ",") + " Jt",
+        "Total Traffic": f"{total_all:.1f}".replace(".", ",") + " Jt",
         "Traffic Share": "100%",
         "Spending Per Pax": _fmt_rp_k(metrics["spp"]),
-        "YoY Growth": f'<span class="tm-positive">↑ +{metrics["yoy"]:.1f}%</span>',
+        "YoY Growth": f'<span class="tm-positive">↑ +{f"{metrics["yoy"]:.1f}".replace(".", ",")}%</span>',
         "_share": 100,
         "_total": total_all,
     })
@@ -196,18 +195,58 @@ def _tm_kpi_card(label, value, subtitle, delta_pct, accent, icon, spark_values):
     badge_bg = "#DCFCE7" if up else "#FEE2E2"
     badge_fg = "#059669" if up else "#DC2626"
     arrow = "↑" if up else "↓"
-    return dedent(f"""
-    <div class="tm-kpi-card">
-        <div class="tm-kpi-top">
-            <div class="tm-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>
-            <span class="tm-kpi-badge" style="background:{badge_bg};color:{badge_fg};">{arrow} {abs(delta_pct):.1f}%</span>
-        </div>
-        <div class="tm-kpi-label">{escape(label)}</div>
-        <div class="tm-kpi-value">{escape(value)}</div>
-        <div class="tm-kpi-sub">{escape(subtitle)}</div>
-        {_sparkline_svg(spark_values, accent)}
-    </div>
-    """).strip()
+    
+    # Process unit to extract prefix (like "Rp") and suffix (like "Jt", "K", "%" or empty)
+    prefix = ""
+    val_part = str(value)
+    suffix = ""
+    
+    # Format delta percentage
+    delta_formatted = f"{abs(delta_pct):.1f}".replace(".", ",")
+    
+    # Format subtitle
+    subtitle_formatted = str(subtitle).translate(str.maketrans({',': '.', '.': ','}))
+    
+    if value.startswith("Rp"):
+        prefix = "Rp "
+        rest = value[2:].strip()
+        # Extract suffix like "K" or "Jt"
+        for sfx in ["K", "Jt", "M", "T"]:
+            if rest.endswith(sfx):
+                suffix = sfx
+                val_part = rest[:-len(sfx)].strip()
+                break
+        else:
+            val_part = rest
+    else:
+        # Check if value ends with "Jt" or "%"
+        for sfx in ["Jt", "K", "%"]:
+            if value.endswith(sfx):
+                suffix = sfx
+                val_part = value[:-len(sfx)].strip()
+                break
+                
+    # Replace dot with comma in value part (decimals)
+    val_part = val_part.replace(".", ",")
+    
+    unit_span = f'<span class="tm-kpi-unit" style="font-size:13px;color:#64748b;margin-left:2px;font-weight:600;"> {escape(suffix)}</span>' if suffix else ""
+    
+    html = (
+        f'<div class="tm-kpi-card">'
+        f'<div class="tm-kpi-top">'
+        f'<div class="tm-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>'
+        f'<span class="tm-kpi-badge" style="background:{badge_bg};color:{badge_fg};">{arrow} {delta_formatted}%</span>'
+        f'</div>'
+        f'<div class="tm-kpi-label">{escape(label)}</div>'
+        f'<div class="tm-kpi-value">'
+        f'<span class="tm-kpi-val-num">{escape(prefix)}{escape(val_part)}</span>'
+        f'{unit_span}'
+        f'</div>'
+        f'<div class="tm-kpi-sub">{escape(subtitle_formatted)}</div>'
+        f'{_sparkline_svg(spark_values, accent)}'
+        f'</div>'
+    )
+    return html
 
 
 def _tm_page_header():
@@ -343,17 +382,17 @@ def _terminal_card_html(row, share):
             <div class="tm-terminal-id" style="background:{row['soft_bg']};color:{row['color']};">{row['code']}</div>
             <div class="tm-terminal-copy">
                 <p class="tm-terminal-name">{escape(row['name'])}</p>
-                <p class="tm-terminal-meta">Dom {row['domestic']:.1f}M · Intl {row['international']:.1f}M</p>
+                <p class="tm-terminal-meta">Dom {f"{row['domestic']:.1f}".replace(".", ",")} Jt · Intl {f"{row['international']:.1f}".replace(".", ",")} Jt</p>
             </div>
             <div class="tm-terminal-stats">
-                <p class="tm-terminal-total">{row['total']:.1f}M</p>
-                <p class="tm-terminal-share">{share:.1f}% share</p>
+                <p class="tm-terminal-total">{f"{row['total']:.1f}".replace(".", ",")} Jt</p>
+                <p class="tm-terminal-share">{f"{share:.1f}".replace(".", ",")}% share</p>
             </div>
         </div>
         {progress_bar_html(share, row['color'])}
         <div class="tm-terminal-foot">
             <span>SPP: {_fmt_rp_k(row['spp'])}</span>
-            <span>YoY Growth: <strong style="color:#059669;">+{row['yoy']:.1f}%</strong></span>
+            <span>YoY Growth: <strong style="color:#059669;">+{f"{row['yoy']:.1f}".replace(".", ",")}%</strong></span>
         </div>
     </div>
     """).strip()
@@ -424,7 +463,7 @@ def _spp_trend_figure(df, target=90.0):
         fill="tozeroy", fillcolor="rgba(217,119,6,0.08)",
     ))
     fig.add_hline(y=target, line_dash="dot", line_color="#94A3B8", line_width=1.5,
-                  annotation_text="Target Rp 90K", annotation_position="top right")
+                  annotation_text="Target Rp 90 K", annotation_position="top right")
     fig.update_layout(
         autosize=True, height=280, margin=dict(t=8, b=8, l=8, r=8),
         plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", hovermode="x unified",
@@ -1160,6 +1199,10 @@ def page_traffic_monitor():
     _mount_tm_fixed_header()
     st.markdown(_filter_chip_state_css(), unsafe_allow_html=True)
 
+    yoy_val_str = f"{metrics['yoy']:.1f}".replace(".", ",")
+    domestic_pct_str = f"{metrics['domestic_pct']:.1f}".replace(".", ",")
+    intl_pct_str = f"{metrics['intl_pct']:.1f}".replace(".", ",")
+
     spark_total = trend_df["FY 2024"].tolist()
     spark_dom = dom_intl_df["Domestic"].tolist()
     spark_intl = dom_intl_df["International"].tolist()
@@ -1169,14 +1212,14 @@ def page_traffic_monitor():
         _tm_kpi_card("Total Traffic", _fmt_millions(metrics["total"]),
                      "FY 2024 · Terminal 1 & 2", metrics["yoy"], "#7C3AED", "👥", spark_total),
         _tm_kpi_card("Domestic Traffic", _fmt_millions(metrics["domestic"]),
-                     f"{metrics['domestic_pct']:.1f}% of total traffic", metrics["yoy"] * 0.9,
+                     f"{domestic_pct_str}% of total traffic", metrics["yoy"] * 0.9,
                      "#2563EB", "📍", spark_dom),
         _tm_kpi_card("International Traffic", _fmt_millions(metrics["international"]),
-                     f"{metrics['intl_pct']:.1f}% of total traffic", metrics["yoy"] * 1.05,
+                     f"{intl_pct_str}% of total traffic", metrics["yoy"] * 1.05,
                      "#06B6D4", "🌐", spark_intl),
         _tm_kpi_card("Spending Per Pax", _fmt_rp_k(metrics["spp"]),
                      "Average across selected terminals", 6.6, "#D97706", "💳", spark_spp),
-        _tm_kpi_card("Traffic Growth", f"+{metrics['yoy']:.1f}%",
+        _tm_kpi_card("Traffic Growth", f"+{yoy_val_str}%",
                      "YoY vs FY 2023", metrics["yoy"], "#059669", "📈", spark_total),
         _tm_kpi_card("Avg Spending Per Pax", _fmt_rp_k(metrics["spp"]),
                      "Weighted terminal average", 6.6, "#EA580C", "🛍", spark_spp),
@@ -1196,14 +1239,13 @@ def page_traffic_monitor():
                 "Total Traffic Trend",
                 "Monthly passengers — FY 2024 vs FY 2023 (Millions) · Terminal 1 & 2",
             ), unsafe_allow_html=True)
-        with h2:
-            st.markdown(f'<span class="tm-yoy-pill">YoY +{metrics["yoy"]:.1f}%</span>', unsafe_allow_html=True)
+        st.markdown(f'<span class="tm-yoy-pill">YoY +{yoy_val_str} %</span>', unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics">'
             + _mini_metric_box("FY 2024", _fmt_millions(metrics["total"]), accent="#7C3AED")
             + _mini_metric_box("FY 2023", _fmt_millions(metrics["prior_total"]), accent="#94A3B8")
-            + _mini_metric_box("Peak Month", f"{peak_month} · {peak_value:.1f}Jt", accent="#2563EB")
-            + _mini_metric_box("Growth", f"+{metrics['yoy']:.1f}%", accent="#059669")
+            + _mini_metric_box("Peak Month", f"{peak_month} · {f'{peak_value:.1f}'.replace('.', ',')} Jt", accent="#2563EB")
+            + _mini_metric_box("Growth", f"+{yoy_val_str}%", accent="#059669")
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -1219,9 +1261,9 @@ def page_traffic_monitor():
         st.markdown(
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(2,minmax(0,1fr));">'
             + _mini_metric_box("Domestic", _fmt_millions(metrics["domestic"]),
-                               f"{metrics['domestic_pct']:.1f}% share", "#2563EB")
+                               f"{domestic_pct_str}% share", "#2563EB")
             + _mini_metric_box("International", _fmt_millions(metrics["international"]),
-                               f"{metrics['intl_pct']:.1f}% share", "#06B6D4")
+                               f"{intl_pct_str}% share", "#06B6D4")
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -1232,8 +1274,8 @@ def page_traffic_monitor():
             f'<div class="tm-split-intl" style="width:{metrics["intl_pct"]:.1f}%;"></div>'
             f"</div>"
             f'<div class="tm-split-legend">'
-            f'<span>Domestic {metrics["domestic_pct"]:.1f}%</span>'
-            f'<span>International {metrics["intl_pct"]:.1f}%</span>'
+            f'<span>Domestic {domestic_pct_str}%</span>'
+            f'<span>International {intl_pct_str}%</span>'
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -1256,8 +1298,8 @@ def page_traffic_monitor():
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(4,minmax(0,1fr));">'
             + _mini_metric_box("FY 2024 Avg", _fmt_rp_k(metrics["spp"]), accent="#D97706")
             + _mini_metric_box("Dec Peak", _fmt_rp_k(spp_peak * 1000), spp_peak_month, "#EA580C")
-            + _mini_metric_box("Target", "Rp 90.0K", accent="#64748B")
-            + _mini_metric_box("Achievement", f"+{achievement:.1f}%", accent="#059669")
+            + _mini_metric_box("Target", "Rp 90,0 K", accent="#64748B")
+            + _mini_metric_box("Achievement", f"+{f'{achievement:.1f}'.replace('.', ',')}%", accent="#059669")
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -1307,6 +1349,11 @@ def page_traffic_monitor():
     t2_share = t2_total / (t1["domestic"] + t1["international"] + t2_total) * 100
     intl_premium = t2["spp"] / t1["spp"]
 
+    t2_total_str = f"{t2_total:.1f}".replace(".", ",")
+    t2_share_str = f"{t2_share:.1f}".replace(".", ",")
+    achievement_str = f"{(metrics['spp'] / 90_000 - 1) * 100:.1f}".replace(".", ",")
+    intl_premium_str = f"{intl_premium:.1f}".replace(".", ",")
+
     with st.container():
         st.markdown('<div class="ed-card-marker tm-insights-card"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
@@ -1316,27 +1363,27 @@ def page_traffic_monitor():
         st.markdown(
             '<div class="tm-insight-grid">'
             + _insight_card_html(
-                f"Terminal 2 leads at {t2_total:.1f}M pax ({t2_share:.1f}%)",
+                f"Terminal 2 leads at {t2_total_str} M pax ({t2_share_str}%)",
                 "Terminal 2 carries the larger international mix and higher SPP, driving overall airport commercial performance.",
-                f"T2 · {t2_share:.1f}%",
+                f"T2 · {t2_share_str}%",
                 "#0891B2", "#ECFEFF",
             )
             + _insight_card_html(
-                f"Terminals grew +{metrics['yoy']:.1f}% YoY — above 8% target",
+                f"Terminals grew +{yoy_val_str}% YoY — above 8% target",
                 f"Combined Terminal 1 & 2 traffic reached {_fmt_millions(metrics['total'])} vs {_fmt_millions(metrics['prior_total'])} in FY 2023.",
-                f"+{metrics['yoy']:.1f}% vs 8% target",
+                f"+{yoy_val_str}% vs 8% target",
                 "#059669", "#F0FDF4",
             )
             + _insight_card_html(
-                f"SPP at {_fmt_rp_k(metrics['spp'])} — above Rp 90K target",
+                f"SPP at {_fmt_rp_k(metrics['spp'])} — above Rp 90 K target",
                 "Terminal 2 exceeds the spending target while Terminal 1 remains below target, creating a blended uplift across both terminals.",
-                f"+{(metrics['spp'] / 90_000 - 1) * 100:.1f}% above target",
+                f"+{achievement_str}% above target",
                 "#D97706", "#FFF7ED",
             )
             + _insight_card_html(
                 "International pax spend more per passenger",
                 f"Terminal 2 international mix supports higher SPP at {_fmt_rp_k(t2['spp'])} compared with Terminal 1 at {_fmt_rp_k(t1['spp'])}.",
-                f"{intl_premium:.1f}x T2 vs T1 SPP",
+                f"{intl_premium_str}x T2 vs T1 SPP",
                 "#7C3AED", "#F5F3FF",
             )
             + "</div>",

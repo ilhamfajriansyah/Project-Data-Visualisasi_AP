@@ -1755,6 +1755,12 @@ def _generate_svg_sparkline(values, color, fill_color_grad_start, fill_color_gra
     return svg.replace("\n", "").replace("  ", "")
 
 def _render_kpi_card_html(icon_svg, icon_class, badge_text, badge_class, title, value, unit, subtitle, progress_items, progress_color, comparison, sparkline_svg):
+    # Swap dots and commas for Indonesian formatting
+    badge_text = str(badge_text).translate(str.maketrans({',': '.', '.': ','}))
+    subtitle = str(subtitle).translate(str.maketrans({',': '.', '.': ','}))
+    value = str(value).translate(str.maketrans({',': '.', '.': ','}))
+    comparison = str(comparison).translate(str.maketrans({',': '.', '.': ','}))
+
     progress_rows = ""
     if progress_items:
         max_val = max([item[1] for item in progress_items]) if progress_items else 1
@@ -1762,13 +1768,14 @@ def _render_kpi_card_html(icon_svg, icon_class, badge_text, badge_class, title, 
             pct = int((val / max_val) * 85) if max_val > 0 else 0
             if val > 0 and pct < 5:
                 pct = 5
+            val_formatted = f"{val:,.0f}".replace(",", ".") if isinstance(val, (int, float)) else str(val)
             progress_rows += f"""
             <div class="kpi-progress-row">
                 <span class="kpi-progress-label">{lbl}</span>
                 <div class="kpi-progress-track">
                     <div class="kpi-progress-fill" style="width: {pct}%; background-color: {progress_color};"></div>
                 </div>
-                <span class="kpi-progress-val">{val}</span>
+                <span class="kpi-progress-val">{val_formatted}</span>
             </div>
             """
             
@@ -2498,31 +2505,31 @@ def render_lease_contract():
                     <div class="dist-card rs">
                         <div class="dist-card-header">
                             <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS</span>
-                            <span class="dist-card-pct">{d_rs_pct:.1f}%</span>
+                            <span class="dist-card-pct">{f"{d_rs_pct:.1f}%".replace(".", ",")}</span>
                         </div>
                         <div class="dist-card-body">
                             <span class="dist-card-count">{d_rs}</span>
-                            <span class="dist-card-val">Rp {d_rs*0.74:.1f}B</span>
+                            <span class="dist-card-val">Rp {f"{d_rs*0.74:.1f}".replace(".", ",")} M</span>
                         </div>
                     </div>
                     <div class="dist-card rs_mo">
                         <div class="dist-card-header">
                             <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS+MO</span>
-                            <span class="dist-card-pct">{d_rs_mo_pct:.1f}%</span>
+                            <span class="dist-card-pct">{f"{d_rs_mo_pct:.1f}%".replace(".", ",")}</span>
                         </div>
                         <div class="dist-card-body">
                             <span class="dist-card-count">{d_rs_mo}</span>
-                            <span class="dist-card-val">Rp {d_rs_mo*0.74:.1f}B</span>
+                            <span class="dist-card-val">Rp {f"{d_rs_mo*0.74:.1f}".replace(".", ",")} M</span>
                         </div>
                     </div>
                     <div class="dist-card mgrs">
                         <div class="dist-card-header">
                             <span class="dist-card-title-row"><span class="dist-card-dot"></span>MGRS</span>
-                            <span class="dist-card-pct">{d_mgrs_pct:.1f}%</span>
+                            <span class="dist-card-pct">{f"{d_mgrs_pct:.1f}%".replace(".", ",")}</span>
                         </div>
                         <div class="dist-card-body">
                             <span class="dist-card-count">{d_mgrs}</span>
-                            <span class="dist-card-val">Rp {d_mgrs*0.72:.1f}B</span>
+                            <span class="dist-card-val">Rp {f"{d_mgrs*0.72:.1f}".replace(".", ",")} M</span>
                         </div>
                     </div>
                 </div>
@@ -2544,7 +2551,7 @@ def render_lease_contract():
                 <div class="status-row">
                     <div class="status-row-header">
                         <div class="status-row-label-row"><span class="status-row-icon active">&#10003;</span>Active</div>
-                        <div class="status-row-val">{active_val} <span>({p_active:.1f}%)</span></div>
+                        <div class="status-row-val">{active_val} <span>({f"{p_active:.1f}%".replace(".", ",")})</span></div>
                     </div>
                     <div class="status-row-progress-bg">
                         <div class="status-row-progress-fill" style="width: {p_active}%; background-color: #10B981;"></div>
@@ -2553,7 +2560,7 @@ def render_lease_contract():
                 <div class="status-row">
                     <div class="status-row-header">
                         <div class="status-row-label-row"><span class="status-row-icon expiring">&#9888;</span>Expiring Soon</div>
-                        <div class="status-row-val">{expiring_val} <span>({p_expiring:.1f}%)</span></div>
+                        <div class="status-row-val">{expiring_val} <span>({f"{p_expiring:.1f}%".replace(".", ",")})</span></div>
                     </div>
                     <div class="status-row-progress-bg">
                         <div class="status-row-progress-fill" style="width: {p_expiring}%; background-color: #F59E0B;"></div>
@@ -2562,7 +2569,7 @@ def render_lease_contract():
                 <div class="status-row">
                     <div class="status-row-header">
                         <div class="status-row-label-row"><span class="status-row-icon expired">&#10007;</span>Expired</div>
-                        <div class="status-row-val">{expired_val} <span>({p_expired:.1f}%)</span></div>
+                        <div class="status-row-val">{expired_val} <span>({f"{p_expired:.1f}%".replace(".", ",")})</span></div>
                     </div>
                     <div class="status-row-progress-bg">
                         <div class="status-row-progress-fill" style="width: {p_expired}%; background-color: #EF4444;"></div>
@@ -2576,7 +2583,7 @@ def render_lease_contract():
             html_status_score = f"""
             <div class="status-score-section">
                 <span class="status-score-title">Portfolio Health Score</span>
-                <span class="status-score-val">{p_active:.1f}%</span>
+                <span class="status-score-val">{f"{p_active:.1f}%".replace(".", ",")}</span>
                 <span class="status-score-desc">Active rate &middot; Target: 90%</span>
             </div>
             """
@@ -2658,7 +2665,7 @@ def render_lease_contract():
     crit_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] <= 30)]
     for _, r in crit_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "31 Jan 2025"
-        val_m = f"Rp {2.0 + (r['No'] % 10) * 0.9:.1f}M"
+        val_m = f"Rp {2.0 + (r['No'] % 10) * 0.9:.1f}M".replace(".", ",")
         dynamic_critical.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Critical"
@@ -2669,7 +2676,7 @@ def render_lease_contract():
     exp_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] > 30) & (df_all["Sisa"] <= 90)]
     for _, r in exp_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "01 Mar 2025"
-        val_m = f"Rp {4.0 + (r['No'] % 10) * 1.2:.1f}M"
+        val_m = f"Rp {4.0 + (r['No'] % 10) * 1.2:.1f}M".replace(".", ",")
         dynamic_expiring.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Expiring Soon"
@@ -2681,7 +2688,7 @@ def render_lease_contract():
     app_df = df_all[(df_all["Status"] == "Valid") & (df_all["Sisa"] > 90)].sort_values(by="Sisa")
     for _, r in app_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "02 May 2025"
-        val_m = f"Rp {2.0 + (r['No'] % 5) * 1.5:.1f}M"
+        val_m = f"Rp {2.0 + (r['No'] % 5) * 1.5:.1f}M".replace(".", ",")
         dynamic_approaching.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Approaching"
