@@ -2267,6 +2267,7 @@ def _render_ketentuan_import(validation: dict[str, bool] | None = None):
 
 def _render_import_history_refined():
     data = UPLOAD_HISTORY_DATA
+
     per_page = 7
     total = len(data)
     total_pages = max(1, (total + per_page - 1) // per_page)
