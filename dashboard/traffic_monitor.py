@@ -89,7 +89,7 @@ def _aggregate_metrics(terminal_filter="All Terminal"):
 
 
 def _fmt_millions(value):
-    return f"{value:.1f}M"
+    return f"{value:.1f}Jt"
 
 
 
@@ -587,6 +587,8 @@ def _inject_tm_css():
     }}
     /* ── Filter bar v2 ──────────────────────────────────────────── */
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) {{
+        display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
         justify-content: flex-start !important;
         gap: 16px !important;
@@ -599,34 +601,24 @@ def _inject_tm_css():
         box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
         flex-wrap: nowrap !important;
         width: fit-content !important;
-        padding-top: 0 !important;
     }}
-    /* Label column: collapse to content width, don't stretch */
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:first-child {{
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }}
-    /* Selectbox & button columns: also auto-width */
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:not(:first-child) {{
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }}
-    /* Strip all default Streamlit spacing inside the filter bar */
-    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stElementContainer"],
-    body:has(.tm-page-marker) [data-testid="stElementContainer"]:has(.tm-filter-v2-label) {{
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-    /* Flex-center the wrappers containing the label */
-    body:has(.tm-page-marker) [data-testid="stVerticalBlock"]:has(.tm-filter-v2-label),
-    body:has(.tm-page-marker) [data-testid="stMarkdownContainer"]:has(.tm-filter-v2-label) {{
+    /* Center columns vertically and remove default Streamlit paddings/margins */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div {{
         display: flex !important;
         align-items: center !important;
-        margin: 0 !important;
+        justify-content: center !important;
         padding: 0 !important;
+        margin: 0 !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
     }}
+    /* Keep the separator on Filter Aktif from causing alignment issues */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:first-child {{
+        display: flex !important;
+        align-items: center !important;
+    }}
+    /* Separator after "Filter Aktif" has the same height as the area filter and does not push alignment */
     body:has(.tm-page-marker) .tm-filter-v2-label {{
         display: flex; align-items: center; gap: 7px;
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
@@ -634,6 +626,51 @@ def _inject_tm_css():
         font-size: 13px; font-weight: 700; color: #475569;
         font-family: {TM_FONT} !important;
         height: 38px !important;
+        box-sizing: border-box !important;
+    }}
+    /* Spacing of 24px between the last dropdown (Month, 4th child) and Clear All (5th child) */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div:nth-child(5) {{
+        margin-left: 8px !important;
+    }}
+    /* Perfect horizontal and vertical centering for all components in the capsule */
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stVerticalBlock"] {{
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stElementContainer"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 180px !important;
+        flex-shrink: 0 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stButton"] {{
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stMarkdownContainer"] {{
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }}
     body:has(.tm-page-marker) .tm-filter-v2-badge {{
         display: inline-flex; align-items: center; gap: 4px;
@@ -647,21 +684,21 @@ def _inject_tm_css():
         width: 6px; height: 6px; border-radius: 50%;
         background: #16A34A; display: inline-block; flex-shrink: 0;
     }}
-    /* Selectboxes inside filter bar → chip style */
+    /* Selectboxes inside filter bar → chip style with 180px width */
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] {{
         margin: 0 !important;
-        width: 165px !important;
+        width: 180px !important;
         flex-shrink: 0 !important;
     }}
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {{
-        width: 165px !important;
+        width: 180px !important;
     }}
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {{
         border-radius: 12px !important;
         background: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
         min-height: 38px !important; height: 38px !important;
-        width: 165px !important;
+        width: 180px !important;
         padding: 0 12px 0 16px !important;
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
@@ -687,6 +724,7 @@ def _inject_tm_css():
         font-family: {TM_FONT} !important; white-space: nowrap !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
+        margin: 0 !important;
     }}
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) [data-testid="baseButton-secondary"]:hover {{
         border-color: #6366F1 !important;
@@ -1164,7 +1202,7 @@ def page_traffic_monitor():
             '<div class="tm-mini-metrics">'
             + _mini_metric_box("FY 2024", _fmt_millions(metrics["total"]), accent="#7C3AED")
             + _mini_metric_box("FY 2023", _fmt_millions(metrics["prior_total"]), accent="#94A3B8")
-            + _mini_metric_box("Peak Month", f"{peak_month} · {peak_value:.1f}M", accent="#2563EB")
+            + _mini_metric_box("Peak Month", f"{peak_month} · {peak_value:.1f}Jt", accent="#2563EB")
             + _mini_metric_box("Growth", f"+{metrics['yoy']:.1f}%", accent="#059669")
             + "</div>",
             unsafe_allow_html=True,
@@ -1176,7 +1214,7 @@ def page_traffic_monitor():
         st.markdown('<div class="ed-card-marker tm-split-card"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Domestic vs International",
-            "Monthly split — FY 2024 (Millions) · Terminal 1 & 2",
+            "Monthly split — FY 2024 (Juta) · Terminal 1 & 2",
         ), unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(2,minmax(0,1fr));">'
@@ -1229,7 +1267,7 @@ def page_traffic_monitor():
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Traffic by Terminal",
-            "Annual passengers (Millions) — FY 2024",
+            "Annual passengers (Juta) — FY 2024",
         ), unsafe_allow_html=True)
         cards = []
         all_metrics = _aggregate_metrics("All Terminal")

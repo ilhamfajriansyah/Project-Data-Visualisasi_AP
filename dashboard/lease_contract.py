@@ -198,29 +198,29 @@ CONTRACT_TYPES = {
 
 # Critical Contracts (Expires within 30 days)
 CRITICAL_CONTRACTS = [
-    {"tenant": "7-Eleven", "terminal": "T1", "type": "Revenue Sharing", "end_date": "31 Jan 2025", "remaining": "16d", "value": "Rp 2.8B", "status": "Critical"},
-    {"tenant": "Sari Roti", "terminal": "T2", "type": "Revenue Sharing", "end_date": "14 Feb 2025", "remaining": "30d", "value": "Rp 3.7B", "status": "Critical"}
+    {"tenant": "7-Eleven", "terminal": "T1", "type": "Revenue Sharing", "end_date": "31 Jan 2025", "remaining": "16d", "value": "Rp 2.8M", "status": "Critical"},
+    {"tenant": "Sari Roti", "terminal": "T2", "type": "Revenue Sharing", "end_date": "14 Feb 2025", "remaining": "30d", "value": "Rp 3.7M", "status": "Critical"}
 ]
 
 # Expiring Soon (31 - 90 days)
 EXPIRING_SOON_CONTRACTS = [
-    {"tenant": "KFC", "terminal": "T3", "type": "Revenue Sharing", "end_date": "01 Mar 2025", "remaining": "44d", "value": "Rp 4.2B", "status": "Expiring Soon"},
-    {"tenant": "Timezone", "terminal": "T1", "type": "Rental", "end_date": "02 Apr 2025", "remaining": "75d", "value": "Rp 7.3B", "status": "Expiring Soon"},
-    {"tenant": "Lion Lounge", "terminal": "T1", "type": "MGRS", "end_date": "16 Apr 2025", "remaining": "89d", "value": "Rp 10.2B", "status": "Expiring Soon"}
+    {"tenant": "KFC", "terminal": "T3", "type": "Revenue Sharing", "end_date": "01 Mar 2025", "remaining": "44d", "value": "Rp 4.2M", "status": "Expiring Soon"},
+    {"tenant": "Timezone", "terminal": "T1", "type": "Rental", "end_date": "02 Apr 2025", "remaining": "75d", "value": "Rp 7.3M", "status": "Expiring Soon"},
+    {"tenant": "Lion Lounge", "terminal": "T1", "type": "MGRS", "end_date": "16 Apr 2025", "remaining": "89d", "value": "Rp 10.2M", "status": "Expiring Soon"}
 ]
 
 # Approaching Renewal (91+ days)
 APPROACHING_RENEWAL_CONTRACTS = [
-    {"tenant": "Burger King", "terminal": "T2", "type": "Rental", "end_date": "02 May 2025", "remaining": "105d", "value": "Rp 5.5B", "status": "Approaching"},
-    {"tenant": "Mie Ayam 99", "terminal": "T3", "type": "Revenue Sharing", "end_date": "02 Jun 2025", "remaining": "136d", "value": "Rp 2.2B", "status": "Approaching"},
-    {"tenant": "Gramedia", "terminal": "T1", "type": "MGRS", "end_date": "02 Jul 2025", "remaining": "166d", "value": "Rp 6.8B", "status": "Approaching"}
+    {"tenant": "Burger King", "terminal": "T2", "type": "Rental", "end_date": "02 May 2025", "remaining": "105d", "value": "Rp 5.5M", "status": "Approaching"},
+    {"tenant": "Mie Ayam 99", "terminal": "T3", "type": "Revenue Sharing", "end_date": "02 Jun 2025", "remaining": "136d", "value": "Rp 2.2M", "status": "Approaching"},
+    {"tenant": "Gramedia", "terminal": "T1", "type": "MGRS", "end_date": "02 Jul 2025", "remaining": "166d", "value": "Rp 6.8M", "status": "Approaching"}
 ]
 
 # Sidebar Pipeline Data
 RENEWAL_PIPELINE = [
-    {"tenant": "DFS Indonesia", "value": "Rp 42.7B", "status": "Low"},
-    {"tenant": "Garuda Exec", "value": "Rp 14.8B", "status": "Low"},
-    {"tenant": "Gramedia", "value": "Rp 6.8B", "status": "Medium"}
+    {"tenant": "DFS Indonesia", "value": "Rp 42.7M", "status": "Low"},
+    {"tenant": "Garuda Exec", "value": "Rp 14.8M", "status": "Low"},
+    {"tenant": "Gramedia", "value": "Rp 6.8M", "status": "Medium"}
 ]
 
 
@@ -244,7 +244,6 @@ body:has(.lc-page-marker) .stApp {
    filter row) — keeps it compact/close to the header. */
 body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) {
     margin-top: -28px !important;
-    padding-top: 0 !important;
 }
 
 body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
@@ -1702,8 +1701,8 @@ def _init_state():
 
     # Filter states initialization
     if "f_terminal"     not in st.session_state: st.session_state.f_terminal     = "All Terminal"
-    if "f_year"         not in st.session_state: st.session_state.f_year         = "All Year"
-    if "f_month"        not in st.session_state: st.session_state.f_month        = "All Month"
+    if "f_tahun"        not in st.session_state: st.session_state.f_tahun        = "All Year"
+    if "f_masa"         not in st.session_state: st.session_state.f_masa         = "All Month"
     if "lc_filtered_df" not in st.session_state: st.session_state.lc_filtered_df = st.session_state.lc_df
 
     # "Show more" toggles for the Contracts Expiring Soon cards
@@ -1977,8 +1976,8 @@ def _render_add_form():
 # ──────────────────────────────────────────────────────────────────────────────
 def clear_lc_filters():
     st.session_state.f_terminal = "All Terminal"
-    st.session_state.f_year = "All Year"
-    st.session_state.f_month = "All Month"
+    st.session_state.f_tahun = "All Year"
+    st.session_state.f_masa = "All Month"
     st.session_state.lc_filtered_df = st.session_state.lc_df
 
 
@@ -2004,8 +2003,8 @@ def _lc_filter_bar_v2_html(active_count: int) -> str:
 
 def _lc_filter_chip_state_css() -> str:
     """Inject per-chip color based on whether the filter is at its default value."""
-    _DEFAULTS = {"f_terminal": "All Terminal", "f_year": "All Year", "f_month": "All Month"}
-    _NTH = {"f_terminal": 2, "f_year": 3, "f_month": 4}
+    _DEFAULTS = {"f_terminal": "All Terminal", "f_tahun": "All Year", "f_masa": "All Month"}
+    _NTH = {"f_terminal": 2, "f_tahun": 3, "f_masa": 4}
 
     rules = []
     for key, default in _DEFAULTS.items():
@@ -2032,6 +2031,8 @@ def _get_lc_extra_css():
     <style>
     /* ── Filter bar v2 ──────────────────────────────────────────── */
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) {
+        display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
         justify-content: flex-start !important;
         gap: 16px !important;
@@ -2044,39 +2045,84 @@ def _get_lc_extra_css():
         box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
         flex-wrap: nowrap !important;
         width: fit-content !important;
-        padding-top: 0 !important;
     }
     body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
         margin-top: -4px !important;
     }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:first-child {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:not(:first-child) {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stElementContainer"],
-    body:has(.lc-page-marker) [data-testid="stElementContainer"]:has(.lc-filter-v2-label) {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stVerticalBlock"]:has(.lc-filter-v2-label),
-    body:has(.lc-page-marker) [data-testid="stMarkdownContainer"]:has(.lc-filter-v2-label) {
+    /* Center columns vertically and remove default Streamlit paddings/margins */
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div {
         display: flex !important;
         align-items: center !important;
-        margin: 0 !important;
+        justify-content: center !important;
         padding: 0 !important;
+        margin: 0 !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 38px !important;
     }
+    /* Keep the separator on Filter Aktif from causing alignment issues */
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:first-child {
+        display: flex !important;
+        align-items: center !important;
+    }
+    /* Separator after "Filter Aktif" has the same height as the area filter and does not push alignment */
     body:has(.lc-page-marker) .lc-filter-v2-label {
         display: flex; align-items: center; gap: 7px;
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
         font-size: 13px; font-weight: 700; color: #475569;
         font-family: Poppins, sans-serif !important;
+        height: 38px !important;
+        box-sizing: border-box !important;
+    }
+    /* Spacing of 24px between the last dropdown (Month, 4th child) and Clear All (5th child) */
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:nth-child(5) {
+        margin-left: 8px !important;
+    }
+    /* Perfect horizontal and vertical centering for all components in the capsule */
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stVerticalBlock"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        height: 38px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stElementContainer"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 180px !important;
+        height: 38px !important;
+        flex-shrink: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stButton"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stMarkdownContainer"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
         height: 38px !important;
     }
     body:has(.lc-page-marker) .lc-filter-v2-badge {
@@ -2091,20 +2137,43 @@ def _get_lc_extra_css():
         width: 6px; height: 6px; border-radius: 50%;
         background: #16A34A; display: inline-block; flex-shrink: 0;
     }
+    /* Override generic selectbox rules for filter bar selectboxes to match Revenue Sharing layout */
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div > div {
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 180px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] div[data-baseweb="select"] {
+        width: 180px !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        gap: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        height: 38px !important;
+        line-height: 38px !important;
+    }
+    /* Selectboxes inside filter bar → chip style with 180px width */
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] {
         margin: 0 !important;
-        width: 165px !important;
+        width: 180px !important;
         flex-shrink: 0 !important;
     }
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {
-        width: 165px !important;
+        width: 180px !important;
     }
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {
         border-radius: 12px !important;
         background: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
         min-height: 38px !important; height: 38px !important;
-        width: 165px !important;
+        width: 180px !important;
         padding: 0 12px 0 16px !important;
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
@@ -2114,12 +2183,17 @@ def _get_lc_extra_css():
     }
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
         fill: #CBD5E1 !important;
+        opacity: 1 !important;
+        color: #CBD5E1 !important;
+        width: 14px !important;
+        height: 14px !important;
         flex-shrink: 0 !important;
     }
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {
         border-color: #6366F1 !important;
         background: #ffffff !important;
     }
+    /* Clear All Button */
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="baseButton-secondary"] {
         border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
         background: #ffffff !important; color: #475569 !important;
@@ -2129,6 +2203,7 @@ def _get_lc_extra_css():
         font-family: Poppins, sans-serif !important; white-space: nowrap !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
+        margin: 0 !important;
     }
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="baseButton-secondary"]:hover {
         border-color: #6366F1 !important;
@@ -2154,11 +2229,11 @@ def render_lease_contract():
         sel_term_code = term_map.get(sel_term, sel_term)
         df_filt = df_filt[df_filt["Terminal"] == sel_term_code]
         
-    sel_year = st.session_state.get("f_year", "All Year")
+    sel_year = st.session_state.get("f_tahun", "All Year")
     if sel_year != "All Year" and not df_filt.empty:
-        df_filt = df_filt[df_filt["Valid Period"].apply(lambda x: x.split(" - ")[1].endswith(sel_year) if " - " in x else False)]
+        df_filt = df_filt[df_filt["Valid Period"].apply(lambda x: x.split(" - ")[1].endswith(str(sel_year)) if " - " in x else False)]
         
-    sel_month = st.session_state.get("f_month", "All Month")
+    sel_month = st.session_state.get("f_masa", "All Month")
     if sel_month != "All Month" and not df_filt.empty:
         month_map = {
             "January": "Jan", "February": "Feb", "March": "Mar", "April": "Apr",
@@ -2173,8 +2248,8 @@ def render_lease_contract():
 
     active_count = sum([
         st.session_state.get("f_terminal", "All Terminal") != "All Terminal",
-        st.session_state.get("f_year", "All Year") != "All Year",
-        st.session_state.get("f_month", "All Month") != "All Month",
+        st.session_state.get("f_tahun", "All Year") != "All Year",
+        st.session_state.get("f_masa", "All Month") != "All Month",
     ])
 
     st.markdown(_PAGE_CSS + '<div class="overview-page-marker lc-page-marker"></div>', unsafe_allow_html=True)
@@ -2195,9 +2270,9 @@ def render_lease_contract():
     with ff1:
         st.selectbox("Terminal", ["All Terminal", "Terminal 1", "Terminal 2"], key="f_terminal", label_visibility="collapsed")
     with ff2:
-        st.selectbox("Tahun", ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"], key="f_year", label_visibility="collapsed")
+        st.selectbox("Tahun", ["All Year", 2030, 2029, 2028, 2027, 2026, 2025, 2024, 2023], key="f_tahun", label_visibility="collapsed")
     with ff3:
-        st.selectbox("Bulan", ["All Month", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], key="f_month", label_visibility="collapsed")
+        st.selectbox("Bulan", ["All Month", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], key="f_masa", label_visibility="collapsed")
     with ff4:
         st.button("Clear All", key="lc_btn_reset", use_container_width=True, on_click=clear_lc_filters)
 
@@ -2579,7 +2654,7 @@ def render_lease_contract():
     crit_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] <= 30)]
     for _, r in crit_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "31 Jan 2025"
-        val_m = f"Rp {2.0 + (r['No'] % 10) * 0.9:.1f}B"
+        val_m = f"Rp {2.0 + (r['No'] % 10) * 0.9:.1f}M"
         dynamic_critical.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Critical"
@@ -2590,7 +2665,7 @@ def render_lease_contract():
     exp_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] > 30) & (df_all["Sisa"] <= 90)]
     for _, r in exp_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "01 Mar 2025"
-        val_m = f"Rp {4.0 + (r['No'] % 10) * 1.2:.1f}B"
+        val_m = f"Rp {4.0 + (r['No'] % 10) * 1.2:.1f}M"
         dynamic_expiring.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Expiring Soon"
@@ -2602,7 +2677,7 @@ def render_lease_contract():
     app_df = df_all[(df_all["Status"] == "Valid") & (df_all["Sisa"] > 90)].sort_values(by="Sisa")
     for _, r in app_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "02 May 2025"
-        val_m = f"Rp {2.0 + (r['No'] % 5) * 1.5:.1f}B"
+        val_m = f"Rp {2.0 + (r['No'] % 5) * 1.5:.1f}M"
         dynamic_approaching.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Approaching"

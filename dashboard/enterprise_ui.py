@@ -15,9 +15,9 @@ def fmt_rp_compact(value):
     if value >= 1_000_000_000_000:
         return f"Rp {value / 1_000_000_000_000:.2f}T"
     if value >= 1_000_000_000:
-        return f"Rp {value / 1_000_000_000:.2f}B"
+        return f"Rp {value / 1_000_000_000:.2f}M"
     if value >= 1_000_000:
-        return f"Rp {value / 1_000_000:.2f}M"
+        return f"Rp {value / 1_000_000:.2f}Jt"
     return f"Rp {value:,.0f}"
 
 

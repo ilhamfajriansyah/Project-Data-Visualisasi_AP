@@ -161,9 +161,9 @@ RS_SETTLEMENT_FILTER_OPTIONS = ["All", "Settled", "Pending", "Failed", "Conflict
 def get_services_data():
     return pd.DataFrame({
         "Service/SBU":      ["Ground Handling", "PSC", "VIP Services", "Commercial Area", "Cargo Area", "Parking Area", "Ground Handling Services"],
-        "Gross Revenue":    ["Rp 12.1B", "Rp 6.4B", "Rp 4.2B", "Rp 3.9B", "Rp 12.1B", "Rp 12.1B", "Rp 12.1B"],
+        "Gross Revenue":    ["Rp 12.1M", "Rp 6.4M", "Rp 4.2M", "Rp 3.9M", "Rp 12.1M", "Rp 12.1M", "Rp 12.1M"],
         "SBU Share Rule %": ["70%", "100%", "65%", "50%", "70%", "70%", "70%"],
-        "Management Share": ["Rp 8.47B", "Rp 6.4B", "Rp 2.73B", "Rp 1.95B", "Rp 8.47B", "Rp 8.47B", "Rp 8.47B"],
+        "Management Share": ["Rp 8.47M", "Rp 6.4M", "Rp 2.73M", "Rp 1.95M", "Rp 8.47M", "Rp 8.47M", "Rp 8.47M"],
         "Status":           ["SUCCESS", "SUCCESS", "CONFLICT", "CONFLICT", "FAILED", "FAILED", "FAILED"],
     })
 
@@ -174,7 +174,7 @@ def get_transaction_data():
         "Revenue/SBU":    ["Ground Handling"] * 7,
         "Type":           ["Revenue"] * 7,
         "Date":           ["12 Jun 2026"] * 7,
-        "Amount":         ["Rp 12.1B"] * 7,
+        "Amount":         ["Rp 12.1M"] * 7,
         "Status":         ["SUCCESS"] * 7,
     })
 
@@ -272,10 +272,10 @@ def get_detail_revenue_sharing_data():
 def _parse_rp(text):
     raw = str(text).replace("Rp", "").strip().replace(",", "")
     mult = 1.0
-    if raw.endswith("B"):
+    if raw.endswith("M") or raw.endswith("B"):
         mult = 1_000_000_000
         raw = raw[:-1]
-    elif raw.endswith("M"):
+    elif raw.endswith("Jt"):
         mult = 1_000_000
         raw = raw[:-1]
     elif raw.endswith("T"):
@@ -290,9 +290,9 @@ def _fmt_rp_compact(value):
     if value >= 1_000_000_000_000:
         return f"Rp {value / 1_000_000_000_000:.2f}T"
     if value >= 1_000_000_000:
-        return f"Rp {value / 1_000_000_000:.2f}B"
+        return f"Rp {value / 1_000_000_000:.2f}M"
     if value >= 1_000_000:
-        return f"Rp {value / 1_000_000:.2f}M"
+        return f"Rp {value / 1_000_000:.2f}Jt"
     return f"Rp {value:,.0f}"
 
 
@@ -436,6 +436,8 @@ def _inject_rs_page_css():
     .rs-page-marker { display: none; }
 
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) {
+        display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
         justify-content: flex-start !important;
         gap: 16px !important;
@@ -448,39 +450,84 @@ def _inject_rs_page_css():
         box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
         flex-wrap: nowrap !important;
         width: fit-content !important;
-        padding-top: 0 !important;
     }
     body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-kpi-grid) {
         margin-top: -4px !important;
     }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:first-child {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:not(:first-child) {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stElementContainer"],
-    body:has(.rs-page-marker) [data-testid="stElementContainer"]:has(.rs-filter-v2-label) {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stVerticalBlock"]:has(.rs-filter-v2-label),
-    body:has(.rs-page-marker) [data-testid="stMarkdownContainer"]:has(.rs-filter-v2-label) {
+    /* Center columns vertically and remove default Streamlit paddings/margins */
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div {
         display: flex !important;
         align-items: center !important;
-        margin: 0 !important;
+        justify-content: center !important;
         padding: 0 !important;
+        margin: 0 !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 38px !important;
     }
+    /* Keep the separator on Filter Aktif from causing alignment issues */
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:first-child {
+        display: flex !important;
+        align-items: center !important;
+    }
+    /* Separator after "Filter Aktif" has the same height as the area filter and does not push alignment */
     body:has(.rs-page-marker) .rs-filter-v2-label {
         display: flex; align-items: center; gap: 7px;
         padding-right: 18px; border-right: 1.5px solid #E2E8F0;
         white-space: nowrap; line-height: 1;
         font-size: 13px; font-weight: 700; color: #475569;
         font-family: Poppins, sans-serif !important;
+        height: 38px !important;
+        box-sizing: border-box !important;
+    }
+    /* Spacing of 24px between the last dropdown (Month, 4th child) and Clear All (5th child) */
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:nth-child(5) {
+        margin-left: 8px !important;
+    }
+    /* Perfect horizontal and vertical centering for all components in the capsule */
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stVerticalBlock"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        height: 38px !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stElementContainer"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 180px !important;
+        height: 38px !important;
+        flex-shrink: 0 !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stButton"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 38px !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stMarkdownContainer"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
         height: 38px !important;
     }
     body:has(.rs-page-marker) .rs-filter-v2-badge {
@@ -495,20 +542,21 @@ def _inject_rs_page_css():
         width: 6px; height: 6px; border-radius: 50%;
         background: #16A34A; display: inline-block; flex-shrink: 0;
     }
+    /* Selectboxes inside filter bar → chip style with 180px width */
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] {
         margin: 0 !important;
-        width: 140px !important;
+        width: 180px !important;
         flex-shrink: 0 !important;
     }
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {
-        width: 140px !important;
+        width: 180px !important;
     }
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {
         border-radius: 12px !important;
         background: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
         min-height: 38px !important; height: 38px !important;
-        width: 140px !important;
+        width: 180px !important;
         padding: 0 12px 0 16px !important;
         display: flex !important; align-items: center !important;
         box-sizing: border-box !important;
@@ -524,6 +572,7 @@ def _inject_rs_page_css():
         border-color: #6366F1 !important;
         background: #ffffff !important;
     }
+    /* Clear All Button */
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="baseButton-secondary"] {
         border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
         background: #ffffff !important; color: #475569 !important;
@@ -533,6 +582,7 @@ def _inject_rs_page_css():
         font-family: Poppins, sans-serif !important; white-space: nowrap !important;
         transition: all 0.2s ease !important;
         box-shadow: none !important;
+        margin: 0 !important;
     }
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="baseButton-secondary"]:hover {
         border-color: #6366F1 !important;
@@ -542,7 +592,7 @@ def _inject_rs_page_css():
 
     body:has(.rs-page-marker) .rs-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
         width: 100%;
         margin: 0;
@@ -749,6 +799,55 @@ def _inject_rs_page_css():
         min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
+    }
+    /* Export button on revenue sharing detail table */
+    div[data-testid="stElementContainer"]:has(.rs-btn-export-marker) {
+        position: absolute !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    div[data-testid="stElementContainer"]:has(.rs-btn-export-marker) + div[data-testid="stElementContainer"] button {
+        background: rgba(255, 255, 255, 0.72) !important;
+        border: 1px solid rgba(99, 102, 241, 0.25) !important;
+        color: #4F46E5 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 0 16px !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-testid="stElementContainer"]:has(.rs-btn-export-marker) + div[data-testid="stElementContainer"] button:hover {
+        background: #f5f3ff !important;
+        border-color: rgba(99, 102, 241, 0.45) !important;
+    }
+    div[data-testid="stElementContainer"]:has(.rs-btn-export-marker) + div[data-testid="stElementContainer"] button p {
+        color: #4F46E5 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        font-family: 'Poppins', sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[data-testid="stElementContainer"]:has(.rs-btn-export-marker) + div[data-testid="stElementContainer"] button::before {
+        content: "" !important;
+        display: inline-block !important;
+        width: 14px !important;
+        height: 14px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%234F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>') !important;
+        background-size: contain !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        flex-shrink: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -982,7 +1081,6 @@ def page_revenue_sharing():
         _kpi_grid_html(
             _kpi_card("Total Revenue", _fmt_rp_compact(total_revenue), "5.2%", True, "#2563EB", "Rp"),
             _kpi_card("Revenue Share", _fmt_rp_compact(revenue_share), "3.1%", True, "#7C3AED", "%"),
-            _kpi_ring_card("Settlement Rate", f"{settlement_rate}%", "1.4%", "#059669"),
             _kpi_card("Issues", str(issues), "2 vs May 2026", False, "#DC2626", "!"),
         ),
         unsafe_allow_html=True,
@@ -1015,15 +1113,11 @@ def page_revenue_sharing():
 
     with chart_right:
         st.markdown('<div class="ed-card-marker rs-trend-card"></div>', unsafe_allow_html=True)
-        th1, th2 = st.columns([3.2, 1])
-        with th1:
-            st.markdown(
-                '<p class="ed-section-title">Revenue Trend</p>'
-                '<p class="ed-section-sub">Monthly revenue trend by service category (Rp billion)</p>',
-                unsafe_allow_html=True,
-            )
-        with th2:
-            st.selectbox("Trend period", ["Monthly"], key="rs_trend_period", label_visibility="collapsed")
+        st.markdown(
+            '<p class="ed-section-title">Revenue Trend</p>'
+            '<p class="ed-section-sub">Monthly revenue trend by service category (Rp billion)</p>',
+            unsafe_allow_html=True,
+        )
         st.plotly_chart(
             _trend_figure(get_trend_data(st.session_state.rs_terminal)),
             use_container_width=True,
@@ -1090,6 +1184,7 @@ def page_revenue_sharing():
         export_df = detail_df.drop(columns=["_raw_status"], errors="ignore").copy()
 
         with dex:
+            st.markdown('<div class="rs-btn-export-marker"></div>', unsafe_allow_html=True)
             st.download_button(
                 "Export",
                 data=export_df.to_csv(index=False).encode("utf-8"),

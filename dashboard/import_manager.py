@@ -1310,10 +1310,15 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
     border-color: #cbd5e1;
 }
 .im-pg-btn.active {
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+    background: #fff;
+    color: #1e293b;
+    border-color: #6366f1;
+    box-shadow: 0 0 10px rgba(99,102,241,0.28);
+}
+.im-pg-btn.active:hover {
+    background: #fff;
+    color: #1e293b;
+    border-color: #6366f1;
 }
 .im-pg-btn.disabled {
     opacity: 0.4;
