@@ -985,6 +985,17 @@ def inject_dashboard_css():
         color: #64748B; font-size: 12px; line-height: 1 !important;
         font-weight: 500; font-family: 'Inter', sans-serif !important;
     }
+    /* Beda ukuran judul/sub-judul tiap card di halaman ini, mengikuti
+       kontras yang dipakai pada header halaman (h2.ov-page-title vs
+       p.ov-page-sub). */
+    body:has(.overview-page-marker) .ed-section-title {
+        font-size: 16px !important;
+        font-weight: 800 !important;
+    }
+    body:has(.overview-page-marker) .ed-section-sub {
+        font-size: 11px !important;
+        font-weight: 500 !important;
+    }
     body:has(.overview-page-marker) .ap-top-actions {
         flex-shrink: 0;
     }
@@ -2881,6 +2892,11 @@ def _get_overview_extra_css():
     }}
     body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div:has(.ed-card-marker) {{
         margin-top: -24px !important;
+    }}
+    /* Jarak Vertikal antara KPI Cards baris kedua dengan Revenue Trend dan Alert & Insight */
+    body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.overview-trend-card),
+    body:has(.overview-page-marker) [data-testid="stLayoutWrapper"]:has(.overview-trend-card) {{
+        margin-top: 10px !important;
     }}
     /* Center columns vertically and remove default Streamlit paddings/margins */
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div {{

@@ -17,6 +17,7 @@ from .enterprise_ui import (
     section_title_html,
     table_inner_html,
 )
+from .navigation import topnav_actions_html
 TM_FONT = ED_FONT
 TM_YEAR_OPTIONS = ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"]
 TM_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -141,14 +142,13 @@ def get_terminal_table_df():
         dom_pct = row["domestic"] / total * 100 if total else 0
         intl_pct = row["international"] / total * 100 if total else 0
         share = metrics["shares"][row["name"]]
-        spp_status = "Above target" if row["spp"] >= 90_000 else "Below target"
         rows.append({
             "Terminal": f'{row["code"]} {row["name"]}',
             "Domestic Traffic": f'<div class="tm-cell-stack">{f"{row["domestic"]:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{dom_pct:.0f}% dari terminal</span></div>',
             "International Traffic": f'<div class="tm-cell-stack">{f"{row["international"]:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{intl_pct:.0f}% dari terminal</span></div>',
             "Total Traffic": f'{f"{total:.1f}".replace(".", ",")} Jt',
             "Traffic Share": f"{f"{share:.1f}".replace(".", ",")}%",
-            "Spending Per Pax": f'<div class="tm-cell-stack">{_fmt_rp_k(row["spp"])}<span class="tm-spp-tag {"is-above" if row["spp"] >= 90_000 else "is-below"}">{spp_status}</span></div>',
+            "Spending Per Pax": _fmt_rp_k(row["spp"]),
             "YoY Growth": f'<span class="tm-positive">↑ +{f"{row["yoy"]:.1f}".replace(".", ",")}%</span>',
             "_share": share,
             "_total": total,
@@ -157,14 +157,16 @@ def get_terminal_table_df():
     total_dom = metrics["domestic"]
     total_intl = metrics["international"]
     total_all = metrics["total"]
+    dom_pct_total = total_dom / total_all * 100 if total_all else 0
+    intl_pct_total = total_intl / total_all * 100 if total_all else 0
     rows.append({
-        "Terminal": "TOTAL — Terminal 1 & 2",
-        "Domestic Traffic": f"{total_dom:.1f}".replace(".", ",") + " Jt",
-        "International Traffic": f"{total_intl:.1f}".replace(".", ",") + " Jt",
-        "Total Traffic": f"{total_all:.1f}".replace(".", ",") + " Jt",
-        "Traffic Share": "100%",
-        "Spending Per Pax": _fmt_rp_k(metrics["spp"]),
-        "YoY Growth": f'<span class="tm-positive">↑ +{f"{metrics["yoy"]:.1f}".replace(".", ",")}%</span>',
+        "Terminal": '<div class="tm-cell-stack">TOTAL — Terminal 1 & 2<span class="tm-subcell">Ringkasan Terminal 1 &amp; 2</span></div>',
+        "Domestic Traffic": f'<div class="tm-cell-stack">{f"{total_dom:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{dom_pct_total:.0f}% dari total</span></div>',
+        "International Traffic": f'<div class="tm-cell-stack">{f"{total_intl:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{intl_pct_total:.0f}% dari total</span></div>',
+        "Total Traffic": f'<div class="tm-cell-stack">{f"{total_all:.1f}".replace(".", ",")} Jt<span class="tm-subcell">Total FY2024</span></div>',
+        "Traffic Share": '<div class="tm-cell-stack">100%<span class="tm-subcell">Seluruh terminal</span></div>',
+        "Spending Per Pax": f'<div class="tm-cell-stack">{_fmt_rp_k(metrics["spp"])}<span class="tm-subcell">Rata-rata tertimbang</span></div>',
+        "YoY Growth": f'<div class="tm-cell-stack"><span class="tm-positive">↑ +{f"{metrics["yoy"]:.1f}".replace(".", ",")}%</span><span class="tm-subcell">vs FY2023</span></div>',
         "_share": 100,
         "_total": total_all,
     })
@@ -285,6 +287,7 @@ def _tm_page_header():
                 <p class="tm-page-sub">Monitor passenger traffic and spending performance.</p>
             </div>
         </div>
+        {topnav_actions_html()}
     </div>
     """).strip()
 
@@ -539,6 +542,13 @@ def _inject_tm_css():
     inject_enterprise_page_css("tm-page-marker", extra_css=dedent(f"""
     body:has(.tm-page-marker) .nad-top-divider {{ display: none !important; }}
 
+    /* Container untuk Traffic Insights di Traffic Monitor Page */
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-insights-card):not(
+        :has(div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] .tm-insights-card)
+    ) {{
+        padding-bottom: 35px !important;
+    }}
+
     body:has(.tm-page-marker),
     body:has(.tm-page-marker) .stApp,
     body:has(.tm-page-marker) [data-testid="stAppViewContainer"],
@@ -609,7 +619,8 @@ def _inject_tm_css():
     }}
 
     body:has(.tm-page-marker) .tm-page-header {{
-        display: flex; align-items: center; justify-content: flex-start; gap: 16px;
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        width: 100%;
         margin: 0; padding: 0;
         height: 100%;
     }}
@@ -659,6 +670,9 @@ def _inject_tm_css():
         box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
         flex-wrap: nowrap !important;
         width: fit-content !important;
+    }}
+    body:has(.tm-page-marker) div[data-testid="stLayoutWrapper"]:has(.tm-filter-v2-label) {{
+        margin-top: -30px !important;
     }}
     /* Center columns vertically and remove default Streamlit paddings/margins */
     body:has(.tm-page-marker) [data-testid="stHorizontalBlock"]:has(.tm-filter-v2-label) > div {{
@@ -791,7 +805,11 @@ def _inject_tm_css():
     }}
     body:has(.tm-page-marker) .tm-kpi-grid {{
         display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; width: 100%;
-        margin-top: -4px !important;
+        margin-top: -12px !important;
+    }}
+    body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-kpi-grid),
+    body:has(.tm-page-marker) div[data-testid="stLayoutWrapper"]:has(.tm-kpi-grid) {{
+        margin-top: -12px !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-card {{
         display: flex; flex-direction: column; gap: 6px; min-height: 132px; padding: 14px 16px;
@@ -915,26 +933,75 @@ def _inject_tm_css():
         display: block; font-size: 10px; color: #94A3B8; font-weight: 500; margin-top: 2px;
         font-family: {TM_FONT} !important;
     }}
-    body:has(.tm-page-marker) .tm-spp-tag {{
-        display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px;
-        font-size: 10px; font-weight: 700; font-family: {TM_FONT} !important;
-    }}
-    body:has(.tm-page-marker) .tm-spp-tag.is-above {{
-        background: #DCFCE7; color: #059669;
-    }}
-    body:has(.tm-page-marker) .tm-spp-tag.is-below {{
-        background: #FFEDD5; color: #EA580C;
-    }}
     body:has(.tm-page-marker) .tm-table-wrap .ed-table-scroll {{
-        border: 1px solid #E2E8F0;
+        border: none;
         border-radius: 10px;
         overflow: hidden;
     }}
+    body:has(.tm-page-marker) .tm-table-wrap {{
+        margin-top: 3px;
+    }}
+    body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-export-btn) {{
+        display: flex !important;
+        justify-content: flex-end !important;
+        width: 100% !important;
+    }}
+    body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-export-btn) {{
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+    }}
+    body:has(.tm-page-marker) .tm-export-btn {{
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-left: auto;
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: 1px solid #C7D2FE;
+        background: #EEF2FF;
+        color: #4F46E5;
+        font-size: 13px;
+        font-weight: 700;
+        font-family: {TM_FONT} !important;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }}
+    body:has(.tm-page-marker) .tm-export-btn svg {{
+        width: 14px; height: 14px; flex-shrink: 0;
+    }}
+    body:has(.tm-page-marker) .tm-export-btn:hover {{
+        background: #E0E7FF;
+        border-color: #A5B4FC;
+    }}
     body:has(.tm-page-marker) .tm-table-wrap .ed-table tbody tr:last-child {{
-        background: #F8FAFC; font-weight: 700;
+        background: #F1F5F9;
+    }}
+    body:has(.tm-page-marker) .tm-table-wrap .ed-table tbody tr:last-child td {{
+        border-top: 2px solid #94A3B8 !important;
+        color: #0F172A;
+        font-weight: 800;
+    }}
+    body:has(.tm-page-marker) .tm-table-wrap .ed-table tbody tr:last-child .tm-subcell {{
+        font-weight: 500;
+        color: #64748B;
+    }}
+    /* Beda ukuran judul/sub-judul tiap card di halaman ini, mengikuti
+       kontras yang dipakai pada header halaman (h2.tm-page-title vs
+       p.tm-page-sub). */
+    body:has(.tm-page-marker) .ed-section-title {{
+        font-size: 16px !important;
+        font-weight: 800 !important;
+    }}
+    body:has(.tm-page-marker) .ed-section-sub {{
+        font-size: 11px !important;
+        font-weight: 500 !important;
     }}
     body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-insights-card),
-    body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-performance-card) {{
+    body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-performance-card),
+    body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-trend-card),
+    body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-split-card) {{
         padding: 18px 20px !important;
     }}
 
@@ -1302,7 +1369,7 @@ def page_traffic_monitor():
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:11px'></div>", unsafe_allow_html=True)
 
     row2_a, row2_b, row2_c = st.columns([1.15, 1.05, 0.95], gap="small")
     spp_avg = spp_df["SPP"].mean()
@@ -1434,7 +1501,18 @@ def page_traffic_monitor():
                 "Annual traffic and spending summary — FY 2024 · Terminal 1 & Terminal 2",
             ), unsafe_allow_html=True)
         with th2:
-            st.markdown('<div class="ed-card-action">Export</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<button class="tm-export-btn" type="button">'
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+                'stroke-linecap="round" stroke-linejoin="round">'
+                '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>'
+                '<polyline points="17 8 12 3 7 8"></polyline>'
+                '<line x1="12" y1="3" x2="12" y2="15"></line>'
+                '</svg>'
+                '<span>Export</span>'
+                '</button>',
+                unsafe_allow_html=True,
+            )
         st.markdown(
             f'<div class="tm-table-wrap">{table_inner_html(display_df, col_align=col_align)}</div>',
             unsafe_allow_html=True,

@@ -243,11 +243,12 @@ body:has(.lc-page-marker) .stApp {
     background: #F8FAFC !important;
 }
 
-/* Pull the filters row up to close the default Streamlit gap left after
-   the fixed header's spacer (mirrors the same fix used on Overview's
-   filter row) — keeps it compact/close to the header. */
+/* Jarak vertikal Filter Bar dan Header */
 body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) {
-    margin-top: -28px !important;
+    margin-top: -15px !important;
+}
+body:has(.lc-page-marker) div[data-testid="stLayoutWrapper"]:has(.lc-filter-v2-label) {
+    margin-top: -15px !important;
 }
 
 body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
@@ -2232,8 +2233,14 @@ def _get_lc_extra_css():
         flex-wrap: nowrap !important;
         width: fit-content !important;
     }
+    body:has(.lc-page-marker) div[data-testid="stLayoutWrapper"]:has(.lc-filter-v2-label) {
+        margin-top: -36px !important;
+    }
     body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
         margin-top: -24px !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stLayoutWrapper"]:has(.kpi-card-new) {
+        margin-top: -28px !important;
     }
     body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-vertical-spacer) {
         margin-top: 0px !important;

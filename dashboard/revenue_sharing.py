@@ -87,6 +87,40 @@ RS_TERMINAL_OPTIONS = ["All Terminal", "T1", "T2", "T3"]
 RS_PERIOD_OPTIONS = ["June 2026", "May 2026", "April 2026"]
 RS_DONUT_COLORS = ["#6366F1", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#64748B"]
 
+# Fixed icon + color per service, so the donut slice, table row icon, and
+# contribution pill always match regardless of row/sort order.
+RS_SERVICE_ICON_PATHS = {
+    "package": '<path d="m7.5 4.27 9 5.15"></path><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path>',
+    "shopping-bag": '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path>',
+    "briefcase": '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path><rect width="20" height="14" x="2" y="6" rx="2"></rect>',
+    "user": '<circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path>',
+    "shield": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>',
+    "car": '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle>',
+    "star": '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
+    "calendar": '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>',
+    "pie-chart": '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>',
+    "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>',
+}
+
+RS_SERVICE_VISUAL = {
+    "Cargo Area":                ("package", "#8B5CF6"),
+    "Commercial Area":           ("shopping-bag", "#06B6D4"),
+    "Ground Handling":           ("briefcase", "#6366F1"),
+    "Ground Handling Services":  ("user", "#F59E0B"),
+    "PSC":                       ("shield", "#10B981"),
+    "Parking Area":              ("car", "#EC4899"),
+    "VIP Services":              ("star", "#64748B"),
+}
+
+
+def _rs_service_icon_svg(icon_key: str) -> str:
+    paths = RS_SERVICE_ICON_PATHS.get(icon_key, "")
+    return (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'{paths}</svg>'
+    )
+
 
 def clear_rs_filters():
     st.session_state.rs_year = "All Year"
@@ -482,6 +516,16 @@ def _inject_rs_page_css():
     <style>
     .rs-page-marker { display: none; }
 
+    /* Moderate gap between header and filter bar on this page — less than
+       the shared 93px spacer (felt too far), but more than 50px (felt
+       like it collided with the header). */
+    body:has(.rs-page-marker) .ov-fixed-header-spacer,
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.ov-fixed-header-spacer) {
+        height: 71px !important;
+        min-height: 71px !important;
+        max-height: 71px !important;
+    }
+
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) {
         display: flex !important;
         flex-direction: row !important;
@@ -499,12 +543,25 @@ def _inject_rs_page_css():
         width: fit-content !important;
     }
     body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)),
-    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)) {
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)),
+    body:has(.rs-page-marker) div[data-testid="stLayoutWrapper"]:has(.rs-filter-v2-label) {
         margin-top: -36px !important;
     }
-    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)) ~ div[data-testid="stElementContainer"]:has(.rs-kpi-grid),
-    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)) ~ div[data-testid="stElementContainer"]:has(.rs-kpi-grid) {
-        margin-top: -10px !important;
+    /* Jarak antara Filter dan KPI Grid di Revenue Sharing Page */
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-kpi-grid),
+    body:has(.rs-page-marker) div[data-testid="stLayoutWrapper"]:has(.rs-kpi-grid) {
+        margin-top: -25px !important;
+    }
+    /* Jarak Vertikal antara KPI Grid dan Donut Card di Revenue Sharing Page */
+    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-donut-card),
+    body:has(.rs-page-marker) [data-testid="stLayoutWrapper"]:has(.rs-donut-card) {
+        margin-top: 10px !important;
+    }
+    /* Container untuk Revenue Alerts di Revenue Sharing Page */
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rs-alerts-card):not(
+        :has(div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] .rs-alerts-card)
+    ) {
+        padding-bottom: 35px !important;
     }
     body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer),
     body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) {
@@ -805,27 +862,116 @@ def _inject_rs_page_css():
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
+        gap: 8px;
         font-size: 11.5px;
         color: #475569;
         font-family: Inter, sans-serif !important;
+        padding: 5px 0;
+        border-bottom: 1px solid #F1F5F9;
+    }
+    .rs-legend-row:last-child {
+        border-bottom: none;
     }
     .rs-legend-left {
         display: flex;
         align-items: center;
         gap: 8px;
         min-width: 0;
+        flex: 1 1 auto;
     }
-    .rs-legend-dot {
-        width: 8px;
-        height: 8px;
+    .rs-legend-icon {
+        width: 22px;
+        height: 22px;
         border-radius: 999px;
-        flex: 0 0 8px;
+        flex: 0 0 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    .rs-legend-value {
+    .rs-legend-icon svg {
+        width: 12px;
+        height: 12px;
+    }
+    .rs-legend-name {
+        color: #1E293B;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .rs-legend-revenue {
         color: #0F172A;
         font-weight: 700;
         white-space: nowrap;
+        flex: 0 0 auto;
+        text-align: right;
+    }
+    .rs-legend-pct {
+        font-weight: 700;
+        white-space: nowrap;
+        flex: 0 0 auto;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 10.5px;
+        min-width: 42px;
+        text-align: center;
+    }
+    .rs-fy-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 10px;
+        border: 1px solid #E2E8F0;
+        background: #ffffff;
+        color: #475569;
+        font-size: 11.5px;
+        font-weight: 600;
+        font-family: Inter, sans-serif !important;
+        float: right;
+    }
+    .rs-fy-pill svg {
+        width: 13px;
+        height: 13px;
+    }
+    .rs-donut-footnote {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: #F8FAFC;
+        border: 1px solid #F1F5F9;
+    }
+    .rs-donut-footnote-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: #EEF2FF;
+        color: #6366F1;
+        flex: 0 0 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .rs-donut-footnote-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    .rs-donut-footnote-copy p {
+        margin: 0;
+        font-size: 11.5px;
+        color: #1E293B;
+        font-weight: 600;
+        font-family: Inter, sans-serif !important;
+    }
+    .rs-donut-footnote-sub {
+        margin-top: 2px !important;
+        color: #94A3B8 !important;
+        font-weight: 500 !important;
+        font-size: 10.5px !important;
     }
 
     div[data-testid="stHorizontalBlock"]:has(.rs-donut-card):has(.rs-trend-card) {
@@ -843,6 +989,11 @@ def _inject_rs_page_css():
         min-height: 100% !important;
     }
 
+    body:has(.rs-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .rs-detail-filter-marker):not(
+        :has(div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] .rs-detail-filter-marker)
+    ) {
+        padding-top: 8px !important;
+    }
     body:has(.rs-page-marker) div[data-testid="stVerticalBlock"]:has(.rs-detail-filter-marker)
     [data-testid="stSelectbox"] > div > div {
         min-height: 40px !important;
@@ -964,14 +1115,16 @@ def _build_revenue_alerts(services_df):
 def _donut_figure(services_df, total_revenue):
     labels = services_df["Service/SBU"].tolist()
     values = services_df["Gross Revenue"].map(_parse_rp).tolist()
+    colors = [RS_SERVICE_VISUAL.get(lbl, (None, "#94A3B8"))[1] for lbl in labels]
     fig = go.Figure(data=[go.Pie(
         labels=labels,
         values=values,
         hole=0.62,
         sort=False,
         direction="clockwise",
-        marker=dict(colors=RS_DONUT_COLORS[: len(labels)], line=dict(color="#ffffff", width=2)),
-        textinfo="none",
+        marker=dict(colors=colors, line=dict(color="#ffffff", width=2)),
+        textinfo="percent",
+        textfont=dict(size=11, color="#ffffff", family=RS_FONT),
         hovertemplate="%{label}<br>%{value:,.0f}<extra></extra>",
     )])
     fig.update_layout(
@@ -981,7 +1134,7 @@ def _donut_figure(services_df, total_revenue):
         paper_bgcolor="#ffffff",
         showlegend=False,
         annotations=[dict(
-            text=f"<b>{_fmt_rp_compact(total_revenue)}</b><br><span style='font-size:11px;color:#64748B'>Total</span>",
+            text=f"<b style='font-size:20px;'>{_fmt_rp_compact(total_revenue)}</b><br><span style='font-size:11px;color:#64748B'>Total Gross Revenue</span>",
             x=0.5, y=0.5, font=dict(size=14, color="#0F172A", family=RS_FONT), showarrow=False,
         )],
     )
@@ -1031,19 +1184,22 @@ def _trend_figure(df_trend):
 
 
 def _donut_legend_html(services_df, total_revenue):
-    rows = []
     values = services_df["Gross Revenue"].map(_parse_rp)
-    for idx, (_, row) in enumerate(services_df.iterrows()):
-        val = values.iloc[idx]
-        pct = (val / total_revenue * 100) if total_revenue else 0
-        color = RS_DONUT_COLORS[idx % len(RS_DONUT_COLORS)]
+    display_df = services_df.assign(_val=values).sort_values("Service/SBU").reset_index(drop=True)
+
+    rows = []
+    for _, row in display_df.iterrows():
+        name = row["Service/SBU"]
+        pct = (row["_val"] / total_revenue * 100) if total_revenue else 0
+        icon_key, color = RS_SERVICE_VISUAL.get(name, ("package", "#94A3B8"))
         rows.append(
             f'<div class="rs-legend-row">'
             f'<div class="rs-legend-left">'
-            f'<span class="rs-legend-dot" style="background:{color};"></span>'
-            f"<span>{escape(row['Service/SBU'])}</span>"
+            f'<span class="rs-legend-icon" style="background:{color}1A;color:{color};">{_rs_service_icon_svg(icon_key)}</span>'
+            f"<span class=\"rs-legend-name\">{escape(name)}</span>"
             f"</div>"
-            f'<span class="rs-legend-value">{pct:.1f}% · {escape(row["Gross Revenue"])}</span>'
+            f'<span class="rs-legend-revenue">{escape(row["Gross Revenue"])}</span>'
+            f'<span class="rs-legend-pct" style="background:{color}1A;color:{color};">{pct:.1f}%</span>'
             f"</div>"
         )
     return f'<div class="rs-donut-legend">{"".join(rows)}</div>'
@@ -1157,11 +1313,16 @@ def page_revenue_sharing():
     chart_left, chart_right = st.columns([46, 54], gap="small")
     with chart_left:
         st.markdown('<div class="ed-card-marker rs-donut-card"></div>', unsafe_allow_html=True)
-        ch1, _ = st.columns([3.2, 1])
+        ch1, ch2 = st.columns([3.2, 1])
         with ch1:
             st.markdown(
                 '<p class="ed-section-title">Revenue Contribution by Service</p>'
                 '<p class="ed-section-sub">Distribusi gross revenue per layanan / SBU</p>',
+                unsafe_allow_html=True,
+            )
+        with ch2:
+            st.markdown(
+                f'<div class="rs-fy-pill">{_rs_service_icon_svg("calendar")}<span>FY 2024</span></div>',
                 unsafe_allow_html=True,
             )
         chart_slot, legend_slot = st.columns([1.05, 1], gap="small")
@@ -1176,6 +1337,16 @@ def page_revenue_sharing():
                 f'<div class="rs-donut-legend-slot">{_donut_legend_html(services_df, total_revenue)}</div>',
                 unsafe_allow_html=True,
             )
+        st.markdown(
+            '<div class="rs-donut-footnote">'
+            f'<span class="rs-donut-footnote-icon">{_rs_service_icon_svg("bar-chart")}</span>'
+            '<div class="rs-donut-footnote-copy">'
+            f'<p>{len(services_df)} layanan berkontribusi terhadap total gross revenue</p>'
+            '<p class="rs-donut-footnote-sub">Sumber: Data Finance FY 2024</p>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
     with chart_right:
         st.markdown('<div class="ed-card-marker rs-trend-card"></div>', unsafe_allow_html=True)
