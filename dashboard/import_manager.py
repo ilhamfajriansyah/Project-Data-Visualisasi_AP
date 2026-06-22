@@ -13,6 +13,10 @@ from .shared_import import (
     SHARED_DATA_KEY,
     SHARED_META_KEY,
     MAX_IMPORT_FILE_BYTES,
+    normalize_imported_data,
+    read_import_file,
+    get_missing_dashboard_columns,
+    REQUIRED_DASHBOARD_COLUMNS,
 )
 from .navigation import topnav_actions_html
 
@@ -441,6 +445,50 @@ _REFINED_IMPORT_CSS = """
     font-size: 11px;
     font-weight: 800;
 }
+div[data-testid="stVerticalBlock"]:has(.im-upload-shell) {
+    position: relative !important;
+}
+.im-custom-refresh-btn-container {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.im-custom-refresh-btn-container button {
+    background: #eff6ff !important;
+    border: 1px solid rgba(37, 99, 235, 0.18) !important;
+    border-radius: 50% !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05) !important;
+    margin: 0 !important;
+}
+.im-custom-refresh-btn-container button:hover {
+    background: #dbeafe !important;
+    border-color: rgba(37, 99, 235, 0.4) !important;
+    transform: rotate(30deg) !important;
+}
+.im-custom-refresh-btn-container button p {
+    color: #2563eb !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
 
 /* Custom Drag & Drop visual styles */
 .im-dropzone-wrapper {
@@ -572,81 +620,96 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
 
 /* Success State styling */
 .im-success-visual {
-    border: 2px solid rgba(16, 185, 129, 0.2);
-    border-radius: 24px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(240, 253, 244, 0.45));
-    padding: 40px 24px;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.04);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 14px;
-    animation: cardPopIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    border: 1.5px solid rgba(99, 102, 241, 0.20) !important;
+    border-radius: 24px !important;
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    padding: 30px 24px 24px !important;
+    text-align: center !important;
+    box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 14px !important;
+    animation: cardPopIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 .im-success-icon-box {
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    background: #e6fcf5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08);
+    width: 68px !important;
+    height: 68px !important;
+    border-radius: 50% !important;
+    background: rgba(99, 102, 241, 0.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 14px !important;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
 }
 .im-success-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #10b981;
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-    font-size: 20px;
-    font-weight: bold;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #6366F1, #8B5CF6) !important;
+    color: #ffffff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+    font-size: 20px !important;
+    font-weight: bold !important;
 }
 .im-success-title {
-    font-size: 19px;
-    font-weight: 850;
-    color: #059669;
-    margin-bottom: 4px;
+    font-size: 22px !important;
+    font-weight: 850 !important;
+    background: linear-gradient(135deg, #6366F1, #8B5CF6) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    margin-bottom: 4px !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    letter-spacing: -0.5px !important;
 }
 .im-success-subtitle {
-    font-size: 12.5px;
-    color: #64748b;
-    margin-bottom: 24px;
+    font-size: 12px !important;
+    color: #64748b !important;
+    margin-bottom: 20px !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 
 /* Progress bar container and animations */
 .im-progress-bar-container {
-    width: 100%;
-    max-width: 460px;
-    height: 10px;
-    background: #f1f5f9;
-    border-radius: 999px;
-    overflow: hidden;
-    margin-bottom: 24px;
+    width: 100% !important;
+    max-width: 440px !important;
+    height: 6px !important;
+    background: rgba(226, 232, 240, 0.5) !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+    margin-bottom: 20px !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
 }
 @keyframes progressBarWidth {
     0% { width: 0%; }
     100% { width: 100%; }
 }
 @keyframes progressBarColor {
-    0% { background-color: #8b5cf6; } /* purple */
-    45% { background-color: #8b5cf6; }
-    75% { background-color: #eab308; } /* yellow */
-    100% { background-color: #10b981; } /* green */
+    0% { background-color: #2563eb; } /* Blue */
+    45% { background-color: #2563eb; }
+    75% { background-color: #f97316; } /* Orange */
+    100% { background-color: #10b981; } /* Green */
 }
 .im-progress-bar-fill {
-    height: 100%;
-    border-radius: 999px;
+    height: 100% !important;
+    border-radius: 999px !important;
     width: 0%;
-    animation: progressBarWidth 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards,
-               progressBarColor 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    background-color: #2563eb;
+    animation-name: progressBarWidth, progressBarColor !important;
+    animation-duration: 2.5s, 2.5s !important;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1), cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation-fill-mode: forwards, forwards !important;
 }
 
 /* Success details and buttons slide up/fade in */
@@ -681,119 +744,172 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
     }
 }
 .im-success-details {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    animation: successDetailsFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 2.5s both;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    animation: successDetailsFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 2s both !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 
 /* Stats Cards container and cards */
 .im-stats-row {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    width: 100%;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+    flex-wrap: wrap !important;
 }
 .im-stat-card {
-    flex: 1;
-    min-width: 100px;
-    border-radius: 16px;
-    padding: 14px 10px;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-    transition: transform 0.2s;
+    flex: 1 !important;
+    min-width: 90px !important;
+    border-radius: 14px !important;
+    padding: 12px 8px !important;
+    text-align: center !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 .im-stat-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.06) !important;
 }
 /* Purple Stat Card: Records */
 .stat-records {
-    background: #f5f3ff;
-    border: 1px solid #ddd6fe;
+    background: rgba(99, 102, 241, 0.08) !important;
+    border: 1.5px solid rgba(99, 102, 241, 0.30) !important;
 }
 .stat-records .stat-value {
-    color: #6366f1;
+    color: #6366f1 !important;
+    background: linear-gradient(135deg, #6366F1, #4F46E5) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
 }
 /* Green Stat Card: Valid */
 .stat-valid {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
+    background: rgba(16, 185, 129, 0.08) !important;
+    border: 1.5px solid rgba(16, 185, 129, 0.30) !important;
 }
 .stat-valid .stat-value {
-    color: #10b981;
+    color: #10b981 !important;
+    background: linear-gradient(135deg, #10B981, #059669) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
 }
 /* Yellow Stat Card: Warnings */
 .stat-warnings {
-    background: #fefbeb;
-    border: 1px solid #fef08a;
+    background: rgba(245, 158, 11, 0.08) !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.30) !important;
 }
 .stat-warnings .stat-value {
-    color: #d97706;
+    color: #d97706 !important;
+    background: linear-gradient(135deg, #F59E0B, #D97706) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
 }
-/* Green Teal Stat Card: Score */
+/* Teal Stat Card: Score */
 .stat-score {
-    background: #f0fdfa;
-    border: 1px solid #ccfbf1;
+    background: rgba(20, 184, 166, 0.08) !important;
+    border: 1.5px solid rgba(20, 184, 166, 0.30) !important;
 }
 .stat-score .stat-value {
-    color: #14b8a6;
+    color: #14b8a6 !important;
+    background: linear-gradient(135deg, #14B8A6, #0D9488) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
 }
 
 .stat-value {
-    font-size: 19px;
-    font-weight: 800;
-    margin-bottom: 4px;
-    line-height: 1.2;
+    font-size: 22px !important;
+    font-weight: 850 !important;
+    margin-bottom: 2px !important;
+    line-height: 1.2 !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 .stat-label {
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 600;
+    font-size: 11px !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 
-/* Custom Streamlit Buttons override inside success buttons container */
-.im-success-buttons-container {
-    width: 100%;
-    max-width: 380px;
-    margin: 0 auto;
-    animation: successDetailsFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 2.5s both;
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] {
+    max-width: 380px !important;
+    margin: 16px 0 0 0 !important;
+    width: 100% !important;
 }
-.im-success-buttons-container [data-testid="stButton"] button {
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stButton"] button {
     width: 100% !important;
     height: 42px !important;
-    border-radius: 12px !important;
-    font-size: 13px !important;
+    border-radius: 24px !important; /* Pill style matching mockup */
+    font-size: 13.5px !important;
     font-weight: 700 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     transition: all 0.2s ease !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 /* Style for Col 1 button (Upload Another) */
-.im-success-buttons-container [data-testid="column"]:first-child button {
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child button,
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child button {
     background: #ffffff !important;
-    color: #4f46e5 !important;
-    border: 1px solid rgba(99, 102, 241, 0.25) !important;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.05) !important;
+    color: #1e293b !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
-.im-success-buttons-container [data-testid="column"]:first-child button:hover {
-    background: #f5f3ff !important;
-    border-color: rgba(99, 102, 241, 0.4) !important;
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child button::before,
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child button::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='17 8 12 3 7 8'/%3E%3Cline x1='12' y1='3' x2='12' y2='15'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    flex-shrink: 0;
+}
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child button:hover,
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child button:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
     transform: translateY(-1px) !important;
 }
 /* Style for Col 2 button (View Data) */
-.im-success-buttons-container [data-testid="column"]:last-child button {
-    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child button,
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:last-child button {
+    background: #2563eb !important; /* Solid blue background */
     color: #ffffff !important;
     border: none !important;
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
 }
-.im-success-buttons-container [data-testid="column"]:last-child button:hover {
-    background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45) !important;
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child button::before,
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:last-child button::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cline x1='3' y1='9' x2='21' y2='9'/%3E%3Cline x1='9' y1='21' x2='9' y2='9'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    flex-shrink: 0;
+}
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child button:hover,
+div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:last-child button:hover {
+    background: #1d4ed8 !important;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -974,26 +1090,50 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
 }
 .im-ketentuan-item {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    flex-direction: column;
+    gap: 0;
     font-size: 12px;
     font-weight: 600;
     color: #334155;
     line-height: 1.45;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+.im-ketentuan-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.im-ketentuan-text {
+    font-weight: 600;
+}
+.im-ketentuan-neutral {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 2px solid #cbd5e1;
+    margin-top: 1px;
+    box-sizing: border-box;
 }
 .im-ketentuan-check {
     flex-shrink: 0;
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #059669;
+    color: #ffffff !important;
     font-size: 11px;
     font-weight: 900;
-    background: rgba(16,185,129,0.13);
-    border: 1px solid rgba(16,185,129,0.22);
+    background: #10b981 !important; /* Solid emerald green */
+    border: 1px solid #10b981 !important;
     margin-top: 1px;
 }
 .im-ketentuan-fail {
@@ -1001,21 +1141,47 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #dc2626;
-    font-size: 11px;
+    color: #ffffff !important;
+    font-size: 10px;
     font-weight: 900;
-    background: rgba(239,68,68,0.10);
-    border: 1px solid rgba(239,68,68,0.22);
+    background: #ef4444 !important; /* Solid red */
+    border: 1px solid #ef4444 !important;
     margin-top: 1px;
 }
-.im-ketentuan-item.is-fail span:last-child {
+.im-ketentuan-item.is-neutral .im-ketentuan-text {
     color: #64748b;
+    font-weight: 500;
 }
-.im-ketentuan-item.is-pass span:last-child {
-    color: #334155;
+.im-ketentuan-item.is-pass .im-ketentuan-text {
+    color: #1e293b;
+    font-weight: 600;
+}
+.im-ketentuan-item.is-fail .im-ketentuan-text {
+    color: #991b1b;
+    font-weight: 600;
+}
+.im-ketentuan-item.is-fail {
+    background: rgba(239, 68, 68, 0.05) !important;
+    border: 1px solid rgba(239, 68, 68, 0.12) !important;
+    border-radius: 12px;
+    padding: 10px 12px !important;
+    margin-bottom: 2px;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.04);
+}
+.im-ketentuan-warning-box {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    margin-left: 30px; /* Aligns under text, offset by icon width (20px) + gap (10px) */
+    font-size: 11px;
+    color: #991b1b;
+    font-weight: 500;
+    line-height: 1.45;
 }
 .im-info-banner {
     margin-top: 14px;
@@ -1562,61 +1728,161 @@ _NEW_DESIGN_CSS = """
 
 /* ── Ketentuan Import (white card) ── */
 .im-ketentuan-card {
-    background: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    padding: 22px 22px 18px;
-    box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    background: #ffffff !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 16px !important;
+    padding: 0 !important;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.05) !important;
+    overflow: hidden !important;
 }
-.im-ketentuan-icon-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
+.im-ketentuan-head {
+    padding: 20px 22px 14px !important;
+    border-bottom: 1px solid #F1F5F9 !important;
 }
-.im-ketentuan-icon-box {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: #EEF2FF;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
+.im-ketentuan-head .im-section-title {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    letter-spacing: 0.1px !important;
+    margin: 0 !important;
 }
-.im-ketentuan-title {
-    font-size: 13.5px;
-    font-weight: 800;
-    color: #0F172A;
-    letter-spacing: 0.2px;
+.im-ketentuan-body {
+    padding: 20px 22px 22px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
 }
 .im-ketentuan-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 12px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    margin-bottom: 4px !important;
+    gap: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+.im-ketentuan-item.is-neutral {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+.im-ketentuan-item.is-pass {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+.im-ketentuan-item.is-fail {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+.im-ketentuan-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+.im-ketentuan-neutral,
+.im-ketentuan-check,
+.im-ketentuan-fail {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    line-height: 1 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    text-align: center !important;
+}
+.im-ketentuan-neutral {
+    background: transparent !important;
+    border: 2px solid #cbd5e1 !important;
 }
 .im-ketentuan-check {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #059669;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: #ffffff;
-    font-size: 10px;
-    font-weight: 900;
-    margin-top: 1px;
+    background: #10b981 !important;
+    border: 1px solid #10b981 !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+}
+.im-ketentuan-fail {
+    background: #ef4444 !important;
+    border: 1px solid #ef4444 !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5) !important;
 }
 .im-ketentuan-text {
-    font-size: 12px;
-    color: #64748B;
-    line-height: 1.55;
-    font-weight: 500;
+    font-size: 12.5px !important;
+    color: #1e293b !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
 }
-.im-ketentuan-text strong { color: #1E293B; font-weight: 700; }
+.im-ketentuan-item.is-neutral .im-ketentuan-text {
+    color: #64748b !important;
+    font-weight: 500 !important;
+}
+.im-ketentuan-item.is-pass .im-ketentuan-text {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+}
+.im-ketentuan-item.is-fail .im-ketentuan-text {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+}
+.im-ketentuan-warning-box {
+    background: #fef2f2 !important;
+    border: 1px solid #fca5a5 !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    margin-top: 8px !important;
+    margin-left: 30px !important;
+    font-size: 11px !important;
+    color: #991b1b !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+    width: calc(100% - 30px) !important;
+    box-sizing: border-box !important;
+}
+.im-validation-error-card {
+    background: #fef2f2 !important;
+    border: 1px solid #fca5a5 !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+    margin-top: 5px !important;
+    width: 85% !important;
+    max-width: 420px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05) !important;
+}
+.im-validation-error-title {
+    font-size: 13px !important;
+    font-weight: 750 !important;
+    color: #b91c1c !important;
+    margin-bottom: 3px !important;
+}
+.im-validation-error-desc {
+    font-size: 11.5px !important;
+    font-weight: 450 !important;
+    color: #991b1b !important;
+    line-height: 1.4 !important;
+}
 .im-ketentuan-footer {
     margin-top: 18px;
     padding-top: 14px;
@@ -2306,19 +2572,126 @@ def _render_selected_file(uploaded, validation: dict[str, bool] | None = None):
         """, unsafe_allow_html=True)
 
 
-def _render_ketentuan_import(validation: dict[str, bool] | None = None):
+def _get_merge_cell_detail(uploaded) -> str:
+    try:
+        uploaded.seek(0)
+        filename = uploaded.name.lower()
+        if filename.endswith(".xlsx"):
+            from openpyxl import load_workbook
+            workbook = load_workbook(uploaded, read_only=True)
+            try:
+                for ws in workbook.worksheets:
+                    if ws.merged_cells.ranges:
+                        ranges = [str(r) for r in list(ws.merged_cells.ranges)[:2]]
+                        return f"Merge cells ditemukan pada sheet '{ws.title}', cell {', '.join(ranges)}. Silakan pisahkan."
+            finally:
+                workbook.close()
+        elif filename.endswith(".xls"):
+            import xlrd
+            uploaded.seek(0)
+            workbook = xlrd.open_workbook(file_contents=uploaded.read())
+            for sheet in workbook.sheets():
+                if sheet.merged_cells:
+                    ranges = [f"{xlrd.formula.cellname(r[0], r[2])}:{xlrd.formula.cellname(r[1]-1, r[3]-1)}" for r in sheet.merged_cells[:2]]
+                    return f"Merge cells ditemukan pada sheet '{sheet.name}', cell {', '.join(ranges)}. Silakan pisahkan."
+    except Exception:
+        pass
+    return "Merge cells ditemukan pada file Excel Anda. Silakan pisahkan."
+
+
+def _get_structure_detail(uploaded) -> str:
+    try:
+        uploaded.seek(0)
+        df = read_import_file(uploaded)
+        df_norm = normalize_imported_data(df)
+        missing = get_missing_dashboard_columns(df_norm)
+        if missing:
+            clean_cols = [f"'{col}'" for col in missing[:2]]
+            return f"Header kolom {', '.join(clean_cols)} tidak ditemukan."
+    except Exception:
+        pass
+    return "Struktur kolom tidak sesuai template. Hindari perubahan struktur kolom."
+
+
+def _get_required_filled_detail(uploaded) -> str:
+    try:
+        uploaded.seek(0)
+        df = read_import_file(uploaded)
+        df_norm = normalize_imported_data(df)
+        missing_fields = []
+        for col in REQUIRED_DASHBOARD_COLUMNS:
+            if col in df_norm.columns:
+                series = df_norm[col]
+                if series.isna().any():
+                    missing_fields.append(col)
+                elif series.dtype == object:
+                    cleaned = series.astype(str).str.strip()
+                    if cleaned.eq("").any() or cleaned.str.lower().isin({"nan", "none", "nat"}).any():
+                        missing_fields.append(col)
+        if missing_fields:
+            clean_fields = [f"'{col}'" for col in missing_fields[:2]]
+            return f"Kolom wajib memiliki data kosong pada kolom {', '.join(clean_fields)}."
+    except Exception:
+        pass
+    return "Kolom wajib harus terisi penuh. Pastikan tidak ada data kosong."
+
+
+def _render_ketentuan_import(validation: dict[str, bool] | None = None, is_uploaded: bool = False):
     validation = validation or {key: False for key, _ in KETENTUAN_RULES}
+    uploaded = None
+    if is_uploaded:
+        uploader_key = f"im_uploader_refined_{st.session_state.uploader_version}"
+        uploaded = st.session_state.get(uploader_key)
 
     items_html = ""
+    from html import escape
     for key, label in KETENTUAN_RULES:
-        passed = validation.get(key, False)
-        icon_class = "im-ketentuan-check" if passed else "im-ketentuan-fail"
-        item_class = "is-pass" if passed else "is-fail"
-        icon = "✓" if passed else "✗"
+        if not is_uploaded:
+            icon_class = "im-ketentuan-neutral"
+            item_class = "is-neutral"
+            icon = ""
+            warning_html = ""
+        else:
+            passed = validation.get(key, False)
+            if passed:
+                icon_class = "im-ketentuan-check"
+                item_class = "is-pass"
+                icon = "✓"
+                warning_html = ""
+            else:
+                icon_class = "im-ketentuan-fail"
+                item_class = "is-fail"
+                icon = "✗"
+                detail_msg = ""
+                if uploaded:
+                    if key == "format":
+                        detail_msg = "Format file tidak didukung. Gunakan .xlsx atau .xls."
+                    elif key == "size":
+                        detail_msg = "Ukuran file melebihi batas maksimal 20 MB."
+                    elif key == "merge_cell":
+                        detail_msg = _get_merge_cell_detail(uploaded)
+                    elif key == "structure":
+                        detail_msg = _get_structure_detail(uploaded)
+                    elif key == "required_filled":
+                        detail_msg = _get_required_filled_detail(uploaded)
+                if not detail_msg:
+                    fallback_msgs = {
+                        "format": "Format file tidak didukung. Gunakan .xlsx atau .xls.",
+                        "size": "Ukuran file melebihi batas maksimal 20 MB.",
+                        "merge_cell": "Merge cells ditemukan pada file Excel Anda.",
+                        "structure": "Struktur kolom tidak sesuai template.",
+                        "required_filled": "Kolom wajib harus terisi penuh."
+                    }
+                    detail_msg = fallback_msgs.get(key, "Validasi gagal.")
+                warning_html = f'<div class="im-ketentuan-warning-box">{escape(detail_msg)}</div>'
+
         items_html += dedent(f"""
         <div class="im-ketentuan-item {item_class}">
-            <span class="{icon_class}">{icon}</span>
-            <span>{label}</span>
+            <div class="im-ketentuan-row">
+                <span class="{icon_class}">{icon}</span>
+                <span class="im-ketentuan-text">{label}</span>
+            </div>
+            {warning_html}
         </div>
         """).strip()
 
@@ -2494,9 +2867,20 @@ def _render_new_workspace():
                     <div class="im-section-title">Upload Data File</div>
                     <div class="im-section-sub">Format yang didukung: .xlsx dan .xls (Excel).</div>
                 </div>
-                <div class="im-period-chip">April 2026</div>
             </div>
+        </div>
         """, unsafe_allow_html=True)
+
+        if st.button("↻", key=f"im_top_refresh_{st.session_state.uploader_version}", help="Reset/Upload Another"):
+            st.session_state.uploader_version += 1
+            if SHARED_DATA_KEY in st.session_state:
+                del st.session_state[SHARED_DATA_KEY]
+            if SHARED_META_KEY in st.session_state:
+                del st.session_state[SHARED_META_KEY]
+            st.session_state.im_file = None
+            st.session_state.im_import_ready = False
+            st.session_state.im_validation = {key: False for key, _ in KETENTUAN_RULES}
+            st.rerun()
 
         # Let's get the uploaded file from st.file_uploader
         # If we use a key that depends on version to reset it
@@ -2605,79 +2989,61 @@ def _render_new_workspace():
 
                     st.markdown(success_html, unsafe_allow_html=True)
 
-                    st.markdown("<div class='im-success-buttons-container'>", unsafe_allow_html=True)
-                    btn_col1, btn_col2 = st.columns(2)
-                    with btn_col1:
-                        if st.button("Upload Another", key=f"im_upload_another_{st.session_state.uploader_version}"):
-                            st.session_state.uploader_version += 1
-                            if SHARED_DATA_KEY in st.session_state:
-                                del st.session_state[SHARED_DATA_KEY]
-                            if SHARED_META_KEY in st.session_state:
-                                del st.session_state[SHARED_META_KEY]
-                            st.session_state.im_file = None
-                            st.session_state.im_import_ready = False
-                            st.rerun()
-                    with btn_col2:
-                        if st.button("View Data", key=f"im_view_data_{st.session_state.uploader_version}"):
-                            st.session_state.active_menu = "Data Verification"
-                            st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    # Buttons removed as requested. Action buttons are replaced by the refresh icon in the card heading.
+                    pass
 
                 except Exception as exc:
                     st.error(f"Gagal memproses file: {exc}")
                     all_valid = False
 
             if not all_valid:
-                failed_reasons = []
-                for key, label in KETENTUAN_RULES:
-                    if not validation.get(key, False):
-                        failed_reasons.append(label)
+                # Render the drag & drop zone in failed visual state, keeping it interactive
+                st.markdown(f"""
+                <div class="im-dropzone-wrapper">
+                    <div class="im-dropzone-visual">
+                        <div class="im-dropzone-icon-box">
+                            <div class="im-dropzone-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                                    <polyline points="5 12 12 5 19 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="im-dropzone-title">Drag & Drop Excel File</div>
+                        <div class="im-dropzone-subtitle" style="margin-bottom: 12px;">File Terunggah: <strong>{uploaded.name}</strong></div>
+                        <div class="im-validation-error-card">
+                            <div class="im-validation-error-title">Kesalahan Validasi File</div>
+                            <div class="im-validation-error-desc">Silakan perbaiki kesalahan di bawah ini sebelum mengunggah kembali.</div>
+                        </div>
+                    </div>
+                    <div class="im-uploader-overlay">
+                """, unsafe_allow_html=True)
 
-                is_size_failed = uploaded.size > MAX_IMPORT_FILE_BYTES
-                size_kb = max(1, round(uploaded.size / 1024))
-
-                reasons_html = ""
-                for reason in failed_reasons:
-                    reasons_html += (
-                        '<div class="im-failure-detail-item">'
-                        '<span style="color: #ef4444; font-weight: bold;">•</span>'
-                        f'<span>{reason}</span>'
-                        '</div>'
-                    )
-
-                failure_html = (
-                    '<div class="im-failure-visual">'
-                    '<div class="im-failure-icon-box">'
-                    '<div class="im-failure-icon">✗</div>'
-                    '</div>'
-                    '<div class="im-failure-title">Upload Failed</div>'
-                    f'<div class="im-failure-subtitle">{uploaded.name} ({size_kb:,} KB) tidak memenuhi ketentuan import.</div>'
-                    '<div class="im-failure-details">'
-                    '<div style="font-weight: 700; color: #dc2626; margin-bottom: 8px;">Detail Masalah:</div>'
-                    f'{reasons_html}'
-                    '</div>'
-                    '</div>'
+                # Render the overlay file uploader so they can drop a new file
+                st.file_uploader(
+                    "Browse Files",
+                    type=["xlsx", "xls"],
+                    label_visibility="collapsed",
+                    key=uploader_key,
                 )
 
-                st.markdown(failure_html, unsafe_allow_html=True)
+                st.markdown("""
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                st.markdown("<div class='im-success-buttons-container' style='max-width: 240px; margin: 0 auto;'>", unsafe_allow_html=True)
-                if st.button("Upload Another", key=f"im_upload_another_fail_{st.session_state.uploader_version}"):
-                    st.session_state.uploader_version += 1
-                    if SHARED_DATA_KEY in st.session_state:
-                        del st.session_state[SHARED_DATA_KEY]
-                    if SHARED_META_KEY in st.session_state:
-                        del st.session_state[SHARED_META_KEY]
-                    st.session_state.im_file = None
-                    st.session_state.im_import_ready = False
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("""
+                    <div class="im-info-banner">
+                        Pastikan struktur file sesuai template untuk menghindari error pada proses import.
+                    </div>
+                """, unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ── RIGHT: Ketentuan Import (white card) ──
     with right:
-        _render_ketentuan_import(st.session_state.get("im_validation"))
+        is_uploaded = st.session_state.get(uploader_key) is not None
+        _render_ketentuan_import(st.session_state.get("im_validation"), is_uploaded=is_uploaded)
 
     # ── Riwayat Import table ──
     _render_import_history_refined()
@@ -2738,14 +3104,27 @@ def _patch_upload_limit_text():
                 });
             }
 
+            function patchRefreshButton() {
+                doc.querySelectorAll('button').forEach((btn) => {
+                    if (btn.textContent.trim() === '↻') {
+                        const container = btn.closest('[data-testid="stElementContainer"]');
+                        if (container) {
+                            container.classList.add('im-custom-refresh-btn-container');
+                        }
+                    }
+                });
+            }
+
             patchUploadLimit();
             setupHistoryPagination();
             hidePageSyncTrigger();
+            patchRefreshButton();
 
             const observer = new MutationObserver(() => {
                 patchUploadLimit();
                 setupHistoryPagination();
                 hidePageSyncTrigger();
+                patchRefreshButton();
             });
 
             observer.observe(doc.body, {

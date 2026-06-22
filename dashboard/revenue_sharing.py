@@ -1211,11 +1211,11 @@ def page_revenue_sharing():
     with detail_card:
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
         st.markdown('<div class="rs-detail-filter-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-        dh1, ds, df_btn, dex, dpp = st.columns([2.55, 2.25, 1.05, 0.78, 0.72], vertical_alignment="center")
+        dh1, ds, dex, dpp = st.columns([3.45, 2.40, 0.78, 0.72], vertical_alignment="center")
         with dh1:
             st.markdown(
                 '<p class="ed-section-title">Detail Revenue Sharing</p>'
-                '<p class="ed-section-sub">Granular settlement records with variance monitoring</p>',
+                '<p class="ed-section-sub">Granular revenue sharing records by service and terminal</p>',
                 unsafe_allow_html=True,
             )
         with ds:
@@ -1226,15 +1226,6 @@ def page_revenue_sharing():
                 label_visibility="collapsed",
                 on_change=lambda: st.session_state.update({"rs_detail_page": 1}),
             )
-        with df_btn:
-            st.selectbox(
-                "Settlement Status",
-                RS_SETTLEMENT_FILTER_OPTIONS,
-                key="rs_filter_status",
-                label_visibility="collapsed",
-                format_func=_filter_select_label,
-                on_change=lambda: st.session_state.update({"rs_detail_page": 1}),
-            )
 
         detail_df = filtered_detail.copy()
         if search_query:
@@ -1242,12 +1233,9 @@ def page_revenue_sharing():
             detail_df = detail_df[
                 detail_df["Service/SBU"].astype(str).str.lower().str.contains(q, na=False)
                 | detail_df["Terminal"].astype(str).str.lower().str.contains(q, na=False)
-                | detail_df["Remark"].astype(str).str.lower().str.contains(q, na=False)
             ]
-        if st.session_state.rs_filter_status != "All":
-            detail_df = detail_df[detail_df["Settlement Status"] == st.session_state.rs_filter_status]
 
-        export_df = detail_df.drop(columns=["_raw_status"], errors="ignore").copy()
+        export_df = detail_df[["Date", "Service/SBU", "Terminal", "Revenue", "Share %", "Management Share"]].copy()
 
         with dex:
             st.markdown('<div class="rs-btn-export-marker"></div>', unsafe_allow_html=True)
@@ -1281,18 +1269,14 @@ def page_revenue_sharing():
         detail_view["Revenue"] = detail_view["Revenue"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
         detail_view["Management Share"] = detail_view["Management Share"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
         detail_view["Share %"] = detail_view["Share %"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
-        detail_view["Variance"] = detail_view["Variance"].apply(_format_mom)
-        detail_view["Settlement Status"] = detail_view["Settlement Status"].apply(fmt_status_badge)
         detail_view = detail_view[[
             "Date", "Service/SBU", "Terminal", "Revenue", "Share %",
-            "Management Share", "Settlement Status", "Variance", "Remark",
+            "Management Share",
         ]]
         detail_align = {
             "Revenue": "right",
             "Share %": "right",
             "Management Share": "right",
-            "Variance": "right",
-            "Settlement Status": "center",
         }
         st.markdown(_enterprise_table_inner_html(detail_view, col_align=detail_align), unsafe_allow_html=True)
 

@@ -9,12 +9,7 @@ SHARED_DATA_KEY = "shared_import_df"
 SHARED_META_KEY = "shared_import_meta"
 MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024
 
-KETENTUAN_RULES = [
-    ("extension", "Format file harus Excel (.xlsx / .xls)"),
-    ("size", "Ukuran file maksimal 20 MB"),
-    ("readable", "File dapat dibaca"),
-    ("not_empty", "File memiliki data"),
-]
+# KETENTUAN_RULES is defined below with correct keys (format, size, merge_cell, required_filled, structure)
 
 REQUIRED_DASHBOARD_COLUMNS = {
     "perusahaan",
@@ -220,31 +215,7 @@ def read_import_file(uploaded) -> pd.DataFrame:
     return pd.read_excel(uploaded)
 
 
-def validate_import_upload(uploaded) -> dict[str, bool]:
-    if uploaded is None:
-        return {key: False for key, _ in KETENTUAN_RULES}
-
-    filename = str(getattr(uploaded, "name", "")).lower()
-    size = int(getattr(uploaded, "size", 0) or 0)
-    validation = {
-        "extension": filename.endswith((".xlsx", ".xls")),
-        "size": size <= MAX_IMPORT_FILE_BYTES,
-        "readable": False,
-        "not_empty": False,
-    }
-
-    if validation["extension"] and validation["size"]:
-        try:
-            df = read_import_file(uploaded)
-            validation["readable"] = True
-            validation["not_empty"] = not df.empty
-        except Exception:
-            validation["readable"] = False
-            validation["not_empty"] = False
-        finally:
-            uploaded.seek(0)
-
-    return validation
+# The correct validate_import_upload is defined above using the full validation rules checklist.
 
 
 def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str]]:
