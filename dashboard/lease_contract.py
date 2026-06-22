@@ -258,8 +258,25 @@ body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new
    which (unlike the plain st.markdown() cards in the KPI row above) ends
    up with a narrower effective gap between columns — force it back to
    the same 16px used between other major sections/cards. */
+/* Use CSS Grid (not flex) for this row — grid items stretch to fill the
+   row's height by default, which is far more reliable than chasing
+   Streamlit's own nested flex wrappers level by level. */
 div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) {
+    display: grid !important;
+    grid-template-columns: 1.7fr 1fr 1fr !important;
     gap: 16px !important;
+    align-items: stretch !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div[data-testid="column"],
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div[data-testid="stColumn"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    display: block !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div[data-testid="column"] > div,
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div[data-testid="stColumn"] > div {
+    height: 100% !important;
 }
 
 /* Premium Card Design */
@@ -276,6 +293,17 @@ div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .
        with sections that use other card classes (e.g. .kpi-card-new),
        which don't have a baked-in margin of their own. */
     box-sizing: border-box;
+    height: 100%;
+    min-height: 560px;
+    display: flex;
+    flex-direction: column;
+}
+/* Contract Type Distribution is the 2nd card in this row — give its
+   donut + category row room to breathe vertically so the card fills
+   its now-equal height with genuinely larger content instead of gaps. */
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div:nth-child(2) [data-testid="stHorizontalBlock"]:has(.dist-stack) {
+    flex: 1 1 auto;
+    align-items: center;
 }
 div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .premium-card-marker) > div[data-testid="stElementContainer"]:has(.premium-card-marker) {
     display: none;
@@ -653,8 +681,29 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
 .timeline-kpi-card.rate { background-color: #F0F9FF; border-color: #E0F2FE; }
 .timeline-kpi-card.risk { background-color: #FEF2F2; border-color: #FEE2E2; }
 
+.timeline-kpi-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.timeline-kpi-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.7);
+}
+.timeline-kpi-icon svg { width: 14px; height: 14px; }
+.timeline-kpi-card.expiring .timeline-kpi-icon { color: #4F46E5; }
+.timeline-kpi-card.renewed .timeline-kpi-icon { color: #10B981; }
+.timeline-kpi-card.rate .timeline-kpi-icon { color: #0EA5E9; }
+.timeline-kpi-card.risk .timeline-kpi-icon { color: #EF4444; }
+
 .timeline-kpi-val {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 800;
     line-height: 1;
 }
@@ -664,12 +713,20 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
 .timeline-kpi-card.risk .timeline-kpi-val { color: #EF4444; }
 
 .timeline-kpi-lbl {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
+    color: #0F172A;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+}
+.timeline-kpi-lbl span {
+    font-size: 9.5px;
+    font-weight: 500;
     color: #64748B;
-    margin-top: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    margin-top: 1px;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
 .risk-strip-container {
@@ -733,15 +790,22 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
     display: flex;
     justify-content: center;
 }
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div:nth-child(2) [data-testid="stPlotlyChart"] {
+    margin: 2px 0 10px;
+    overflow: visible !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div:nth-child(2) [data-testid="stPlotlyChart"] > div {
+    margin: 0 auto !important;
+    overflow: visible !important;
+}
 .dist-stack {
-    flex: 1.1;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 .dist-card {
-    border-radius: 10px;
-    padding: 8px 10px;
+    border-radius: 12px;
+    padding: 10px 14px;
     box-sizing: border-box;
     border: 1px solid transparent;
 }
@@ -798,6 +862,71 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
     font-weight: 600;
     color: #94A3B8;
 }
+
+.dist-total-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #F1F5F9;
+}
+.dist-total-icon {
+    width: 16px;
+    height: 16px;
+    color: #94A3B8;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dist-total-icon svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+.dist-total-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #64748B;
+    flex: 1;
+    line-height: 16px;
+}
+.dist-total-val {
+    font-size: 12px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 16px;
+}
+
+.status-card {
+    border-radius: 12px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+}
+.status-card.active { background-color: #ECFDF5; border-color: #D1FAE5; }
+.status-card.expiring { background-color: #FFFBEB; border-color: #FEF3C7; }
+.status-card.expired { background-color: #FEF2F2; border-color: #FEE2E2; }
+
+.status-card.active .dist-card-title-row { color: #059669; }
+.status-card.expiring .dist-card-title-row { color: #D97706; }
+.status-card.expired .dist-card-title-row { color: #DC2626; }
+
+.status-card-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-right: 6px;
+}
+.status-card-dot.active { background-color: #10B981; }
+.status-card-dot.expiring { background-color: #F59E0B; }
+.status-card-dot.expired { background-color: #EF4444; }
+
+.dist-card-pct.active { color: #10B981; }
+.dist-card-pct.expiring { color: #F59E0B; }
+.dist-card-pct.expired { color: #EF4444; }
 
 /* Status progress bars & Health section */
 .status-list {
@@ -900,6 +1029,18 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
     color: #94A3B8;
 }
 
+.status-health-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+}
+.status-health-badge.good { background-color: #ECFDF5; color: #059669; }
+.status-health-badge.fair { background-color: #FFFBEB; color: #D97706; }
+.status-health-badge.risk { background-color: #FEF2F2; color: #DC2626; }
+
 /* Alert banners */
 .alert-banner {
     display: flex;
@@ -969,8 +1110,24 @@ div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .
     border: 1px solid #E2E8F0;
     border-radius: 20px;
     padding: 16px 18px;
-    margin-bottom: 16px;
+    margin-top: -16px !important;
+    margin-bottom: 0px !important;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.015);
+}
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] [class^="lc-exp-section-marker-"]) {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 18px;
+    margin-top: -6px !important;
+    margin-bottom: 0px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    padding: 0px !important;
+}
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] [class^="lc-exp-section-marker-"]) > div[data-testid="stElementContainer"]:has([class^="lc-exp-section-marker-"]) {
+    display: none;
+}
+div[data-testid="stElementContainer"]:has(.lc-exp-show-more-marker) + div[data-testid="stHorizontalBlock"] {
+    margin-bottom: 16px !important;
 }
 div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .lc-exp-outer-marker) > div[data-testid="stElementContainer"]:has(.lc-exp-outer-marker) {
     display: none;
@@ -1011,10 +1168,9 @@ div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .
 
 /* ── Contracts Expiring Soon — per-severity section cards ── */
 .lc-exp-section-card {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 18px;
-    margin-bottom: 16px;
+    background: transparent;
+    border: none;
+    margin-bottom: 0px !important;
     overflow: hidden;
 }
 .lc-exp-section-head {
@@ -1032,7 +1188,7 @@ div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .
 .lc-exp-section-title.danger { color: #B91C1C; }
 .lc-exp-section-title.warning { color: #B45309; }
 .lc-exp-section-title.success { color: #15803D; }
-.lc-exp-table-wrap { padding: 4px 18px 6px; }
+.lc-exp-table-wrap { padding: 4px 18px 16px; }
 .lc-tenant-cell { display: flex; align-items: center; gap: 10px; }
 .lc-tenant-avatar {
     width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
@@ -1810,6 +1966,23 @@ def _render_kpi_card_html(icon_svg, icon_class, badge_text, badge_class, title, 
     """
     return html.replace("\n", "").replace("  ", "")
 
+LC_TIMELINE_ICON_PATHS = {
+    "file-text":     '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>',
+    "check-circle":  '<path d="M21.801 10A10 10 0 1 1 17 3.335"></path><path d="m9 11 3 3L22 4"></path>',
+    "clock":         '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
+    "alert-circle":  '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>',
+}
+
+
+def _lc_timeline_icon_svg(icon_key: str) -> str:
+    paths = LC_TIMELINE_ICON_PATHS.get(icon_key, "")
+    return (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'{paths}</svg>'
+    )
+
+
 def _build_timeline_chart(df):
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     months_labels = [f"{m} 25" for m in months]
@@ -1866,16 +2039,19 @@ def _build_timeline_chart(df):
     )
     return fig
 
-def _build_donut_chart(data_dict, colors):
+def _build_donut_chart(data_dict, colors, size=145):
     labels = list(data_dict.keys())
     values = list(data_dict.values())
+    pct_font = max(10, round(size * 0.052))
+    total_font = max(14, round(size * 0.1))
+    sub_font = max(9, round(size * 0.05))
     fig = go.Figure(data=[go.Pie(
         labels=labels,
         values=values,
         hole=0.62,
         marker=dict(colors=colors),
         textinfo="percent",
-        textfont_size=10,
+        textfont_size=pct_font,
         textfont_color="#FFFFFF",
         textposition="inside",
         showlegend=False,
@@ -1885,9 +2061,8 @@ def _build_donut_chart(data_dict, colors):
         margin=dict(l=5, r=5, t=5, b=5),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        height=145,
-        width=145,
-        annotations=[dict(text=f"{sum(values)}<br><span style='font-size:9px;color:#94A3B8;font-weight:bold;'>TOTAL</span>", x=0.5, y=0.5, font_size=14, font_weight="bold", font_family="Inter", showarrow=False)]
+        height=size,
+        annotations=[dict(text=f"{sum(values)}<br><span style='font-size:{sub_font}px;color:#94A3B8;font-weight:bold;'>TOTAL</span>", x=0.5, y=0.5, font_size=total_font, font_weight="bold", font_family="Inter", showarrow=False)]
     )
     return fig
 
@@ -2058,7 +2233,12 @@ def _get_lc_extra_css():
         width: fit-content !important;
     }
     body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
-        margin-top: -4px !important;
+        margin-top: -24px !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-vertical-spacer) {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 10px !important;
     }
     /* Center columns vertically and remove default Streamlit paddings/margins */
     body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div {
@@ -2293,6 +2473,9 @@ def render_lease_contract():
 
     if st.session_state.lc_show_form:
         _render_add_form()
+        st.markdown('<div class="lc-vertical-spacer"></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="lc-vertical-spacer"></div>', unsafe_allow_html=True)
 
 
     # ─────────────────────────────────────────────
@@ -2401,7 +2584,7 @@ def render_lease_contract():
         )
         st.markdown(html_expired, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="lc-vertical-spacer"></div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # CONTRACT EXPIRY TIMELINE & DONUT CHARTS (3-COLUMN REDESIGN)
@@ -2437,20 +2620,32 @@ def render_lease_contract():
             html_timeline_kpis = f"""
             <div class="timeline-kpi-row">
                 <div class="timeline-kpi-card expiring">
-                    <div class="timeline-kpi-val">{tot_exp_val}</div>
-                    <div class="timeline-kpi-lbl">contracts</div>
+                    <div class="timeline-kpi-top">
+                        <div class="timeline-kpi-icon">{_lc_timeline_icon_svg("file-text")}</div>
+                        <div class="timeline-kpi-val">{tot_exp_val}</div>
+                    </div>
+                    <div class="timeline-kpi-lbl">Contracts<span>Expiring</span></div>
                 </div>
                 <div class="timeline-kpi-card renewed">
-                    <div class="timeline-kpi-val">{tot_ren_val}</div>
-                    <div class="timeline-kpi-lbl">contracts</div>
+                    <div class="timeline-kpi-top">
+                        <div class="timeline-kpi-icon">{_lc_timeline_icon_svg("check-circle")}</div>
+                        <div class="timeline-kpi-val">{tot_ren_val}</div>
+                    </div>
+                    <div class="timeline-kpi-lbl">Contracts<span>Renewed</span></div>
                 </div>
                 <div class="timeline-kpi-card rate">
-                    <div class="timeline-kpi-val">{tot_ren_rate}%</div>
-                    <div class="timeline-kpi-lbl">of expiring</div>
+                    <div class="timeline-kpi-top">
+                        <div class="timeline-kpi-icon">{_lc_timeline_icon_svg("clock")}</div>
+                        <div class="timeline-kpi-val">{tot_ren_rate}%</div>
+                    </div>
+                    <div class="timeline-kpi-lbl">Renewal Rate<span>of expiring</span></div>
                 </div>
                 <div class="timeline-kpi-card risk">
-                    <div class="timeline-kpi-val">{risk_months_count}</div>
-                    <div class="timeline-kpi-lbl">months &ge; 8</div>
+                    <div class="timeline-kpi-top">
+                        <div class="timeline-kpi-icon">{_lc_timeline_icon_svg("alert-circle")}</div>
+                        <div class="timeline-kpi-val">{risk_months_count}</div>
+                    </div>
+                    <div class="timeline-kpi-lbl">Risk Months<span>&ge; 8 contracts</span></div>
                 </div>
             </div>
             """
@@ -2496,45 +2691,53 @@ def render_lease_contract():
             d_rs_mo_pct = (d_rs_mo / t_dist) * 100 if t_dist > 0 else 0
             d_mgrs_pct = (d_mgrs / t_dist) * 100 if t_dist > 0 else 0
             
-            sub_left, sub_right = st.columns([1, 1])
-            with sub_left:
-                st.plotly_chart(_build_donut_chart({"RS": d_rs, "RS+MO": d_rs_mo, "MGRS": d_mgrs}, ["#6366F1", "#0EA5E9", "#F59E0B"]), use_container_width=True, config=dict(displayModeBar=False))
-            with sub_right:
-                html_dist_stack = f"""
-                <div class="dist-stack">
-                    <div class="dist-card rs">
-                        <div class="dist-card-header">
-                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS</span>
-                            <span class="dist-card-pct">{f"{d_rs_pct:.1f}%".replace(".", ",")}</span>
-                        </div>
-                        <div class="dist-card-body">
-                            <span class="dist-card-count">{d_rs}</span>
-                            <span class="dist-card-val">Rp {f"{d_rs*0.74:.1f}".replace(".", ",")} M</span>
-                        </div>
+            st.plotly_chart(_build_donut_chart({"RS": d_rs, "RS+MO": d_rs_mo, "MGRS": d_mgrs}, ["#6366F1", "#0EA5E9", "#F59E0B"], size=140), use_container_width=True, config=dict(displayModeBar=False))
+
+            html_dist_stack = f"""
+            <div class="dist-stack">
+                <div class="dist-card rs">
+                    <div class="dist-card-header">
+                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS</span>
+                        <span class="dist-card-pct">{f"{d_rs_pct:.1f}%".replace(".", ",")}</span>
                     </div>
-                    <div class="dist-card rs_mo">
-                        <div class="dist-card-header">
-                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS+MO</span>
-                            <span class="dist-card-pct">{f"{d_rs_mo_pct:.1f}%".replace(".", ",")}</span>
-                        </div>
-                        <div class="dist-card-body">
-                            <span class="dist-card-count">{d_rs_mo}</span>
-                            <span class="dist-card-val">Rp {f"{d_rs_mo*0.74:.1f}".replace(".", ",")} M</span>
-                        </div>
-                    </div>
-                    <div class="dist-card mgrs">
-                        <div class="dist-card-header">
-                            <span class="dist-card-title-row"><span class="dist-card-dot"></span>MGRS</span>
-                            <span class="dist-card-pct">{f"{d_mgrs_pct:.1f}%".replace(".", ",")}</span>
-                        </div>
-                        <div class="dist-card-body">
-                            <span class="dist-card-count">{d_mgrs}</span>
-                            <span class="dist-card-val">Rp {f"{d_mgrs*0.72:.1f}".replace(".", ",")} M</span>
-                        </div>
+                    <div class="dist-card-body">
+                        <span class="dist-card-count">{d_rs}</span>
+                        <span class="dist-card-val">Rp {f"{d_rs*0.74:.1f}".replace(".", ",")} M</span>
                     </div>
                 </div>
-                """
-                st.markdown(html_dist_stack, unsafe_allow_html=True)
+                <div class="dist-card rs_mo">
+                    <div class="dist-card-header">
+                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS+MO</span>
+                        <span class="dist-card-pct">{f"{d_rs_mo_pct:.1f}%".replace(".", ",")}</span>
+                    </div>
+                    <div class="dist-card-body">
+                        <span class="dist-card-count">{d_rs_mo}</span>
+                        <span class="dist-card-val">Rp {f"{d_rs_mo*0.74:.1f}".replace(".", ",")} M</span>
+                    </div>
+                </div>
+                <div class="dist-card mgrs">
+                    <div class="dist-card-header">
+                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>MGRS</span>
+                        <span class="dist-card-pct">{f"{d_mgrs_pct:.1f}%".replace(".", ",")}</span>
+                    </div>
+                    <div class="dist-card-body">
+                        <span class="dist-card-count">{d_mgrs}</span>
+                        <span class="dist-card-val">Rp {f"{d_mgrs*0.72:.1f}".replace(".", ",")} M</span>
+                    </div>
+                </div>
+            </div>
+            """
+            st.markdown(html_dist_stack, unsafe_allow_html=True)
+
+            total_est_revenue = d_rs * 0.74 + d_rs_mo * 0.74 + d_mgrs * 0.72
+            html_dist_footer = f"""
+            <div class="dist-total-footer">
+                <span class="dist-total-icon">{_lc_timeline_icon_svg("file-text")}</span>
+                <span class="dist-total-label">Total Estimated Revenue</span>
+                <span class="dist-total-val">Rp {f"{total_est_revenue:.2f}".replace(".", ",")} M</span>
+            </div>
+            """
+            st.markdown(html_dist_footer, unsafe_allow_html=True)
 
     # ── Column 3: Contract Status ──
     with col_right:
@@ -2546,50 +2749,64 @@ def render_lease_contract():
             p_expiring = (expiring_val / total_val * 100) if total_val > 0 else 0
             p_expired = (expired_val / total_val * 100) if total_val > 0 else 0
 
-            html_status_list = f"""
-            <div class="status-list">
-                <div class="status-row">
-                    <div class="status-row-header">
-                        <div class="status-row-label-row"><span class="status-row-icon active">&#10003;</span>Active</div>
-                        <div class="status-row-val">{active_val} <span>({f"{p_active:.1f}%".replace(".", ",")})</span></div>
-                    </div>
-                    <div class="status-row-progress-bg">
-                        <div class="status-row-progress-fill" style="width: {p_active}%; background-color: #10B981;"></div>
-                    </div>
-                </div>
-                <div class="status-row">
-                    <div class="status-row-header">
-                        <div class="status-row-label-row"><span class="status-row-icon expiring">&#9888;</span>Expiring Soon</div>
-                        <div class="status-row-val">{expiring_val} <span>({f"{p_expiring:.1f}%".replace(".", ",")})</span></div>
-                    </div>
-                    <div class="status-row-progress-bg">
-                        <div class="status-row-progress-fill" style="width: {p_expiring}%; background-color: #F59E0B;"></div>
-                    </div>
-                </div>
-                <div class="status-row">
-                    <div class="status-row-header">
-                        <div class="status-row-label-row"><span class="status-row-icon expired">&#10007;</span>Expired</div>
-                        <div class="status-row-val">{expired_val} <span>({f"{p_expired:.1f}%".replace(".", ",")})</span></div>
-                    </div>
-                    <div class="status-row-progress-bg">
-                        <div class="status-row-progress-fill" style="width: {p_expired}%; background-color: #EF4444;"></div>
-                    </div>
-                </div>
-            </div>
-            """
-            st.markdown(html_status_list, unsafe_allow_html=True)
-            st.plotly_chart(_build_mini_donut(active_val, expiring_val, expired_val), use_container_width=True, config=dict(displayModeBar=False))
+            # Donut chart on top (just like Column 2)
+            st.plotly_chart(_build_donut_chart({"Active": active_val, "Expiring Soon": expiring_val, "Expired": expired_val}, ["#10B981", "#F59E0B", "#EF4444"], size=140), use_container_width=True, config=dict(displayModeBar=False))
             
-            html_status_score = f"""
-            <div class="status-score-section">
-                <span class="status-score-title">Portfolio Health Score</span>
-                <span class="status-score-val">{f"{p_active:.1f}%".replace(".", ",")}</span>
-                <span class="status-score-desc">Active rate &middot; Target: 90%</span>
+            # Status list below the donut chart, styled like Column 2
+            html_status_stack = f"""
+            <div class="dist-stack">
+                <div class="status-card active">
+                    <div class="dist-card-header">
+                        <span class="dist-card-title-row"><span class="status-card-dot active"></span>Active</span>
+                        <span class="dist-card-pct active">{f"{p_active:.1f}%".replace(".", ",")}</span>
+                    </div>
+                    <div class="dist-card-body">
+                        <span class="dist-card-count">{active_val}</span>
+                        <span class="dist-card-val">Valid contracts</span>
+                    </div>
+                </div>
+                <div class="status-card expiring">
+                    <div class="dist-card-header">
+                        <span class="dist-card-title-row"><span class="status-card-dot expiring"></span>Expiring Soon</span>
+                        <span class="dist-card-pct expiring">{f"{p_expiring:.1f}%".replace(".", ",")}</span>
+                    </div>
+                    <div class="dist-card-body">
+                        <span class="dist-card-count">{expiring_val}</span>
+                        <span class="dist-card-val">Within next 90 days</span>
+                    </div>
+                </div>
+                <div class="status-card expired">
+                    <div class="dist-card-header">
+                        <span class="dist-card-title-row"><span class="status-card-dot expired"></span>Expired</span>
+                        <span class="dist-card-pct expired">{f"{p_expired:.1f}%".replace(".", ",")}</span>
+                    </div>
+                    <div class="dist-card-body">
+                        <span class="dist-card-count">{expired_val}</span>
+                        <span class="dist-card-val">Requires attention</span>
+                    </div>
+                </div>
             </div>
             """
-            st.markdown(html_status_score, unsafe_allow_html=True)
+            st.markdown(html_status_stack, unsafe_allow_html=True)
+            
+            if p_active >= 80:
+                health_cls, health_label, health_color = "good", "Good", "#10B981"
+            elif p_active >= 60:
+                health_cls, health_label, health_color = "fair", "Fair", "#F59E0B"
+            else:
+                health_cls, health_label, health_color = "risk", "At Risk", "#EF4444"
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            # Single-line footer matching Column 2's footer
+            html_status_footer = f"""
+            <div class="dist-total-footer">
+                <span class="dist-total-icon">{_lc_timeline_icon_svg("check-circle")}</span>
+                <span class="dist-total-label">Portfolio Health Score</span>
+                <span class="dist-total-val" style="color: {health_color};">{f"{p_active:.1f}%".replace(".", ",")} ({health_label})</span>
+            </div>
+            """
+            st.markdown(html_status_footer, unsafe_allow_html=True)
+
+    st.markdown('<div class="lc-vertical-spacer"></div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # CONTRACTS EXPIRING SOON — header card + 3 stat pills, then one
@@ -2638,7 +2855,7 @@ def render_lease_contract():
                 f'<span class="lc-exp-section-title {variant}">{title}</span>'
                 f'<span style="margin-left:auto;font-size:11px;font-weight:700;color:#334155;'
                 f'background:#fff;border:1px solid rgba(15,23,42,0.08);border-radius:10px;'
-                f'padding:5px 12px;white-space:nowrap;">View all ({total})</span>'
+                f'padding:5px 12px;white-space:nowrap;">{total} Contracts</span>'
                 f'</div>'
                 f'<div class="lc-exp-table-wrap">'
                 f'<table class="custom-table">'
@@ -2724,8 +2941,6 @@ def render_lease_contract():
                 f'</div>',
                 unsafe_allow_html=True,
             )
-
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     _render_exp_section("critical", "danger", "⚠️", "Critical — Expires within 30 days", dynamic_critical)
     _render_exp_section("expiring", "warning", "⏳", "Expiring Soon — Expires within 31 to 90 days", dynamic_expiring)

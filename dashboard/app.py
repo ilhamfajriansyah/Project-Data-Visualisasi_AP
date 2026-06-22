@@ -2862,8 +2862,25 @@ def _get_overview_extra_css():
         flex-wrap: nowrap !important;
         width: fit-content !important;
     }}
-    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-pro-card) {{
-        margin-top: -4px !important;
+    body:has(.overview-page-marker) div[data-testid="stLayoutWrapper"]:has(.ov-filter-v2-label) {{
+        margin-top: -36px !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stLayoutWrapper"]:has(.ov-filter-v2-label) ~ div[data-testid="stLayoutWrapper"]:has(.kpi-pro-card) {{
+        margin-top: -10px !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stLayoutWrapper"]:has(.kpi-pro-card) + div[data-testid="stLayoutWrapper"]:has(.kpi-pro-card) {{
+        margin-top: 10px !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) {{
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 10px !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div[data-testid="stElementContainer"] {{
+        margin-top: -24px !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div:has(.ed-card-marker) {{
+        margin-top: -24px !important;
     }}
     /* Center columns vertically and remove default Streamlit paddings/margins */
     body:has(.overview-page-marker) [data-testid="stHorizontalBlock"]:has(.ov-filter-v2-label) > div {{
@@ -3036,9 +3053,7 @@ def _get_overview_extra_css():
         box-shadow: 0 2px 8px rgba(79,70,229,0.25) !important;
         white-space: nowrap !important;
     }}
-    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-pro-card) {{
-        margin-top: 0 !important;
-    }}
+
     /* Export button on overview detail tenant table */
     div[data-testid="stElementContainer"]:has(.ov-btn-export-marker) {{
         position: absolute !important;
@@ -3118,6 +3133,8 @@ def page_overview(df_raw):
 
     st.markdown('<div class="overview-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_get_overview_extra_css(), unsafe_allow_html=True)
+    _mount_overview_fixed_header()
+    st.markdown(_overview_filter_chip_state_css(), unsafe_allow_html=True)
 
     with st.container():
         st.markdown('<div class="ov-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
@@ -3139,9 +3156,6 @@ def page_overview(df_raw):
         sel_masa = st.selectbox("Bulan", month_options, key="f_masa", label_visibility="collapsed")
     with ff4:
         st.button("Clear All", key="overview_clear_all", use_container_width=True, on_click=clear_overview_filters)
-
-    _mount_overview_fixed_header()
-    st.markdown(_overview_filter_chip_state_css(), unsafe_allow_html=True)
 
     df = df_raw.copy()
     if sel_terminal != "All Terminal": df = df[df["terminal"]  == sel_terminal]
@@ -3227,7 +3241,7 @@ def page_overview(df_raw):
         with col:
             st.markdown(card_html, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
 
     main_left, main_right = st.columns([65, 35], gap="small")
     with main_left:
@@ -3319,7 +3333,7 @@ def page_overview(df_raw):
         ]
         st.markdown(f'<div class="ed-alert-list">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
 
     tenant_summary = (
         df.groupby(["perusahaan", "brand"])
@@ -3397,7 +3411,7 @@ def page_overview(df_raw):
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:

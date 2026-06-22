@@ -2475,33 +2475,6 @@ def _render_import_history_refined():
     st.markdown(history_html, unsafe_allow_html=True)
 
 
-def _render_info_cards():
-    st.markdown(dedent("""
-    <div class="im-info-row">
-        <div class="im-info-card-v2">
-            <div class="im-info-icon-v2">🛡️</div>
-            <div>
-                <div class="im-info-title-v2">Enkripsi Data</div>
-                <div class="im-info-text-v2">
-                    Semua dokumen yang diunggah diproses dan disimpan dalam lingkungan
-                    sandbox yang aman dan terenkripsi.
-                </div>
-            </div>
-        </div>
-        <div class="im-info-card-v2">
-            <div class="im-info-icon-v2">✨</div>
-            <div>
-                <div class="im-info-title-v2">AI Auto-Cleaning</div>
-                <div class="im-info-text-v2">
-                    Engine kami secara otomatis memperbaiki masalah format umum dan
-                    mengidentifikasi potensi outlier pada data yang diunggah.
-                </div>
-            </div>
-        </div>
-    </div>
-    """).strip(), unsafe_allow_html=True)
-
-
 def _render_new_workspace():
     if "uploader_version" not in st.session_state:
         st.session_state.uploader_version = 0
@@ -2708,9 +2681,6 @@ def _render_new_workspace():
 
     # ── Riwayat Import table ──
     _render_import_history_refined()
-
-    # ── Bottom info cards ──
-    _render_info_cards()
 
 
 def _patch_upload_limit_text():

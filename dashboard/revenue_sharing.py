@@ -498,8 +498,27 @@ def _inject_rs_page_css():
         flex-wrap: nowrap !important;
         width: fit-content !important;
     }
-    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-kpi-grid) {
-        margin-top: -4px !important;
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)),
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)) {
+        margin-top: -36px !important;
+    }
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)) ~ div[data-testid="stElementContainer"]:has(.rs-kpi-grid),
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)) ~ div[data-testid="stElementContainer"]:has(.rs-kpi-grid) {
+        margin-top: -10px !important;
+    }
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer),
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 10px !important;
+    }
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div[data-testid="stElementContainer"],
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div[data-testid="stElementContainer"] {
+        margin-top: -24px !important;
+    }
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div:has(.ed-card-marker),
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div:has(.ed-card-marker) {
+        margin-top: -24px !important;
     }
     /* Center columns vertically and remove default Streamlit paddings/margins */
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div {
@@ -1133,7 +1152,7 @@ def page_revenue_sharing():
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
 
     chart_left, chart_right = st.columns([46, 54], gap="small")
     with chart_left:
@@ -1171,7 +1190,7 @@ def page_revenue_sharing():
             config={"displayModeBar": False},
         )
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
 
     alert_card = st.container()
     with alert_card:
@@ -1186,7 +1205,7 @@ def page_revenue_sharing():
         alerts = _build_revenue_alerts(services_df)
         st.markdown(f'<div class="rs-alert-grid">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
 
     detail_card = st.container()
     with detail_card:

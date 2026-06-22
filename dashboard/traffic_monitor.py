@@ -89,7 +89,7 @@ def _aggregate_metrics(terminal_filter="All Terminal"):
 
 
 def _fmt_millions(value):
-    return f"{value:.1f}".replace(".", ",") + " Jt"
+    return f"{value:.1f}".replace(".", ",") + " Jt pax"
 
 
 def _fmt_rp_k(value):
@@ -190,6 +190,25 @@ def _sparkline_svg(values, color):
     )
 
 
+TM_KPI_ICON_PATHS = {
+    "users":         '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+    "map-pin":       '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle>',
+    "globe":         '<circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path>',
+    "credit-card":   '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line>',
+    "trending-up":   '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline>',
+    "shopping-bag":  '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path>',
+}
+
+
+def _tm_kpi_icon_svg(icon_key: str) -> str:
+    paths = TM_KPI_ICON_PATHS.get(icon_key, "")
+    return (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'{paths}</svg>'
+    )
+
+
 def _tm_kpi_card(label, value, subtitle, delta_pct, accent, icon, spark_values):
     up = delta_pct >= 0
     badge_bg = "#DCFCE7" if up else "#FEE2E2"
@@ -219,8 +238,8 @@ def _tm_kpi_card(label, value, subtitle, delta_pct, accent, icon, spark_values):
         else:
             val_part = rest
     else:
-        # Check if value ends with "Jt" or "%"
-        for sfx in ["Jt", "K", "%"]:
+        # Check if value ends with "Jt pax", "Jt", or "%" (longest match first)
+        for sfx in ["Jt pax", "Jt", "K", "%"]:
             if value.endswith(sfx):
                 suffix = sfx
                 val_part = value[:-len(sfx)].strip()
@@ -234,7 +253,7 @@ def _tm_kpi_card(label, value, subtitle, delta_pct, accent, icon, spark_values):
     html = (
         f'<div class="tm-kpi-card">'
         f'<div class="tm-kpi-top">'
-        f'<div class="tm-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>'
+        f'<div class="tm-kpi-icon" style="background:{accent}14;color:{accent};">{_tm_kpi_icon_svg(icon)}</div>'
         f'<span class="tm-kpi-badge" style="background:{badge_bg};color:{badge_fg};">{arrow} {delta_formatted}%</span>'
         f'</div>'
         f'<div class="tm-kpi-label">{escape(label)}</div>'
@@ -786,6 +805,9 @@ def _inject_tm_css():
         width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center;
         justify-content: center; font-size: 15px; font-weight: 700;
     }}
+    body:has(.tm-page-marker) .tm-kpi-icon svg {{
+        width: 18px; height: 18px;
+    }}
     body:has(.tm-page-marker) .tm-kpi-badge {{
         padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap;
     }}
@@ -1210,19 +1232,19 @@ def page_traffic_monitor():
 
     kpi_html = "".join([
         _tm_kpi_card("Total Traffic", _fmt_millions(metrics["total"]),
-                     "FY 2024 · Terminal 1 & 2", metrics["yoy"], "#7C3AED", "👥", spark_total),
+                     "FY 2024 · Terminal 1 & 2", metrics["yoy"], "#7C3AED", "users", spark_total),
         _tm_kpi_card("Domestic Traffic", _fmt_millions(metrics["domestic"]),
                      f"{domestic_pct_str}% of total traffic", metrics["yoy"] * 0.9,
-                     "#2563EB", "📍", spark_dom),
+                     "#2563EB", "map-pin", spark_dom),
         _tm_kpi_card("International Traffic", _fmt_millions(metrics["international"]),
                      f"{intl_pct_str}% of total traffic", metrics["yoy"] * 1.05,
-                     "#06B6D4", "🌐", spark_intl),
+                     "#06B6D4", "globe", spark_intl),
         _tm_kpi_card("Spending Per Pax", _fmt_rp_k(metrics["spp"]),
-                     "Average across selected terminals", 6.6, "#D97706", "💳", spark_spp),
+                     "Average across selected terminals", 6.6, "#D97706", "credit-card", spark_spp),
         _tm_kpi_card("Traffic Growth", f"+{yoy_val_str}%",
-                     "YoY vs FY 2023", metrics["yoy"], "#059669", "📈", spark_total),
+                     "YoY vs FY 2023", metrics["yoy"], "#059669", "trending-up", spark_total),
         _tm_kpi_card("Avg Spending Per Pax", _fmt_rp_k(metrics["spp"]),
-                     "Weighted terminal average", 6.6, "#EA580C", "🛍", spark_spp),
+                     "Weighted terminal average", 6.6, "#EA580C", "shopping-bag", spark_spp),
     ])
     st.markdown(f'<div class="tm-kpi-grid">{kpi_html}</div>', unsafe_allow_html=True)
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
