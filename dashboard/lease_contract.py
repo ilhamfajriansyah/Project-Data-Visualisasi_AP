@@ -1735,7 +1735,8 @@ div[data-testid="stElementContainer"]:has(.filters-marker) {
 div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"] {
     display: none !important;
 }
-div[data-testid="stSelectbox"] > div {
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stSelectbox"] > div > div {
     border: none !important;
     background-color: transparent !important;
     padding: 0 !important;
@@ -1860,11 +1861,23 @@ def _init_state():
     if "lc_selected"    not in st.session_state: st.session_state.lc_selected    = set()
     if "lc_alert_toast" not in st.session_state: st.session_state.lc_alert_toast = False
 
-    # Filter states initialization
+    # Filter states initialization — "applied" values, used to actually
+    # filter the data. The filter card's widgets write to separate
+    # "lc_pend_*" keys and only copy into these on "Terapkan Filter".
     if "f_terminal"     not in st.session_state: st.session_state.f_terminal     = "All Terminal"
     if "f_tahun"        not in st.session_state: st.session_state.f_tahun        = "All Year"
     if "f_masa"         not in st.session_state: st.session_state.f_masa         = "All Month"
+    if "f_perusahaan"   not in st.session_state: st.session_state.f_perusahaan   = "All Perusahaan"
+    if "f_kode_ruang"   not in st.session_state: st.session_state.f_kode_ruang   = "All Kode Ruang"
     if "lc_filtered_df" not in st.session_state: st.session_state.lc_filtered_df = st.session_state.lc_df
+
+    _LC_PENDING_DEFAULTS = {
+        "lc_pend_terminal": "f_terminal", "lc_pend_tahun": "f_tahun", "lc_pend_masa": "f_masa",
+        "lc_pend_perusahaan": "f_perusahaan", "lc_pend_kode_ruang": "f_kode_ruang",
+    }
+    for pend_key, applied_key in _LC_PENDING_DEFAULTS.items():
+        if pend_key not in st.session_state:
+            st.session_state[pend_key] = st.session_state[applied_key]
 
     # "Show more" toggles for the Contracts Expiring Soon cards
     for _key in ("lc_show_all_critical", "lc_show_all_expiring", "lc_show_all_approaching"):
@@ -2161,252 +2174,225 @@ def _render_add_form():
 # ──────────────────────────────────────────────────────────────────────────────
 # MAIN RENDER FUNCTION
 # ──────────────────────────────────────────────────────────────────────────────
+_LC_FILTER_DEFAULTS = {
+    "f_terminal": "All Terminal", "f_tahun": "All Year", "f_masa": "All Month",
+    "f_perusahaan": "All Perusahaan", "f_kode_ruang": "All Kode Ruang",
+}
+
+
 def clear_lc_filters():
-    st.session_state.f_terminal = "All Terminal"
-    st.session_state.f_tahun = "All Year"
-    st.session_state.f_masa = "All Month"
+    """Reset both the applied filters and the pending (draft) widget values."""
+    for applied_key, default in _LC_FILTER_DEFAULTS.items():
+        st.session_state[applied_key] = default
+        st.session_state[f"lc_pend_{applied_key[2:]}"] = default
     st.session_state.lc_filtered_df = st.session_state.lc_df
 
 
-def _lc_filter_bar_v2_html(active_count: int) -> str:
+def _apply_lc_filters():
+    """Copy the pending (draft) widget values into the applied filter keys."""
+    for applied_key in _LC_FILTER_DEFAULTS:
+        st.session_state[applied_key] = st.session_state[f"lc_pend_{applied_key[2:]}"]
+
+
+_LC_FILTER_ICONS = {
+    "building": '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path>',
+    "grid":     '<rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect>',
+    "monitor":  '<rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>',
+    "calendar": '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>',
+    "filter":   '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>',
+    "refresh":  '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path>',
+}
+
+
+def _lc_filter_icon_svg(icon_key: str, size: int = 14) -> str:
+    paths = _LC_FILTER_ICONS.get(icon_key, "")
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'{paths}</svg>'
+    )
+
+
+def _render_lc_filter_card(df_full: pd.DataFrame, active_count: int = 0) -> None:
+    """The redesigned "Filter Data" card — filters are staged in lc_pend_*
+    widget keys and only take effect (filter the data) once the user
+    clicks "Terapkan Filter" / "Bersihkan Semua" / the header "Reset Filter"."""
+    perusahaan_options = ["All Perusahaan"] + sorted(df_full["Name/Tenant"].dropna().unique().tolist())
+    kode_options = ["All Kode Ruang"] + sorted(df_full["Kode"].dropna().unique().tolist())
+    terminal_options = ["All Terminal", "Terminal 1", "Terminal 2"]
+    tahun_options = ["All Year", 2030, 2029, 2028, 2027, 2026, 2025, 2024, 2023]
+    bulan_options = ["All Month", "January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"]
+
+    st.markdown('<div class="lc-filtercard-marker"></div>', unsafe_allow_html=True)
+
     badge = (
-        f'<span class="lc-filter-v2-badge">'
-        f'<span class="lc-filter-v2-dot"></span>&nbsp;{active_count} active'
-        f'</span>'
+        f'<span class="lc-filtercard-badge">{active_count} aktif</span>'
         if active_count > 0 else ""
     )
-    return dedent(f"""
-    <div class="lc-filter-v2-label">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2.5"
-             stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-        Filter Aktif
-        {badge}
-    </div>
-    """).strip()
-
-
-def _lc_filter_chip_state_css() -> str:
-    """Inject per-chip color based on whether the filter is at its default value."""
-    _DEFAULTS = {"f_terminal": "All Terminal", "f_tahun": "All Year", "f_masa": "All Month"}
-    _NTH = {"f_terminal": 2, "f_tahun": 3, "f_masa": 4}
-
-    rules = []
-    for key, default in _DEFAULTS.items():
-        nth = _NTH[key]
-        is_active = st.session_state.get(key, default) != default
-        if is_active:
-            bg, border, color, svg = "#EEF2FF", "#C7D2FE", "#4338CA", "#818CF8"
-        else:
-            bg, border, color, svg = "#F8FAFC", "#E2E8F0", "#94A3B8", "#CBD5E1"
-        base = (
-            f"body:has(.lc-page-marker) "
-            f"[data-testid='stHorizontalBlock']:has(.lc-filter-v2-label) "
-            f"> div:nth-child({nth}) "
-            f"[data-testid='stSelectbox'] > div[data-baseweb='select'] > div:first-child"
+    head_l, head_r = st.columns([4, 1.2], vertical_alignment="center")
+    with head_l:
+        st.markdown(
+            '<div class="lc-filtercard-head">'
+            f'<span class="lc-filtercard-icon">{_lc_filter_icon_svg("filter", 18)}</span>'
+            '<div>'
+            f'<p class="lc-filtercard-title">Filter Data{badge}</p>'
+            '<p class="lc-filtercard-sub">Pilih kriteria untuk memfilter data yang ditampilkan</p>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
         )
-        rules.append(f"{base} {{ background:{bg}!important; border-color:{border}!important; color:{color}!important; }}")
-        rules.append(f"{base} svg {{ fill:{svg}!important; }}")
+    with head_r:
+        st.button(
+            "↺  Reset Filter", key="lc_btn_reset_top", use_container_width=True,
+            on_click=clear_lc_filters,
+        )
 
-    return f"<style>{''.join(rules)}</style>"
+    st.markdown('<div class="lc-filterrow-marker"></div>', unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5, gap="small")
+    field_defs = [
+        (c1, "building", "Nama Perusahaan", perusahaan_options, "lc_pend_perusahaan"),
+        (c2, "grid", "Kode Ruangan", kode_options, "lc_pend_kode_ruang"),
+        (c3, "monitor", "Terminal", terminal_options, "lc_pend_terminal"),
+        (c4, "calendar", "Tahun", tahun_options, "lc_pend_tahun"),
+        (c5, "calendar", "Bulan", bulan_options, "lc_pend_masa"),
+    ]
+    for col, icon_key, label, options, widget_key in field_defs:
+        with col:
+            st.markdown(
+                f'<div class="lc-filter-label">{_lc_filter_icon_svg(icon_key, 12)}<span>{label}</span></div>',
+                unsafe_allow_html=True,
+            )
+            st.selectbox(label, options, key=widget_key, label_visibility="collapsed")
+
+    st.markdown('<div class="lc-filtercard-footer-marker"></div>', unsafe_allow_html=True)
+    _foot_spacer, foot_r1, foot_r2 = st.columns([3.4, 1.1, 1.3], vertical_alignment="center")
+    with foot_r1:
+        st.button("✕  Bersihkan Semua", key="lc_btn_reset_bottom", use_container_width=True, on_click=clear_lc_filters)
+    with foot_r2:
+        st.button(
+            "Terapkan Filter", key="lc_btn_apply", use_container_width=True,
+            type="primary", icon=":material/filter_alt:", on_click=_apply_lc_filters,
+        )
 
 
 def _get_lc_extra_css():
     return dedent("""
     <style>
-    /* ── Filter bar v2 ──────────────────────────────────────────── */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        gap: 16px !important;
-        margin-top: -28px !important;
-        margin-bottom: 0px !important;
-        padding: 6px 16px !important;
-        background: #ffffff !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 16px !important;
-        box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
-        flex-wrap: nowrap !important;
-        width: fit-content !important;
+    /* Tighter gap between header and the Filter Data card than the
+       shared 93px spacer used on other pages. */
+    body:has(.lc-page-marker) .ov-fixed-header-spacer,
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.ov-fixed-header-spacer) {
+        height: 56px !important;
+        min-height: 56px !important;
+        max-height: 56px !important;
     }
-    body:has(.lc-page-marker) div[data-testid="stLayoutWrapper"]:has(.lc-filter-v2-label) {
-        margin-top: -36px !important;
+    /* ── Filter Data card ──────────────────────────────────────────── */
+    body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.lc-filtercard-marker),
+    body:has(.lc-page-marker) div[data-testid="stLayoutWrapper"]:has(.lc-filtercard-marker) {
+        margin-top: -16px !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] {
+        background: #FFFFFF !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 20px !important;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.015) !important;
+        padding: 18px 20px 14px !important;
     }
     body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.kpi-card-new) {
-        margin-top: -24px !important;
+        margin-top: -14px !important;
     }
     body:has(.lc-page-marker) div[data-testid="stLayoutWrapper"]:has(.kpi-card-new) {
-        margin-top: -28px !important;
+        margin-top: -14px !important;
     }
     body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-vertical-spacer) {
         margin-top: 0px !important;
         margin-bottom: 0px !important;
-        height: 10px !important;
+        height: 0px !important;
     }
-    /* Center columns vertically and remove default Streamlit paddings/margins */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-        height: 38px !important;
+    .lc-filtercard-head {
+        display: flex; align-items: center; gap: 12px;
     }
-    /* Keep the separator on Filter Aktif from causing alignment issues */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:first-child {
-        display: flex !important;
-        align-items: center !important;
+    .lc-filtercard-icon {
+        width: 34px; height: 34px; border-radius: 10px; flex: 0 0 34px;
+        background: #EEF2FF; color: #4338CA;
+        display: flex; align-items: center; justify-content: center;
     }
-    /* Separator after "Filter Aktif" has the same height as the area filter and does not push alignment */
-    body:has(.lc-page-marker) .lc-filter-v2-label {
-        display: flex; align-items: center; gap: 7px;
-        padding-right: 18px; border-right: 1.5px solid #E2E8F0;
-        white-space: nowrap; line-height: 1;
-        font-size: 13px; font-weight: 700; color: #475569;
-        font-family: Inter, sans-serif !important;
-        height: 38px !important;
-        box-sizing: border-box !important;
+    .lc-filtercard-title {
+        margin: 0 !important; color: #0F172A; font-size: 18px !important; font-weight: 700 !important;
+        font-family: 'Montserrat', sans-serif !important; line-height: 1 !important;
     }
-    /* Spacing of 24px between the last dropdown (Month, 4th child) and Clear All (5th child) */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) > div:nth-child(5) {
-        margin-left: 8px !important;
-    }
-    /* Perfect horizontal and vertical centering for all components in the capsule */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stVerticalBlock"] {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        gap: 0 !important;
-        height: 38px !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stElementContainer"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 38px !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 180px !important;
-        height: 38px !important;
-        flex-shrink: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stButton"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 38px !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stMarkdownContainer"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 38px !important;
-    }
-    body:has(.lc-page-marker) .lc-filter-v2-badge {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 2px 8px; border-radius: 999px;
+    .lc-filtercard-badge {
+        display: inline-flex; align-items: center; margin-left: 8px;
+        padding: 2px 8px; border-radius: 999px; vertical-align: middle;
         background: #F0FDF4; border: 1px solid #BBF7D0;
-        font-size: 10.5px; font-weight: 700; color: #16A34A;
-        white-space: nowrap; font-family: Inter, sans-serif !important;
-        flex-shrink: 0;
+        font-size: 10.5px !important; font-weight: 700 !important; color: #16A34A;
+        white-space: nowrap;
     }
-    body:has(.lc-page-marker) .lc-filter-v2-dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: #16A34A; display: inline-block; flex-shrink: 0;
+    .lc-filtercard-sub {
+        margin: 5px 0 0 !important; color: #64748B; font-size: 11px !important; font-weight: 400 !important;
+        line-height: 1 !important;
+        font-family: 'Inter', sans-serif !important;
     }
-    /* Override generic selectbox rules for filter bar selectboxes to match Revenue Sharing layout */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div > div {
-        min-height: 38px !important;
-        height: 38px !important;
-        padding: 0 !important;
-        background: transparent !important;
+    .lc-filter-label {
+        display: flex; align-items: center; gap: 6px;
+        color: #475569; font-size: 11.5px; font-weight: 700;
+        font-family: Inter, sans-serif !important;
+        margin: 0 0 6px 4px;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-filter-label) {
+        margin-bottom: -4px !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-filterrow-marker) {
+        margin: 0 !important; padding: 0 !important; height: 0 !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-filterrow-marker) + div[data-testid="stHorizontalBlock"],
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-filterrow-marker) + div[data-testid="stLayoutWrapper"] {
+        margin-top: -4px !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-filtercard-footer-marker) {
+        margin: 6px 0 -10px !important;
+        height: 1px !important;
+        border-top: 1px solid #F1F5F9 !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.lc-filtercard-marker) [data-testid="baseButton-secondary"] {
+        border: 1px solid #E2E8F0 !important; border-radius: 10px !important;
+        background: #ffffff !important; color: #475569 !important;
+        font-size: 12.5px !important; font-weight: 700 !important;
+        font-family: Inter, sans-serif !important;
+    }
+    body:has(.lc-page-marker) [data-testid="baseButton-primary"],
+    body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] {
+        border-radius: 999px !important;
+        font-size: 12.5px !important; font-weight: 700 !important;
+        font-family: Inter, sans-serif !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+    }
+    body:has(.lc-page-marker) [data-testid="baseButton-primary"]:hover,
+    body:has(.lc-page-marker) [data-testid="stBaseButton-primary"]:hover {
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+    }
+    body:has(.lc-page-marker) [data-testid="baseButton-primary"] svg,
+    body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] [data-testid="stIconMaterial"] {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        font-family: 'Material Symbols Rounded' !important;
+    }
+    body:has(.lc-page-marker) [data-testid="baseButton-primary"] p,
+    body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] p {
+        color: #ffffff !important;
+    }
+    /* Remove the rounded border that wraps each filter card selectbox entirely */
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] > div,
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"],
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         border: none !important;
         box-shadow: none !important;
-        width: 180px !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] div[data-baseweb="select"] {
-        width: 180px !important;
-        min-height: 38px !important;
-        height: 38px !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        gap: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-        height: 38px !important;
-        line-height: 38px !important;
-    }
-    /* Selectboxes inside filter bar → chip style with 180px width */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] {
-        margin: 0 !important;
-        width: 180px !important;
-        flex-shrink: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {
-        width: 180px !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {
-        border-radius: 12px !important;
-        background: #F8FAFC !important;
-        border: 1px solid #E2E8F0 !important;
-        min-height: 38px !important; height: 38px !important;
-        width: 180px !important;
-        padding: 0 12px 0 16px !important;
-        display: flex !important; align-items: center !important;
-        box-sizing: border-box !important;
-        font-size: 13px !important; font-weight: 600 !important;
-        color: #94A3B8 !important; font-family: Inter, sans-serif !important;
-        transition: all 0.2s ease !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
-        fill: #CBD5E1 !important;
-        opacity: 1 !important;
-        color: #CBD5E1 !important;
-        width: 14px !important;
-        height: 14px !important;
-        flex-shrink: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {
-        border-color: #6366F1 !important;
-        background: #ffffff !important;
-    }
-    /* Clear All Button */
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="baseButton-secondary"] {
-        border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
-        background: #ffffff !important; color: #475569 !important;
-        font-size: 13px !important; font-weight: 700 !important;
-        min-height: 38px !important; height: 38px !important;
-        width: auto !important; padding: 0 16px !important;
-        font-family: Inter, sans-serif !important; white-space: nowrap !important;
-        transition: all 0.2s ease !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-    }
-    body:has(.lc-page-marker) [data-testid="stHorizontalBlock"]:has(.lc-filter-v2-label) [data-testid="baseButton-secondary"]:hover {
-        border-color: #6366F1 !important;
-        color: #6366F1 !important;
-        background: #F8FAFC !important;
     }
     </style>
     """)
@@ -2440,12 +2426,22 @@ def render_lease_contract():
         }
         month_abbr = month_map.get(sel_month, sel_month[:3])
         df_filt = df_filt[df_filt["Valid Period"].apply(lambda x: x.split(" - ")[1].split(" ")[1] == month_abbr if " - " in x else False)]
-        
+
+    sel_perusahaan = st.session_state.get("f_perusahaan", "All Perusahaan")
+    if sel_perusahaan != "All Perusahaan" and not df_filt.empty:
+        df_filt = df_filt[df_filt["Name/Tenant"] == sel_perusahaan]
+
+    sel_kode = st.session_state.get("f_kode_ruang", "All Kode Ruang")
+    if sel_kode != "All Kode Ruang" and not df_filt.empty:
+        df_filt = df_filt[df_filt["Kode"] == sel_kode]
+
     df_all = df_filt
     st.session_state.lc_filtered_df = df_filt
 
     active_count = sum([
         st.session_state.get("f_terminal", "All Terminal") != "All Terminal",
+        st.session_state.get("f_perusahaan", "All Perusahaan") != "All Perusahaan",
+        st.session_state.get("f_kode_ruang", "All Kode Ruang") != "All Kode Ruang",
         st.session_state.get("f_tahun", "All Year") != "All Year",
         st.session_state.get("f_masa", "All Month") != "All Month",
     ])
@@ -2460,23 +2456,11 @@ def render_lease_contract():
 
     st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
 
-    ff0, ff1, ff2, ff3, ff4 = st.columns(
-        [0.85, 1.1, 1.1, 1.1, 0.85], gap="small"
-    )
-    with ff0:
-        st.markdown(_lc_filter_bar_v2_html(active_count), unsafe_allow_html=True)
-    with ff1:
-        st.selectbox("Terminal", ["All Terminal", "Terminal 1", "Terminal 2"], key="f_terminal", label_visibility="collapsed")
-    with ff2:
-        st.selectbox("Tahun", ["All Year", 2030, 2029, 2028, 2027, 2026, 2025, 2024, 2023], key="f_tahun", label_visibility="collapsed")
-    with ff3:
-        st.selectbox("Bulan", ["All Month", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], key="f_masa", label_visibility="collapsed")
-    with ff4:
-        st.button("Clear All", key="lc_btn_reset", use_container_width=True, on_click=clear_lc_filters)
+    with st.container(border=True):
+        _render_lc_filter_card(st.session_state.lc_df, active_count)
 
     _mount_lc_fixed_header()
     st.markdown('<div class="filters-marker"></div>', unsafe_allow_html=True)
-    st.markdown(_lc_filter_chip_state_css(), unsafe_allow_html=True)
 
     if st.session_state.lc_show_form:
         _render_add_form()

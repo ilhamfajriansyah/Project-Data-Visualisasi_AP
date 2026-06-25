@@ -122,58 +122,95 @@ def _rs_service_icon_svg(icon_key: str) -> str:
     )
 
 
+_RS_FILTER_DEFAULTS = {
+    "rs_terminal": "All Terminal", "rs_year": "All Year", "rs_month": "All Month",
+}
+
+
 def clear_rs_filters():
-    st.session_state.rs_year = "All Year"
-    st.session_state.rs_month = "All Month"
-    st.session_state.rs_terminal = "All Terminal"
+    """Reset both the applied filters and the pending (draft) widget values."""
+    for applied_key, default in _RS_FILTER_DEFAULTS.items():
+        st.session_state[applied_key] = default
+        st.session_state[f"rs_pend_{applied_key[3:]}"] = default
     st.session_state.rs_filter_status = "All"
     if "rs_detail_search" in st.session_state:
         st.session_state.rs_detail_search = ""
 
 
-def _rs_filter_bar_v2_html(active_count: int) -> str:
+def _apply_rs_filters():
+    """Copy the pending (draft) widget values into the applied filter keys."""
+    for applied_key in _RS_FILTER_DEFAULTS:
+        st.session_state[applied_key] = st.session_state[f"rs_pend_{applied_key[3:]}"]
+
+
+_RS_FILTER_ICONS = {
+    "monitor":  '<rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>',
+    "calendar": '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>',
+    "filter":   '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>',
+}
+
+
+def _rs_filter_icon_svg(icon_key: str, size: int = 14) -> str:
+    paths = _RS_FILTER_ICONS.get(icon_key, "")
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f'{paths}</svg>'
+    )
+
+
+def _render_rs_filter_card(active_count: int = 0) -> None:
+    """"Filter Data" card matching the Lease Contract page — filters are
+    staged in rs_pend_* widget keys and only take effect once the user
+    clicks "Terapkan Filter" / "Bersihkan Semua" / the header "Reset Filter"."""
+    st.markdown('<div class="rs-filtercard-marker"></div>', unsafe_allow_html=True)
+
     badge = (
-        f'<span class="rs-filter-v2-badge">'
-        f'<span class="rs-filter-v2-dot"></span>&nbsp;{active_count} active'
-        f'</span>'
+        f'<span class="rs-filtercard-badge">{active_count} aktif</span>'
         if active_count > 0 else ""
     )
-    return dedent(f"""
-    <div class="rs-filter-v2-label">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2.5"
-             stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-        Filter Aktif
-        {badge}
-    </div>
-    """).strip()
-
-
-def _rs_filter_chip_state_css() -> str:
-    """Inject per-chip color based on whether the filter is at its default value."""
-    _DEFAULTS = {"rs_terminal": "All Terminal", "rs_year": "All Year", "rs_month": "All Month"}
-    _NTH = {"rs_terminal": 2, "rs_year": 3, "rs_month": 4}
-
-    rules = []
-    for key, default in _DEFAULTS.items():
-        nth = _NTH[key]
-        is_active = st.session_state.get(key, default) != default
-        if is_active:
-            bg, border, color, svg = "#EEF2FF", "#C7D2FE", "#4338CA", "#818CF8"
-        else:
-            bg, border, color, svg = "#F8FAFC", "#E2E8F0", "#94A3B8", "#CBD5E1"
-        base = (
-            f"body:has(.rs-page-marker) "
-            f"[data-testid='stHorizontalBlock']:has(.rs-filter-v2-label) "
-            f"> div:nth-child({nth}) "
-            f"[data-testid='stSelectbox'] > div[data-baseweb='select'] > div:first-child"
+    head_l, head_r = st.columns([4, 1.2], vertical_alignment="center")
+    with head_l:
+        st.markdown(
+            '<div class="rs-filtercard-head">'
+            f'<span class="rs-filtercard-icon">{_rs_filter_icon_svg("filter", 18)}</span>'
+            '<div>'
+            f'<p class="rs-filtercard-title">Filter Data{badge}</p>'
+            '<p class="rs-filtercard-sub">Pilih kriteria untuk memfilter data yang ditampilkan</p>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
         )
-        rules.append(f"{base} {{ background:{bg}!important; border-color:{border}!important; color:{color}!important; }}")
-        rules.append(f"{base} svg {{ fill:{svg}!important; }}")
+    with head_r:
+        st.button(
+            "↺  Reset Filter", key="rs_btn_reset_top", use_container_width=True,
+            on_click=clear_rs_filters,
+        )
 
-    return f"<style>{''.join(rules)}</style>"
+    st.markdown('<div class="rs-filterrow-marker"></div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3, gap="small")
+    field_defs = [
+        (c1, "monitor", "Terminal", RS_TERMINAL_OPTIONS, "rs_pend_terminal"),
+        (c2, "calendar", "Tahun", RS_YEAR_OPTIONS, "rs_pend_year"),
+        (c3, "calendar", "Bulan", RS_MONTH_OPTIONS, "rs_pend_month"),
+    ]
+    for col, icon_key, label, options, widget_key in field_defs:
+        with col:
+            st.markdown(
+                f'<div class="rs-filter-label">{_rs_filter_icon_svg(icon_key, 12)}<span>{label}</span></div>',
+                unsafe_allow_html=True,
+            )
+            st.selectbox(label, options, key=widget_key, label_visibility="collapsed")
+
+    st.markdown('<div class="rs-filtercard-footer-marker"></div>', unsafe_allow_html=True)
+    _foot_spacer, foot_r1, foot_r2 = st.columns([3.4, 1.1, 1.3], vertical_alignment="center")
+    with foot_r1:
+        st.button("✕  Bersihkan Semua", key="rs_btn_reset_bottom", use_container_width=True, on_click=clear_rs_filters)
+    with foot_r2:
+        st.button(
+            "Terapkan Filter", key="rs_btn_apply", use_container_width=True,
+            type="primary", icon=":material/filter_alt:", on_click=_apply_rs_filters,
+        )
 
 
 def _compute_filtered_kpis(filtered_detail):
@@ -516,41 +553,30 @@ def _inject_rs_page_css():
     <style>
     .rs-page-marker { display: none; }
 
-    /* Moderate gap between header and filter bar on this page — less than
-       the shared 93px spacer (felt too far), but more than 50px (felt
-       like it collided with the header). */
+    /* Same header-to-filter gap as the Lease Contract page. */
     body:has(.rs-page-marker) .ov-fixed-header-spacer,
     body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.ov-fixed-header-spacer) {
-        height: 71px !important;
-        min-height: 71px !important;
-        max-height: 71px !important;
+        height: 56px !important;
+        min-height: 56px !important;
+        max-height: 56px !important;
     }
-
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        gap: 16px !important;
-        margin-top: -28px !important;
-        margin-bottom: 0px !important;
-        padding: 6px 16px !important;
-        background: #ffffff !important;
+    /* ── Filter Data card (same design as Lease Contract) ──────────── */
+    body:has(.rs-page-marker) div[data-testid="stHorizontalBlock"]:has(.rs-filtercard-marker),
+    body:has(.rs-page-marker) div[data-testid="stLayoutWrapper"]:has(.rs-filtercard-marker) {
+        margin-top: -16px !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stVerticalBlockBorderWrapper"] {
+        background: #FFFFFF !important;
+        background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 16px !important;
-        box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
-        flex-wrap: nowrap !important;
-        width: fit-content !important;
-    }
-    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)),
-    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label)),
-    body:has(.rs-page-marker) div[data-testid="stLayoutWrapper"]:has(.rs-filter-v2-label) {
-        margin-top: -36px !important;
+        border-radius: 20px !important;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.015) !important;
+        padding: 18px 20px 14px !important;
     }
     /* Jarak antara Filter dan KPI Grid di Revenue Sharing Page */
     body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-kpi-grid),
     body:has(.rs-page-marker) div[data-testid="stLayoutWrapper"]:has(.rs-kpi-grid) {
-        margin-top: -25px !important;
+        margin-top: -14px !important;
     }
     /* Jarak Vertikal antara KPI Grid dan Donut Card di Revenue Sharing Page */
     body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-donut-card),
@@ -577,140 +603,87 @@ def _inject_rs_page_css():
     body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-vertical-spacer) + div:has(.ed-card-marker) {
         margin-top: -24px !important;
     }
-    /* Center columns vertically and remove default Streamlit paddings/margins */
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
-        height: 38px !important;
+    .rs-filtercard-head {
+        display: flex; align-items: center; gap: 12px;
     }
-    /* Keep the separator on Filter Aktif from causing alignment issues */
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:first-child {
-        display: flex !important;
-        align-items: center !important;
+    .rs-filtercard-icon {
+        width: 34px; height: 34px; border-radius: 10px; flex: 0 0 34px;
+        background: #EEF2FF; color: #4338CA;
+        display: flex; align-items: center; justify-content: center;
     }
-    /* Separator after "Filter Aktif" has the same height as the area filter and does not push alignment */
-    body:has(.rs-page-marker) .rs-filter-v2-label {
-        display: flex; align-items: center; gap: 7px;
-        padding-right: 18px; border-right: 1.5px solid #E2E8F0;
-        white-space: nowrap; line-height: 1;
-        font-size: 13px; font-weight: 700; color: #475569;
-        font-family: Inter, sans-serif !important;
-        height: 38px !important;
-        box-sizing: border-box !important;
+    .rs-filtercard-title {
+        margin: 0 !important; color: #0F172A; font-size: 18px !important; font-weight: 700 !important;
+        font-family: 'Montserrat', sans-serif !important; line-height: 1 !important;
     }
-    /* Spacing of 24px between the last dropdown (Month, 4th child) and Clear All (5th child) */
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) > div:nth-child(5) {
-        margin-left: 8px !important;
-    }
-    /* Perfect horizontal and vertical centering for all components in the capsule */
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stVerticalBlock"] {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        gap: 0 !important;
-        height: 38px !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stElementContainer"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 38px !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 180px !important;
-        height: 38px !important;
-        flex-shrink: 0 !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stButton"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 38px !important;
-    }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stMarkdownContainer"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 38px !important;
-    }
-    body:has(.rs-page-marker) .rs-filter-v2-badge {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 2px 8px; border-radius: 999px;
+    .rs-filtercard-badge {
+        display: inline-flex; align-items: center; margin-left: 8px;
+        padding: 2px 8px; border-radius: 999px; vertical-align: middle;
         background: #F0FDF4; border: 1px solid #BBF7D0;
-        font-size: 10.5px; font-weight: 700; color: #16A34A;
-        white-space: nowrap; font-family: Inter, sans-serif !important;
-        flex-shrink: 0;
+        font-size: 10.5px !important; font-weight: 700 !important; color: #16A34A;
+        white-space: nowrap;
     }
-    body:has(.rs-page-marker) .rs-filter-v2-dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: #16A34A; display: inline-block; flex-shrink: 0;
+    .rs-filtercard-sub {
+        margin: 5px 0 0 !important; color: #64748B; font-size: 11px !important; font-weight: 400 !important;
+        line-height: 1 !important;
+        font-family: 'Inter', sans-serif !important;
     }
-    /* Selectboxes inside filter bar → chip style with 180px width */
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] {
-        margin: 0 !important;
-        width: 180px !important;
-        flex-shrink: 0 !important;
+    .rs-filter-label {
+        display: flex; align-items: center; gap: 6px;
+        color: #475569; font-size: 11.5px; font-weight: 700;
+        font-family: Inter, sans-serif !important;
+        margin: 0 0 6px 4px;
     }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] {
-        width: 180px !important;
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-filter-label) {
+        margin-bottom: -4px !important;
     }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child {
-        border-radius: 12px !important;
-        background: #F8FAFC !important;
-        border: 1px solid #E2E8F0 !important;
-        min-height: 38px !important; height: 38px !important;
-        width: 180px !important;
-        padding: 0 12px 0 16px !important;
-        display: flex !important; align-items: center !important;
-        box-sizing: border-box !important;
-        font-size: 13px !important; font-weight: 600 !important;
-        color: #94A3B8 !important; font-family: Inter, sans-serif !important;
-        transition: all 0.2s ease !important;
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-filterrow-marker) {
+        margin: 0 !important; padding: 0 !important; height: 0 !important;
     }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child svg {
-        fill: #CBD5E1 !important;
-        flex-shrink: 0 !important;
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-filterrow-marker) + div[data-testid="stHorizontalBlock"],
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-filterrow-marker) + div[data-testid="stLayoutWrapper"] {
+        margin-top: -4px !important;
     }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="stSelectbox"] > div[data-baseweb="select"] > div:first-child:hover {
-        border-color: #6366F1 !important;
-        background: #ffffff !important;
+    body:has(.rs-page-marker) div[data-testid="stElementContainer"]:has(.rs-filtercard-footer-marker) {
+        margin: 6px 0 -10px !important;
+        height: 1px !important;
+        border-top: 1px solid #F1F5F9 !important;
     }
-    /* Clear All Button */
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="baseButton-secondary"] {
-        border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+    body:has(.rs-page-marker) div[data-testid="stHorizontalBlock"]:has(.rs-filtercard-marker) [data-testid="baseButton-secondary"] {
+        border: 1px solid #E2E8F0 !important; border-radius: 10px !important;
         background: #ffffff !important; color: #475569 !important;
-        font-size: 13px !important; font-weight: 700 !important;
-        min-height: 38px !important; height: 38px !important;
-        width: auto !important; padding: 0 16px !important;
-        font-family: Inter, sans-serif !important; white-space: nowrap !important;
-        transition: all 0.2s ease !important;
-        box-shadow: none !important;
-        margin: 0 !important;
+        font-size: 12.5px !important; font-weight: 700 !important;
+        font-family: Inter, sans-serif !important;
     }
-    body:has(.rs-page-marker) [data-testid="stHorizontalBlock"]:has(.rs-filter-v2-label) [data-testid="baseButton-secondary"]:hover {
-        border-color: #6366F1 !important;
-        color: #6366F1 !important;
-        background: #F8FAFC !important;
+    body:has(.rs-page-marker) [data-testid="baseButton-primary"],
+    body:has(.rs-page-marker) [data-testid="stBaseButton-primary"] {
+        border-radius: 999px !important;
+        font-size: 12.5px !important; font-weight: 700 !important;
+        font-family: Inter, sans-serif !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+    }
+    body:has(.rs-page-marker) [data-testid="baseButton-primary"]:hover,
+    body:has(.rs-page-marker) [data-testid="stBaseButton-primary"]:hover {
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+    }
+    body:has(.rs-page-marker) [data-testid="baseButton-primary"] svg,
+    body:has(.rs-page-marker) [data-testid="stBaseButton-primary"] [data-testid="stIconMaterial"] {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        font-family: 'Material Symbols Rounded' !important;
+    }
+    body:has(.rs-page-marker) [data-testid="baseButton-primary"] p,
+    body:has(.rs-page-marker) [data-testid="stBaseButton-primary"] p {
+        color: #ffffff !important;
+    }
+    body:has(.rs-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] > div,
+    body:has(.rs-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"],
+    body:has(.rs-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        border: none !important;
+        box-shadow: none !important;
     }
 
     body:has(.rs-page-marker) .rs-kpi-grid {
@@ -1221,6 +1194,12 @@ def page_revenue_sharing():
     if st.session_state.get("rs_filter_status") not in RS_SETTLEMENT_FILTER_OPTIONS:
         st.session_state.rs_filter_status = "All"
 
+    for pend_key, applied_key in (
+        ("rs_pend_terminal", "rs_terminal"), ("rs_pend_year", "rs_year"), ("rs_pend_month", "rs_month"),
+    ):
+        if pend_key not in st.session_state:
+            st.session_state[pend_key] = st.session_state[applied_key]
+
     active_count = sum([
         st.session_state.get("rs_year", "All Year") != "All Year",
         st.session_state.get("rs_month", "All Month") != "All Month",
@@ -1237,22 +1216,10 @@ def page_revenue_sharing():
 
     st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
 
-    ff0, ff1, ff2, ff3, ff4 = st.columns(
-        [0.85, 1.1, 1.1, 1.1, 0.85], gap="small"
-    )
-    with ff0:
-        st.markdown(_rs_filter_bar_v2_html(active_count), unsafe_allow_html=True)
-    with ff1:
-        st.selectbox("Terminal", RS_TERMINAL_OPTIONS, key="rs_terminal", label_visibility="collapsed")
-    with ff2:
-        st.selectbox("Tahun", RS_YEAR_OPTIONS, key="rs_year", label_visibility="collapsed")
-    with ff3:
-        st.selectbox("Bulan", RS_MONTH_OPTIONS, key="rs_month", label_visibility="collapsed")
-    with ff4:
-        st.button("Clear All", key="rs_clear_all", use_container_width=True, on_click=clear_rs_filters)
+    with st.container(border=True):
+        _render_rs_filter_card(active_count)
 
     _mount_rs_fixed_header()
-    st.markdown(_rs_filter_chip_state_css(), unsafe_allow_html=True)
 
 
     MONTH_MAP = {
