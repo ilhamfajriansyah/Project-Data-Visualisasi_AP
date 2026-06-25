@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from .shared_import import get_shared_import_data, get_shared_import_meta
 from .navigation import topnav_actions_html
+from .pagination import render_pagination, patch_pagination
 
 DV_PAGE_ICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
@@ -83,7 +84,7 @@ def _get_verification_data() -> pd.DataFrame:
     Saat ini menggunakan dummy data.
     Nanti sambungkan ke st.session_state['im_imported_data']
     yang di-set dari import_manager.py setelah Execute Import.
-    
+
     Contoh integrasi:
         if 'im_imported_data' in st.session_state:
             return st.session_state['im_imported_data']
@@ -95,6 +96,7 @@ def _get_verification_data() -> pd.DataFrame:
         df = imported_df.copy()
         rows = []
         for idx, r in df.iterrows():
+            real_omzet = r.get("real_omzet", r.get("omzet", 0))
             try:
                 conflict_info = f"Rp {float(real_omzet) / 1_000_000_000:.2f}M".replace(".", ",")
             except (TypeError, ValueError):
@@ -184,11 +186,12 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
     background: rgba(255, 255, 255, 0.56) !important;
     backdrop-filter: blur(26px) !important;
     -webkit-backdrop-filter: blur(26px) !important;
-    box-shadow: 
+    box-shadow:
         0 8px 32px rgba(99, 102, 241, 0.07) !important,
         0 2px 8px rgba(0, 0, 0, 0.025) !important,
         inset 0 1px 0 rgba(255, 255, 255, 1) !important,
         inset 0 -1px 0 rgba(99, 102, 241, 0.025) !important;
+    gap: 0px !important;
 }
 
 body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker):not(
@@ -336,330 +339,410 @@ body:has(.dv-page-marker) .ap-top-actions {
 }
 
 /* ── KPI Row Spacing & Gap ── */
-body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi) {
-    margin-top: -28px !important;
+body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card) {
+    margin-top: -72px !important;
     gap: 24px !important;
     flex-wrap: nowrap !important;
 }
-body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi) > div[data-testid="column"] {
+body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card) > div[data-testid="column"] {
     width: calc(25% - 18px) !important;
     min-width: calc(25% - 18px) !important;
     flex: 1 1 calc(25% - 18px) !important;
 }
 
 /* ── KPI CARDS ── */
-.dv-kpi {
+.dv-kpi-card {
     background: #ffffff !important;
     border: 1px solid #E2E8F0 !important;
-    border-radius: 12px !important;
-    padding: 16px 20px !important;
+    border-radius: 16px !important;
+    padding: 20px 24px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05) !important;
-    transition: transform .2s ease, box-shadow .2s ease !important;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
     overflow: hidden !important;
-    min-height: 90px !important;
-    height: 100% !important;
+    min-height: 106px !important;
     box-sizing: border-box !important;
 }
-.dv-kpi:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.12) !important;
+.dv-kpi-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08) !important;
 }
-.dv-kpi-left {
+.dv-kpi-content {
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
-    gap: 4px !important;
+    gap: 6px !important;
 }
 .dv-kpi-label {
     font-size: 11px !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     color: #64748B !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
+    letter-spacing: 0.8px !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 .dv-kpi-value {
-    font-size: 26px !important;
+    font-size: 28px !important;
     font-weight: 800 !important;
     color: #0F172A !important;
-    line-height: 1 !important;
+    line-height: 1.1 !important;
     margin: 0 !important;
     padding: 0 !important;
 }
-.dv-kpi-icon {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 50% !important;
-    background: var(--icon-bg, rgba(99, 102, 241, 0.10)) !important;
+.dv-kpi-trend {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+.dv-kpi-icon-container {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 18px !important;
     flex-shrink: 0 !important;
+    transition: all 0.25s ease !important;
 }
+
+/* Card-specific accents */
+.kpi-total { border-left: 4px solid #2563EB !important; }
+.kpi-total .dv-kpi-icon-container { background: rgba(37, 99, 235, 0.08) !important; color: #2563EB !important; }
+.trend-total { color: #2563EB !important; }
+
+.kpi-valid { border-left: 4px solid #10B981 !important; }
+.kpi-valid .dv-kpi-icon-container { background: rgba(16, 185, 129, 0.08) !important; color: #10B981 !important; }
+.trend-valid { color: #059669 !important; }
+
+.kpi-anomalies { border-left: 4px solid #F59E0B !important; }
+.kpi-anomalies .dv-kpi-icon-container { background: rgba(245, 158, 11, 0.08) !important; color: #F59E0B !important; }
+.trend-anomalies { color: #D97706 !important; }
+
+.kpi-conflicts { border-left: 4px solid #EF4444 !important; }
+.kpi-conflicts .dv-kpi-icon-container { background: rgba(239, 68, 68, 0.08) !important; color: #EF4444 !important; }
+.trend-conflicts { color: #DC2626 !important; }
 
 /* ── TABLE ── */
-.dv-table { width: 100%; border-collapse: collapse; }
+.dv-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
 .dv-table thead tr {
-    border-bottom: 1px solid rgba(99,102,241,0.08);
+    background: #F1F0FE !important;
 }
 .dv-table th {
-    padding: 12px 16px; text-align: left;
-    font-size: 11px; font-weight: 700; color: #64748b;
-    letter-spacing: 0.3px; white-space: nowrap;
+    padding: 10px 20px !important;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4F46E5 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    border-bottom: 1px solid #E2E8F0;
 }
 .dv-table td {
-    padding: 14px 16px; font-size: 12.5px; color: #334155;
-    border-bottom: 1px solid rgba(99,102,241,0.04);
+    padding: 10px 20px !important;
+    font-size: 13px;
+    color: #334155;
+    border-bottom: 1px solid #E2E8F0;
     vertical-align: middle;
+    transition: all 0.2s;
 }
-.dv-table tbody tr { transition: background 0.15s; }
-.dv-table tbody tr:hover { background: rgba(99,102,241,0.025); }
-.dv-table tbody tr.anomali-row { background: rgba(245,158,11,0.03); }
-.dv-table tbody tr:last-child td { border-bottom: none; }
+.dv-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+.dv-table tbody tr:nth-child(even) {
+    background-color: #FAFAFB;
+}
+.dv-table tbody tr:nth-child(odd) {
+    background-color: #FFFFFF;
+}
+.dv-table tbody tr:hover {
+    background-color: rgba(37, 99, 235, 0.03) !important;
+}
+.dv-table tbody tr.anomali-row {
+    background-color: rgba(245, 158, 11, 0.02);
+}
+.dv-table tbody tr.anomali-row:hover {
+    background-color: rgba(245, 158, 11, 0.05) !important;
+}
+.dv-table tbody tr:last-child td {
+    border-bottom: none;
+}
 
-.dv-kode   { font-weight: 700; color: #1e293b; font-size: 12.5px; }
-.dv-brand  { font-weight: 600; color: #1e293b; font-size: 12.5px; }
-.dv-sap    { font-size: 10.5px; color: #94a3b8; margin-top: 2px; }
-.dv-onset  { font-size: 12px; color: #475569; }
+.dv-kode {
+    font-weight: 700;
+    color: #0F172A;
+    font-size: 13px;
+}
+.dv-brand {
+    font-weight: 600;
+    color: #0F172A;
+    font-size: 13.5px;
+}
+.dv-sap {
+    font-size: 11px;
+    color: #64748B;
+    margin-top: 3px;
+}
+.dv-onset {
+    font-size: 12.5px;
+    color: #475569;
+}
 
 /* ── STATUS BADGES ── */
-.b-active      { background:rgba(6,182,212,0.12);  color:#0891b2; border:1px solid rgba(6,182,212,0.25); padding:4px 14px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; }
-.b-expiredsoon { background:rgba(245,158,11,0.13); color:#d97706; border:1px solid rgba(245,158,11,0.28); padding:4px 14px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; }
-.b-expired     { background:rgba(239,68,68,0.10);  color:#dc2626; border:1px solid rgba(239,68,68,0.22); padding:4px 14px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; }
+.b-active {
+    background: #ECFDF5 !important;
+    color: #047857 !important;
+    border: 1px solid #A7F3D0 !important;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    display: inline-block;
+}
+.b-expiredsoon {
+    background: #FFFBEB !important;
+    color: #B45309 !important;
+    border: 1px solid #FDE68A !important;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    display: inline-block;
+}
+.b-expired {
+    background: #FEF2F2 !important;
+    color: #B91C1C !important;
+    border: 1px solid #FCA5A5 !important;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    display: inline-block;
+}
 
-.dv-skema      { font-size: 11.5px; font-weight: 700; color: #4f46e5; }
-.dv-conflict   { font-size: 12.5px; font-weight: 700; color: #0f172a; }
+.dv-skema {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4F46E5;
+}
+.dv-conflict {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0F172A;
+    font-family: 'Poppins', sans-serif !important;
+}
 
-/* ── FOOTER ── */
+/* ── BRAND ICONS ── */
+.brand-logo-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.brand-coffee {
+    background: rgba(16, 185, 129, 0.08) !important;
+    color: #10B981 !important;
+}
+.brand-food {
+    background: rgba(245, 158, 11, 0.08) !important;
+    color: #F59E0B !important;
+}
+.brand-store {
+    background: rgba(37, 99, 235, 0.08) !important;
+    color: #2563EB !important;
+}
+.brand-default {
+    background: rgba(99, 102, 241, 0.08) !important;
+    color: #6366F1 !important;
+}
+
+/* ── ACTION BUTTONS ── */
+.dv-action-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.dv-btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #64748B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.dv-btn-icon:hover {
+    background: #F8FAFC;
+    color: #0F172A;
+    border-color: #CBD5E1;
+}
+.dv-btn-edit:hover {
+    color: #2563EB;
+    border-color: rgba(37, 99, 235, 0.2);
+    background: rgba(37, 99, 235, 0.04);
+}
+.dv-btn-detail:hover {
+    color: #10B981;
+    border-color: rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.04);
+}
+
+/* ── ANOMALI DOT ── */
+.anomali-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #f59e0b;
+    display: inline-block; margin-right: 6px;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+}
+
+/* ── FOOTER & PAGINATION ── */
 .dv-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 24px !important;
-    border-top: 1px solid rgba(99,102,241,0.07);
-    min-height: 56px !important;
-    box-sizing: border-box !important;
+    padding: 16px 24px !important;
+    border-top: 1px solid #E2E8F0;
+    background: #FFFFFF;
 }
 .dv-footer-info {
-    font-size: 12px !important;
-    color: #94a3b8 !important;
+    font-size: 12.5px !important;
+    color: #64748B !important;
     font-weight: 500 !important;
-    line-height: 1 !important;
 }
 
-/* ── PAGINATION OVERRIDES ── */
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) {
-    position: absolute !important;
-    width: 0 !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"],
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] {
-    position: absolute !important;
-    right: 56px !important;
-    bottom: 36px !important;
-    z-index: 10 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    width: auto !important;
-    max-width: fit-content !important;
-    margin: 0 !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"],
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"],
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-    width: auto !important;
-    flex: 0 0 auto !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-/* Previous & Next Buttons */
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button {
+/* ── FILTER BAR STYLES ── */
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] {
     background: transparent !important;
-    border: 1px solid transparent !important;
-    color: #94a3b8 !important;
-    font-weight: 500 !important;
-    box-shadow: none !important;
-    padding: 6px 12px !important;
-    min-height: 32px !important;
-    height: 32px !important;
-    border-radius: 8px !important;
-    font-size: 12px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    transition: all 0.15s !important;
-    font-family: 'Inter', sans-serif !important;
+    margin-top: 16px !important;
+    margin-bottom: 5px !important;
 }
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button p {
-    color: #94a3b8 !important;
-    font-weight: 500 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stTextInput"] {
+    overflow: visible !important;
 }
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button:hover {
-    background: #f1f5f9 !important;
-    color: #475569 !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button:hover p {
-    color: #475569 !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child button:disabled,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child button:disabled {
-    opacity: 0.4 !important;
-    cursor: not-allowed !important;
-    background: transparent !important;
-    border-color: transparent !important;
-}
-/* Inactive Page Number Buttons */
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button {
-    background: transparent !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #475569 !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    padding: 6px 10px !important;
-    min-height: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    box-shadow: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    transition: all 0.15s !important;
-    font-family: 'Inter', sans-serif !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button p {
-    color: #475569 !important;
-    font-weight: 600 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button:hover,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button:hover {
-    background: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-    color: #1e293b !important;
-}
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:not(:first-child):not(:last-child) button:hover p,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:not(:first-child):not(:last-child) button:hover p {
-    color: #1e293b !important;
-}
-/* Disable Focus Glow/Shadow Rings globally on pagination row */
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] button:focus,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] button:focus-visible,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] button:active,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] button:focus,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] button:focus-visible,
-div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] button:active {
-    box-shadow: none !important;
-    outline: none !important;
-}
-
-/* ── ANOMALI BADGE ── */
-.anomali-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #f59e0b;
-    display: inline-block; margin-right: 5px;
-    box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
-}
-
-/* ── Dropdown Filters Overrides ── */
-body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) [data-testid="stSelectbox"] {
-    max-width: 280px !important;
-    margin-left: auto !important;
-}
-body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) [data-testid="stSelectbox"] > div > div {
-    height: 44px !important;
-    min-height: 44px !important;
-    border-radius: 22px !important;
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stTextInputRootElement"] {
+    border-radius: 9999px !important;
     border: 1px solid #E2E8F0 !important;
-    background: #ffffff !important;
-    padding: 0 12px 0 16px !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
-    display: flex !important;
-    align-items: center !important;
+    background: #FFFFFF !important;
+    height: 42px !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
     box-sizing: border-box !important;
+    overflow: visible !important;
 }
-body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] {
-    height: 44px !important;
-    min-height: 44px !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stTextInputRootElement"]:focus-within {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stTextInput"] input,
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stTextInput"] input:focus {
     border: none !important;
+    background: transparent !important;
+    padding-left: 18px !important;
+    font-size: 13.5px !important;
+    height: 100% !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
-body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-    height: 44px !important;
-    line-height: 44px !important;
-    display: flex !important;
-    align-items: center !important;
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stSelectbox"] > div {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
-body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
-    font-size: 13px !important;
-    font-weight: 500 !important;
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stSelectbox"] > div > div {
+    border-radius: 9999px !important;
+    border: 1px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    height: 42px !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+}
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
+    border-radius: 9999px !important;
+    background: #FFFFFF !important;
     color: #475569 !important;
-    margin: 0 !important;
-    font-family: 'Inter', sans-serif !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+    height: 42px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s !important;
+    width: 100% !important;
+}
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button:hover {
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    border-color: #CBD5E1 !important;
+    transform: none !important;
+}
+
+/* ── PAGINATION STYLING ── */
+.dv-pagination-btns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dv-pg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #FFFFFF;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-sizing: border-box;
+    outline: none;
+    user-select: none;
+    height: 36px;
+    padding: 0 12px;
+    min-width: 36px;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      border-color 0.18s ease,
+      transform 0.12s ease;
+}
+.dv-pg-btn:hover:not(.active):not(.disabled) {
+    background-color: #EFF6FF !important;
+    color: #2563EB !important;
+    border-color: #EFF6FF !important;
+}
+.dv-pg-btn.active {
+    background-color: #2563EB !important;
+    color: #FFFFFF !important;
+    border-color: #2563EB !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+}
+.dv-pg-btn.disabled {
+    color: #9CA3AF !important;
+    border-color: #cbd5e1 !important;
+    background-color: #F8FAFC !important;
+    cursor: not-allowed !important;
+    opacity: 0.4 !important;
+}
+.dv-pg-btn:active:not(.disabled) {
+    transform: scale(0.94) !important;
 }
 </style>
 """
@@ -669,7 +752,7 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
 # INIT STATE
 # ─────────────────────────────────────────────
 def _init_state():
-    if "dv_page"   not in st.session_state: st.session_state.dv_page   = 0
+    if "dv_page" not in st.session_state: st.session_state.dv_page = 1
     current_data = _get_verification_data()
     if get_shared_import_data() is not None:
         st.session_state.dv_df = current_data
@@ -681,10 +764,64 @@ def _init_state():
 # HELPERS
 # ─────────────────────────────────────────────
 def _status_badge(s):
-    if s == "Active":       return '<span class="b-active">Active</span>'
-    if s == "Expired Soon": return '<span class="b-expiredsoon">Expired Soon</span>'
-    if s == "Expired":      return '<span class="b-expired">Expired</span>'
+    if s == "Active":
+        return '<span class="b-active">Active</span>'
+    if s in ["Expired Soon", "Expiring Soon"]:
+        return '<span class="b-expiredsoon">Expiring Soon</span>'
+    if s == "Expired":
+        return '<span class="b-expired">Expired</span>'
     return f'<span>{s}</span>'
+
+
+def _get_brand_icon(brand_name: str) -> str:
+    brand_lower = brand_name.lower()
+
+    # SVG definition for coffee cup (Starbucks, Cafe)
+    coffee_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>'
+        '<path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>'
+        '<line x1="6" y1="1" x2="6" y2="4"></line>'
+        '<line x1="10" y1="1" x2="10" y2="4"></line>'
+        '<line x1="14" y1="1" x2="14" y2="4"></line>'
+        '</svg>'
+    )
+
+    # SVG definition for food/burger (Burger King, Rod Boy, KFC, Wingman, Pizza, Bakso, Solaria)
+    food_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M12 21a9 9 0 0 0 9-9c0-1.66-2-3-4.35-3h-9.3C5 9 3 10.34 3 12a9 9 0 0 0 9 9z"></path>'
+        '<path d="M3 12h18"></path>'
+        '<path d="M12 3a9 9 0 0 0-9 6h18a9 9 0 0 0-9-6z"></path>'
+        '</svg>'
+    )
+
+    # SVG definition for shopping bag (Gramedia, Hypermart, Indomaret, Alfamart)
+    store_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>'
+        '<line x1="3" y1="6" x2="21" y2="6"></line>'
+        '<path d="M16 10a4 4 0 0 1-8 0"></path>'
+        '</svg>'
+    )
+
+    # SVG definition for general business/store
+    default_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>'
+        '<path d="M17 21v-2a4 4 0 0 0-4-4h-2a4 4 0 0 0-4 4v2"></path>'
+        '<path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"></path>'
+        '</svg>'
+    )
+
+    if "starbucks" in brand_lower or "cafe" in brand_lower or "coffee" in brand_lower:
+        return f'<div class="brand-logo-wrapper brand-coffee">{coffee_svg}</div>'
+    elif any(x in brand_lower for x in ["burger", "king", "rod boy", "kfc", "bistro", "pizza", "bakso", "solaria", "wingman"]):
+        return f'<div class="brand-logo-wrapper brand-food">{food_svg}</div>'
+    elif any(x in brand_lower for x in ["store", "indomaret", "alfamart", "hypermart", "gramedia", "timezone", "outlet"]):
+        return f'<div class="brand-logo-wrapper brand-store">{store_svg}</div>'
+    else:
+        return f'<div class="brand-logo-wrapper brand-default">{default_svg}</div>'
 
 
 # ─────────────────────────────────────────────
@@ -693,8 +830,8 @@ def _status_badge(s):
 def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
     total   = len(df)
     n_pages = max(1, -(-total // page_size))
-    page    = max(0, min(page, n_pages - 1))
-    start   = page * page_size
+    page    = max(1, min(page, n_pages))
+    start   = (page - 1) * page_size
     end     = min(start + page_size, total)
     rows    = df.iloc[start:end]
 
@@ -702,23 +839,54 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
     for _, r in rows.iterrows():
         anomali_class = "anomali-row" if r["Anomali"] else ""
         anomali_dot   = '<span class="anomali-dot"></span>' if r["Anomali"] else ""
+
+        # Get custom brand icon
+        brand_icon_html = _get_brand_icon(r['Brand/Tenant'])
+
+        # Action column buttons
+        action_html = """
+        <div class="dv-action-btns">
+          <button class="dv-btn-icon dv-btn-edit" title="Edit Record">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="dv-btn-icon dv-btn-detail" title="View Details">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        """
+
         rows_html += f"""
         <tr class="{anomali_class}">
           <td>
             <div class="dv-kode">{r['Kode Ruang']}</div>
           </td>
           <td>
-            <div class="dv-brand">{anomali_dot}{r['Brand/Tenant']}</div>
-            <div class="dv-sap">{r['SAP ID']} · {r['Legal ID']}</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              {brand_icon_html}
+              <div>
+                <div class="dv-brand">{anomali_dot}{r['Brand/Tenant']}</div>
+                <div class="dv-sap">{r['SAP ID']} · {r['Legal ID']}</div>
+              </div>
+            </div>
           </td>
           <td class="dv-onset">{r['Real Onset']}</td>
           <td>{_status_badge(r['Status'])}</td>
           <td class="dv-skema">{r['Skema']}</td>
           <td class="dv-conflict">{r['Conflict Info']}</td>
+          <td>{action_html}</td>
         </tr>"""
 
+    if not rows_html:
+        rows_html = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:30px;">Tidak ada data yang cocok dengan filter.</td></tr>'
+
     html = f"""
-    <div style="overflow-x:auto; margin-top: 16px; border: 1px solid rgba(99,102,241,0.08); border-radius: 12px; overflow: hidden;">
+    <div style="overflow-x:auto; margin-top: 0px !important; border: 1px solid rgba(99,102,241,0.08); border-radius: 12px; overflow: hidden;">
       <table class="dv-table">
         <thead>
           <tr>
@@ -728,13 +896,11 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
             <th>Status</th>
             <th>Skema</th>
             <th>Conflict Info</th>
+            <th style="text-align: right; padding-right: 24px;">Action</th>
           </tr>
         </thead>
         <tbody>{rows_html}</tbody>
       </table>
-      <div class="dv-footer">
-        <span class="dv-footer-info">Showing {start+1} to {end} of {total} entries</span>
-      </div>
     </div>"""
 
     st.markdown(html, unsafe_allow_html=True)
@@ -744,50 +910,99 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
+def _patch_dv_pagination():
+    components.html(
+        r"""
+        <script>
+        (function () {
+            const doc = window.parent.document;
+            console.log("[DV Pagination] JS injected. Doc:", doc);
+
+            function setupDVPagination() {
+                const buttons = doc.querySelectorAll('.dv-pg-btn');
+                if (buttons.length > 0) {
+                    console.log("[DV Pagination] Found dv-pg-btn buttons:", buttons.length);
+                }
+                buttons.forEach(btn => {
+                    if (btn.classList.contains('disabled') || btn.classList.contains('active')) return;
+                    if (btn.dataset.hasListener) return;
+                    btn.dataset.hasListener = "true";
+
+                    console.log("[DV Pagination] Attaching listener to button:", btn.textContent, "page:", btn.getAttribute('data-page'));
+                    btn.addEventListener('click', () => {
+                        const targetPage = btn.getAttribute('data-page');
+                        console.log("[DV Pagination] Button clicked. Page:", targetPage);
+                        if (!targetPage) return;
+
+                        let targetInput = null;
+                        const widgets = doc.querySelectorAll('[data-testid="stTextInput"]');
+                        widgets.forEach(widget => {
+                            const label = widget.querySelector('label');
+                            if (label) {
+                                const text = label.textContent.replace(/\s+/g, ' ').trim();
+                                if (text.includes('Page Sync Trigger DV')) {
+                                    targetInput = widget.querySelector('input');
+                                }
+                            }
+                        });
+
+                        console.log("[DV Pagination] Target input search result:", targetInput);
+
+                        if (targetInput) {
+                            try {
+                                const targetWindow = targetInput.ownerDocument.defaultView || window.parent;
+                                let nativeInputValueSetter = Object.getOwnPropertyDescriptor(targetWindow.HTMLInputElement.prototype, "value").set;
+                                nativeInputValueSetter.call(targetInput, targetPage);
+                                targetInput.dispatchEvent(new targetWindow.Event('input', { bubbles: true }));
+                                targetInput.dispatchEvent(new targetWindow.Event('change', { bubbles: true }));
+                                targetInput.dispatchEvent(new targetWindow.KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+                                targetInput.dispatchEvent(new targetWindow.Event('blur', { bubbles: true }));
+                                console.log("[DV Pagination] Events dispatched successfully.");
+                            } catch (err) {
+                                console.error("[DV Pagination] Error setting value or dispatching events:", err);
+                            }
+                        } else {
+                            console.warn("[DV Pagination] Target input not found.");
+                        }
+                    });
+                });
+            }
+
+            function hidePageSyncTrigger() {
+                doc.querySelectorAll('[data-testid="stTextInput"]').forEach((widget) => {
+                    const label = widget.querySelector('label');
+                    if (label && label.textContent.includes('Page Sync Trigger')) {
+                        widget.style.display = 'none';
+                    }
+                });
+            }
+
+            setupDVPagination();
+            hidePageSyncTrigger();
+
+            const observer = new MutationObserver(() => {
+                setupDVPagination();
+                hidePageSyncTrigger();
+            });
+
+            observer.observe(doc.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def render_data_verification():
     """Call this from dashboard.py router."""
     _init_state()
     st.markdown('<div class="dv-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
-
-    # ── Active Pagination Button Styling ──
-    active_child = st.session_state.dv_page + 2
-    st.markdown(f"""
-    <style>
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button {{
-        background: #ffffff !important;
-        color: #1e293b !important;
-        border: 1px solid #6366f1 !important;
-        border-radius: 8px !important;
-        box-shadow: 0 0 10px rgba(99, 102, 241, 0.28) !important;
-    }}
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button p,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button p,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button p,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button p {{
-        color: #1e293b !important;
-        font-weight: 700 !important;
-    }}
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button:hover,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button:hover,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button:hover,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button:hover {{
-        background: #ffffff !important;
-        color: #1e293b !important;
-        border: 1px solid #6366f1 !important;
-        box-shadow: 0 0 10px rgba(99, 102, 241, 0.28) !important;
-    }}
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button:hover p,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button:hover p,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child({active_child}) button:hover p,
-    div[data-testid="stElementContainer"]:has(.dv-pagination-marker) ~ * [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({active_child}) button:hover p {{
-        color: #1e293b !important;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
 
     with st.container():
         st.markdown('<div class="dv-sticky-header-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
@@ -814,30 +1029,72 @@ def render_data_verification():
     # ── KPI Cards Row Marker ──
     st.markdown('<div class="dv-kpi-row-marker"></div>', unsafe_allow_html=True)
 
-    # ── 4 KPI Cards ── (mirip screenshot: Total Records, Valid, Anomalies, Conflicts)
+    # ── 4 KPI Cards ──
     df_all = st.session_state.dv_df
     total_records = len(df_all)
     valid_records = int((df_all["Status"] == "Active").sum())
     anomalies     = int(df_all["Anomali"].sum())
     conflicts     = int((df_all["Status"] == "Expired").sum())
 
+    # Define clean, professional SVG icons
+    total_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>'
+        '<polyline points="14 2 14 8 20 8"></polyline>'
+        '<line x1="16" y1="13" x2="8" y2="13"></line>'
+        '<line x1="16" y1="17" x2="8" y2="17"></line>'
+        '<polyline points="10 9 9 9 8 9"></polyline>'
+        '</svg>'
+    )
+
+    valid_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>'
+        '<polyline points="9 11 11 13 15 9"></polyline>'
+        '</svg>'
+    )
+
+    anom_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>'
+        '<line x1="12" y1="9" x2="12" y2="13"></line>'
+        '<line x1="12" y1="17" x2="12.01" y2="17"></line>'
+        '</svg>'
+    )
+
+    conflict_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="12" cy="12" r="10"></circle>'
+        '<line x1="12" y1="8" x2="12" y2="12"></line>'
+        '<line x1="12" y1="16" x2="12.01" y2="16"></line>'
+        '</svg>'
+    )
+
     k1, k2, k3, k4 = st.columns(4)
+
+    valid_pct = (valid_records / total_records * 100) if total_records > 0 else 0
+    anom_pct = (anomalies / total_records * 100) if total_records > 0 else 0
+    conflict_pct = (conflicts / total_records * 100) if total_records > 0 else 0
+
     kpi_cfg = [
-        (k1, "📄", "rgba(99,102,241,0.10)",  "Total Records",  total_records),
-        (k2, "✅", "rgba(16,185,129,0.10)",  "Valid Records",  valid_records),
-        (k3, "⚠️", "rgba(245,158,11,0.10)", "Anomalies",      anomalies),
-        (k4, "🔄", "rgba(239,68,68,0.10)",  "Conflicts",      conflicts),
+        (k1, total_svg, "total", "Total Records", total_records, "Updated just now"),
+        (k2, valid_svg, "valid", "Valid Records", valid_records, f"{valid_pct:.1f}% accuracy rate"),
+        (k3, anom_svg, "anomalies", "Anomalies", anomalies, f"{anom_pct:.1f}% anomaly rate"),
+        (k4, conflict_svg, "conflicts", "Conflicts", conflicts, f"{conflict_pct:.1f}% conflict rate"),
     ]
-    for col, icon, icon_bg, label, value in kpi_cfg:
+    for col, icon_svg, kpi_type, label, value, trend in kpi_cfg:
         with col:
             val_formatted = f"{value:,}".replace(",", ".")
             st.markdown(f"""
-            <div class="dv-kpi">
-                <div class="dv-kpi-left">
+            <div class="dv-kpi-card kpi-{kpi_type}">
+                <div class="dv-kpi-content">
                     <div class="dv-kpi-label">{label}</div>
                     <div class="dv-kpi-value">{val_formatted}</div>
+                    <div class="dv-kpi-trend trend-{kpi_type}">{trend}</div>
                 </div>
-                <div class="dv-kpi-icon" style="--icon-bg:{icon_bg};">{icon}</div>
+                <div class="dv-kpi-icon-container">
+                    {icon_svg}
+                </div>
             </div>""", unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
@@ -846,61 +1103,98 @@ def render_data_verification():
     main_section = st.container()
     with main_section:
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
-        
-        # ── Header Row ──
-        dh1, df1, df2 = st.columns([5.2, 2.4, 2.4], vertical_alignment="center")
-        with dh1:
-            st.markdown(
-                '<p class="ed-section-title">Verification Records</p>'
-                '<p class="ed-section-sub">Daftar lengkap status validasi dan anomali data tenant</p>',
-                unsafe_allow_html=True,
+
+        # ── Header & Filter Controls ──
+        st.markdown(
+            '<div style="margin-bottom: 8px;">'
+            '<p class="ed-section-title">Verification Records</p>'
+            '<p class="ed-section-sub">Daftar lengkap status validasi dan anomali data tenant</p>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+        f_col1, f_col2, f_col3, f_col4 = st.columns([4, 2.5, 2.5, 1], vertical_alignment="bottom")
+        with f_col1:
+            search_q = st.text_input(
+                "Search Brand / Tenant",
+                placeholder="Search brand, tenant or unit code...",
+                label_visibility="collapsed",
+                key="dv_search"
             )
-        with df1:
+        with f_col2:
             status_f = st.selectbox(
-                "", ["Status ▾", "Active", "Expired Soon", "Expired"],
-                label_visibility="collapsed", key="dv_fstatus")
-        with df2:
+                "Status",
+                ["All Status", "Active", "Expired Soon", "Expired"],
+                label_visibility="collapsed",
+                key="dv_fstatus"
+            )
+        with f_col3:
             anom_f = st.selectbox(
-                "", ["Anomalies Type ▾", "Dengan Anomali", "Tanpa Anomali"],
-                label_visibility="collapsed", key="dv_fanom")
+                "Anomalies Type",
+                ["All Anomalies", "Dengan Anomali", "Tanpa Anomali"],
+                label_visibility="collapsed",
+                key="dv_fanom"
+            )
+        # Define callback to reset filter values safely before next render run
+        def handle_reset():
+            st.session_state.dv_search = ""
+            st.session_state.dv_fstatus = "All Status"
+            st.session_state.dv_fanom = "All Anomalies"
+            st.session_state.dv_page = 1
+
+        with f_col4:
+            st.button("Reset", key="dv_reset_btn", on_click=handle_reset, use_container_width=True)
 
         # ── Apply Filters ──
         df = st.session_state.dv_df.copy()
-        if status_f not in ["Status ▾", ""]:
+
+        # Search Filter
+        if search_q:
+            df = df[
+                df["Brand/Tenant"].str.contains(search_q, case=False, na=False) |
+                df["Kode Ruang"].str.contains(search_q, case=False, na=False)
+            ]
+
+        # Status Filter
+        if status_f not in ["All Status", "Status ▾", ""]:
+            # Handle user display "Expired Soon" mapping to data status
             df = df[df["Status"] == status_f]
+
+        # Anomalies Filter
         if anom_f == "Dengan Anomali":
             df = df[df["Anomali"] == True]
         elif anom_f == "Tanpa Anomali":
             df = df[df["Anomali"] == False]
+
         df = df.reset_index(drop=True)
 
         # Reset page on filter change
-        fkey = f"{status_f}|{anom_f}"
+        fkey = f"{search_q}|{status_f}|{anom_f}"
         if st.session_state.get("_dv_last_filter") != fkey:
-            st.session_state.dv_page = 0
+            st.session_state.dv_page = 1
             st.session_state["_dv_last_filter"] = fkey
 
         # ── Table ──
         page, n_pages = _render_table(df, st.session_state.dv_page)
+        first_item = 0 if len(df) == 0 else ((page - 1) * 5) + 1
+        last_item = min(page * 5, len(df))
 
-        # ── Pagination ──
-        if n_pages > 1:
-            st.markdown('<div class="dv-pagination-marker"></div>', unsafe_allow_html=True)
-            pg_cols = st.columns(n_pages + 2)
-            with pg_cols[0]:
-                if st.button("Previous", key="dv_pg_prev", disabled=(page == 0)):
-                    st.session_state.dv_page = page - 1
-                    st.rerun()
-            for i in range(n_pages):
-                with pg_cols[i + 1]:
-                    lbl = str(i + 1)
-                    if st.button(lbl, key=f"dv_pg_{i}"):
-                        st.session_state.dv_page = i
-                        st.rerun()
-            with pg_cols[n_pages + 1]:
-                if st.button("Next", key="dv_pg_next", disabled=(page >= n_pages - 1)):
-                    st.session_state.dv_page = page + 1
-                    st.rerun()
+    # ── Pagination di LUAR with main_section agar CSS DV tidak override ──
+    st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+    dv_page_input = render_pagination(
+        current_page=st.session_state.dv_page,
+        total_pages=n_pages,
+        first_item=first_item,
+        last_item=last_item,
+        total_rows=len(df),
+        sync_key="dv_page_sync",
+    )
+    if dv_page_input and dv_page_input.isdigit():
+        new_page = int(dv_page_input)
+        if new_page != st.session_state.dv_page:
+            st.session_state.dv_page = new_page
+            st.rerun()
+    patch_pagination()
 
     # ── INFO BOX: Integrasi Import Manager ──
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)

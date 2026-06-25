@@ -8,6 +8,7 @@ from html import escape
 from textwrap import dedent
 
 from .navigation import topnav_actions_html
+from .pagination import render_pagination, patch_pagination
 
 RS_PAGE_ICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
@@ -1501,25 +1502,22 @@ def page_revenue_sharing():
         last_item = min(end_idx, total_rows)
 
         st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-        pa, pb, pc, pd_ = st.columns([6.6, 0.28, 0.68, 0.28], gap="small")
-        with pa:
-            st.markdown(
-                f'<div class="ed-pagination-info">{first_item}–{last_item} dari {total_rows} data</div>',
-                unsafe_allow_html=True,
-            )
-        with pb:
-            if st.button("‹", key="rs_prev_page", disabled=st.session_state.rs_detail_page <= 1):
-                st.session_state.rs_detail_page -= 1
+        rs_page_input = render_pagination(
+            current_page=st.session_state.rs_detail_page,
+            total_pages=total_pages,
+            first_item=first_item,
+            last_item=last_item,
+            total_rows=total_rows,
+            sync_key="rs_detail_page_sync"
+        )
+        if rs_page_input and rs_page_input.isdigit():
+            new_page = int(rs_page_input)
+            if new_page != st.session_state.rs_detail_page:
+                st.session_state.rs_detail_page = new_page
                 st.rerun()
-        with pc:
-            st.markdown(
-                f'<div class="ed-pagination-label">Page {st.session_state.rs_detail_page} / {total_pages}</div>',
-                unsafe_allow_html=True,
-            )
-        with pd_:
-            if st.button("›", key="rs_next_page", disabled=st.session_state.rs_detail_page >= total_pages):
-                st.session_state.rs_detail_page += 1
-                st.rerun()
+
+        # Mount Javascript listener
+        patch_pagination()
 
 
 if __name__ == "__main__":

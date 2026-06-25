@@ -7,6 +7,7 @@ from .import_manager import render_import_manager
 from .Data_verification import render_data_verification
 from .traffic_monitor import page_traffic_monitor
 from .dashboard_style import DASHBOARD_CSS
+from .pagination import render_pagination, patch_pagination
 from login.access_control import (
     IDLE_TIMEOUT_SECONDS,
     IDLE_WARNING_LEAD_SECONDS,
@@ -2012,6 +2013,7 @@ def inject_dashboard_css():
         opacity: 0.3 !important;
     }
 
+
     .ed-pagination-label {
         display: flex;
         align-items: center;
@@ -2071,6 +2073,7 @@ def inject_dashboard_css():
     div[data-testid="stButton"] > button:disabled {
         opacity: 0.3 !important;
     }
+
                 
     .overview-kpi-card,
     .overview-kpi-card *,
@@ -3400,26 +3403,24 @@ def page_overview(df_raw):
         first_item = 0 if total_rows == 0 else start_idx + 1
         last_item = min(end_idx, total_rows)
 
+        # Use new generic pagination module
         st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-        pa, pb, pc, pd_ = st.columns([6.6, 0.28, 0.68, 0.28], gap="small")
-        with pa:
-            st.markdown(
-                f'<div class="ed-pagination-info">{first_item}–{last_item} dari {total_rows} data</div>',
-                unsafe_allow_html=True
-            )
-        with pb:
-            if st.button("‹", key="overview_prev_page", disabled=st.session_state.overview_detail_page <= 1):
-                st.session_state.overview_detail_page -= 1
+        ov_page_input = render_pagination(
+            current_page=st.session_state.overview_detail_page,
+            total_pages=total_pages,
+            first_item=first_item,
+            last_item=last_item,
+            total_rows=total_rows,
+            sync_key="overview_detail_page_sync"
+        )
+        if ov_page_input and ov_page_input.isdigit():
+            new_page = int(ov_page_input)
+            if new_page != st.session_state.overview_detail_page:
+                st.session_state.overview_detail_page = new_page
                 st.rerun()
-        with pc:
-            st.markdown(
-                f'<div class="ed-pagination-label">Page {st.session_state.overview_detail_page} / {total_pages}</div>',
-                unsafe_allow_html=True
-            )
-        with pd_:
-            if st.button("›", key="overview_next_page", disabled=st.session_state.overview_detail_page >= total_pages):
-                st.session_state.overview_detail_page += 1
-                st.rerun()
+
+        # Mount Javascript listener
+        patch_pagination()
 
 
 # ══════════════════════════════════════════════
