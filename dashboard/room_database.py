@@ -181,17 +181,17 @@ _PAGE_CSS = """
     border-collapse: collapse;
 }
 .room-table thead tr {
-    background: rgba(99,102,241,0.04);
-    border-bottom: 1px solid rgba(99,102,241,0.08);
+    background: rgba(99,102,241,0.05);
+    border-bottom: none;
 }
 .room-table th {
-    padding: 13px 16px;
+    padding: 11px 16px;
     text-align: left;
-    font-size: 10px;
-    font-weight: 800;
-    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4F46E5;
     text-transform: uppercase;
-    letter-spacing: 0.7px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
 }
 .room-table td {

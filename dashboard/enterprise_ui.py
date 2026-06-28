@@ -354,6 +354,7 @@ def inject_enterprise_page_css(page_marker_class, extra_css=""):
         position: sticky;
         top: 0;
         z-index: 2;
+        background: #F3F4FE;
     }}
     @media (max-width: 1100px) {{
         body:has(.{page_marker_class}) .ed-kpi-grid {{

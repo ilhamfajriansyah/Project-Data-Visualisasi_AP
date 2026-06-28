@@ -364,16 +364,18 @@ def inject_dashboard_css():
     }
 
     .overview-light-table thead {
-        background: rgba(248, 250, 252, 0.92);
+        background: rgba(99, 102, 241, 0.06);
     }
 
     .overview-light-table th {
-        padding: 12px 14px;
+        padding: 12px 16px;
         text-align: left;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
-        color: #64748b;
-        border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+        color: #4F46E5;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: none;
     }
 
     .overview-light-table td {
@@ -1527,17 +1529,21 @@ def inject_dashboard_css():
     }
 
     .ed-table thead tr {
-        background: transparent;
+        background: rgba(99, 102, 241, 0.06);
+        border-radius: 10px;
+        overflow: hidden;
     }
 
     .ed-table th {
-        padding: 10px 14px;
-        background: #F3F0FF;
+        padding: 11px 16px;
+        background: transparent;
         border: none;
-        color: #64748B;
+        color: #4F46E5;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 700;
         text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         white-space: nowrap;
         font-family: 'Inter', sans-serif !important;
     }
@@ -1676,7 +1682,7 @@ def inject_dashboard_css():
         gap: 8px;
     }
 
-    [data-testid="stSelectbox"] > div > div {
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] > div > div {
         min-height: 40px !important;
         height: 40px !important;
         border-radius: 8px !important;
@@ -1687,17 +1693,17 @@ def inject_dashboard_css():
         transition: border-color 0.15s ease, background-color 0.15s ease !important;
     }
 
-    [data-testid="stSelectbox"] div[data-baseweb="select"],
-    [data-testid="stSelectbox"] div[data-baseweb="select"] span,
-    [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"],
-    [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] div[data-baseweb="select"],
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] span,
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"],
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
         font-size: 13px !important;
         font-weight: 500 !important;
         font-family: 'Inter', sans-serif !important;
         color: #0F172A !important;
     }
 
-    [data-testid="stTextInput"] [data-baseweb="input"] {
+    body:has(.dv-page-marker) [data-testid="stTextInput"] [data-baseweb="input"] {
         min-height: 40px !important;
         height: 40px !important;
         border-radius: 8px !important;
@@ -1711,7 +1717,7 @@ def inject_dashboard_css():
         transition: border-color 0.15s ease, background-color 0.15s ease !important;
     }
 
-    [data-testid="stTextInput"] [data-baseweb="input"] > div {
+    body:has(.dv-page-marker) [data-testid="stTextInput"] [data-baseweb="input"] > div {
         width: 100% !important;
         height: 100% !important;
         display: flex !important;
@@ -1723,8 +1729,8 @@ def inject_dashboard_css():
         margin: 0 !important;
     }
 
-    .stTextInput > div > div > input,
-    [data-testid="stTextInput"] input {
+    body:has(.dv-page-marker) .stTextInput > div > div > input,
+    body:has(.dv-page-marker) [data-testid="stTextInput"] input {
         min-height: 38px !important;
         height: 38px !important;
         border: none !important;
@@ -1739,28 +1745,28 @@ def inject_dashboard_css():
         padding: 0 12px !important;
     }
 
-    [data-testid="stSelectbox"] > div > div:hover,
-    [data-testid="stSelectbox"] > div > div:focus-within,
-    [data-testid="stTextInput"] [data-baseweb="input"]:hover,
-    [data-testid="stTextInput"] [data-baseweb="input"]:focus-within {
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] > div > div:hover,
+    body:has(.dv-page-marker) [data-testid="stSelectbox"] > div > div:focus-within,
+    body:has(.dv-page-marker) [data-testid="stTextInput"] [data-baseweb="input"]:hover,
+    body:has(.dv-page-marker) [data-testid="stTextInput"] [data-baseweb="input"]:focus-within {
         border-color: #94A3B8 !important;
         background: #F8FAFC !important;
         box-shadow: none !important;
         outline: none !important;
     }
 
-    .stTextInput > div > div > input:focus,
-    .stTextInput > div > div > input:hover,
-    [data-testid="stTextInput"] input:focus,
-    [data-testid="stTextInput"] input:hover {
+    body:has(.dv-page-marker) .stTextInput > div > div > input:focus,
+    body:has(.dv-page-marker) .stTextInput > div > div > input:hover,
+    body:has(.dv-page-marker) [data-testid="stTextInput"] input:focus,
+    body:has(.dv-page-marker) [data-testid="stTextInput"] input:hover {
         border: none !important;
         box-shadow: none !important;
         outline: none !important;
         background: transparent !important;
     }
 
-    .stTextInput > div > div > input::placeholder,
-    [data-testid="stTextInput"] input::placeholder {
+    body:has(.dv-page-marker) .stTextInput > div > div > input::placeholder,
+    body:has(.dv-page-marker) [data-testid="stTextInput"] input::placeholder {
         color: #94A3B8 !important;
     }
 
@@ -2891,7 +2897,7 @@ def _render_overview_filter_card(
             st.selectbox(label, options, key=widget_key, label_visibility="collapsed")
 
     st.markdown('<div class="ov-filtercard-footer-marker"></div>', unsafe_allow_html=True)
-    _foot_spacer, foot_r1, foot_r2 = st.columns([3.4, 1.1, 1.3], vertical_alignment="center")
+    _foot_spacer, foot_r1, foot_r2 = st.columns([3.2, 1.3, 1.3], vertical_alignment="center")
     with foot_r1:
         st.button("✕  Bersihkan Semua", key="ov_btn_reset_bottom", use_container_width=True, on_click=clear_overview_filters)
     with foot_r2:
@@ -2972,10 +2978,27 @@ def _get_overview_extra_css():
         font-family: 'Inter', sans-serif !important;
     }}
     .ov-filter-label {{
-        display: flex; align-items: center; gap: 6px;
-        color: #475569; font-size: 11.5px; font-weight: 700;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        color: #475569 !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
         font-family: Inter, sans-serif !important;
-        margin: 0 0 6px 4px;
+        margin: 0 0 6px 4px !important;
+        height: 16px !important;
+        line-height: 16px !important;
+    }}
+    .ov-filter-label svg {{
+        display: block !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    .ov-filter-label span {{
+        line-height: 1 !important;
+        display: inline-block !important;
     }}
     body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-filter-label) {{
         margin-bottom: -4px !important;
@@ -2992,11 +3015,19 @@ def _get_overview_extra_css():
         height: 1px !important;
         border-top: 1px solid #F1F5F9 !important;
     }}
-    body:has(.overview-page-marker) div[data-testid="stHorizontalBlock"]:has(.ov-filtercard-marker) [data-testid="baseButton-secondary"] {{
-        border: 1px solid #E2E8F0 !important; border-radius: 10px !important;
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="baseButton-secondary"] {{
+        border: 1px solid #E2E8F0 !important; border-radius: 8px !important;
         background: #ffffff !important; color: #475569 !important;
-        font-size: 12.5px !important; font-weight: 700 !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
         font-family: Inter, sans-serif !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        width: 145px !important;
+        min-width: 145px !important;
+        max-width: 145px !important;
+        padding: 0 !important;
+        margin-left: auto !important; margin-right: 0 !important;
     }}
     body:has(.overview-page-marker) [data-testid="baseButton-primary"],
     body:has(.overview-page-marker) [data-testid="stBaseButton-primary"] {{
@@ -3008,10 +3039,33 @@ def _get_overview_extra_css():
         border: none !important;
         box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
     }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="baseButton-primary"],
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stBaseButton-primary"] {{
+        border-radius: 8px !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
+        font-family: Inter, sans-serif !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+        border: none !important;
+        box-shadow: 0 3px 10px rgba(99, 102, 241, 0.2) !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        width: 145px !important;
+        min-width: 145px !important;
+        max-width: 145px !important;
+        padding: 0 !important;
+        margin-left: auto !important; margin-right: 0 !important;
+    }}
     body:has(.overview-page-marker) [data-testid="baseButton-primary"]:hover,
     body:has(.overview-page-marker) [data-testid="stBaseButton-primary"]:hover {{
         background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
         box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="baseButton-primary"]:hover,
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stBaseButton-primary"]:hover {{
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3) !important;
     }}
     body:has(.overview-page-marker) [data-testid="baseButton-primary"] svg,
     body:has(.overview-page-marker) [data-testid="stBaseButton-primary"] [data-testid="stIconMaterial"] {{
@@ -3023,11 +3077,52 @@ def _get_overview_extra_css():
     body:has(.overview-page-marker) [data-testid="stBaseButton-primary"] p {{
         color: #ffffff !important;
     }}
-    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] > div,
-    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"],
-    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+    /* ── Selectbox Dropdowns in Filter Card ────────────────────────── */
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] {{
+        margin-bottom: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] > div {{
         border: none !important;
+        background: transparent !important;
         box-shadow: none !important;
+        padding: 0 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] > div > div {{
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        backdrop-filter: none !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] {{
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 999px !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.04) !important;
+        transition: all 0.2s ease !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"]:hover {{
+        border-color: #CBD5E1 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within {{
+        border-color: #6366F1 !important;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+        min-height: 32px !important;
+        height: 32px !important;
+        max-height: 32px !important;
+        padding: 0 4px 0 12px !important;
+        display: flex !important;
+        align-items: center !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"] {{
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+    }}
+    body:has(.overview-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.ov-filtercard-marker) [data-testid="stSelectbox"] svg {{
+        color: #64748B !important;
     }}
 
     /* Export button on overview detail tenant table */

@@ -82,6 +82,31 @@ button[kind="primary"] {
     cursor:       default  !important;
     box-shadow: 0 2px 8px rgba(29, 78, 216, 0.35) !important;
 }
+
+/* ── Align button columns closely on the right ── */
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stHorizontalBlock"] {
+    gap: 4px !important;
+}
+
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stHorizontalBlock"]
+.stColumn:has(button),
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stHorizontalBlock"]
+[data-testid="column"]:has(button),
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stHorizontalBlock"]
+> div:has(button) {
+    width:      38px !important;
+    max-width:  38px !important;
+    min-width:  38px !important;
+    flex:       0 0 auto !important;
+}
 </style>"""
 
 

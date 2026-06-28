@@ -19,6 +19,7 @@ from .shared_import import (
     REQUIRED_DASHBOARD_COLUMNS,
 )
 from .navigation import topnav_actions_html
+from .pagination import render_pagination
 
 IM_PAGE_ICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
@@ -273,8 +274,8 @@ body:has(.im-page-marker) div[data-testid="stElementContainer"]:has(.im-manager-
 
 /* ── TABLE ── */
 .im-table { width:100%; border-collapse:collapse; }
-.im-table thead tr { background:rgba(99,102,241,0.04); border-bottom:1px solid rgba(99,102,241,0.10); }
-.im-table th { padding:11px 13px; text-align:left; font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; }
+.im-table thead tr { background: rgba(99, 102, 241, 0.05); border-bottom: none; }
+.im-table th { padding: 11px 13px; text-align: left; font-size: 11px; font-weight: 700; color: #4F46E5; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
 .im-table td { padding:12px 13px; font-size:12.5px; color:#334155; border-bottom:1px solid rgba(99,102,241,0.05); vertical-align:middle; }
 .im-table tbody tr:hover { background:rgba(99,102,241,0.025); }
 .im-table tbody tr:last-child td { border-bottom:none; }
@@ -1246,21 +1247,33 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
 /* History Table Row Design */
 .im-hist-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 .im-hist-table thead tr {
-    background: rgba(248,250,252,0.8);
-    border-bottom: 1px solid #f1f5f9;
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
 }
 .im-hist-table th {
-    padding: 12px 16px;
+    padding: 11px 14px;
+    background: transparent;
+    border: none;
+    color: #4F46E5;
+    font-size: 11px;
+    font-weight: 700;
     text-align: left;
-    font-size: 10px;
-    font-weight: 800;
-    color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
+}
+.im-hist-table th:first-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.im-hist-table th:last-child {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
 }
 .im-hist-table td {
     padding: 16px 16px;
@@ -1508,11 +1521,11 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     font-weight: 900;
 }
 .im-table thead tr {
-    background: linear-gradient(135deg,rgba(99,102,241,0.08),rgba(6,182,212,0.05));
+    background: rgba(99, 102, 241, 0.05);
 }
 .im-table th {
-    color: #64748b;
-    font-size: 10.5px;
+    color: #4F46E5;
+    font-size: 11px;
 }
 .im-table td {
     padding: 12px 20px;
@@ -1949,8 +1962,8 @@ _NEW_DESIGN_CSS = """
 }
 /* table */
 .im-table-v2 { width:100%; border-collapse:collapse; }
-.im-table-v2 thead tr { background:#F8FAFC; }
-.im-table-v2 th { padding:11px 16px; text-align:left; font-size:10.5px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; border-bottom:1px solid #F1F5F9; }
+.im-table-v2 thead tr { background: rgba(99, 102, 241, 0.05); }
+.im-table-v2 th { padding:11px 16px; text-align:left; font-size:11px; font-weight:700; color:#4F46E5; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; border-bottom:none; }
 .im-table-v2 td { padding:13px 16px; font-size:12.5px; color:#334155; border-bottom:1px solid #F8FAFC; vertical-align:middle; }
 .im-table-v2 tbody tr:hover { background:#FAFBFF; }
 .im-table-v2 tbody tr:last-child td { border-bottom:none; }
@@ -2714,21 +2727,6 @@ def _render_import_history_refined():
     if "im_hist_page" not in st.session_state:
         st.session_state.im_hist_page = 1
 
-    # Render a hidden input to sync page state from HTML pagination clicks
-    st.markdown('<div class="im-page-trigger-container" style="display:none;">', unsafe_allow_html=True)
-    page_input = st.text_input(
-        "Page Sync Trigger",
-        value=str(st.session_state.im_hist_page),
-        key="im_page_trigger_input"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if page_input and page_input.isdigit():
-        new_page = int(page_input)
-        if new_page != st.session_state.im_hist_page:
-            st.session_state.im_hist_page = new_page
-            st.rerun()
-
     page = st.session_state.im_hist_page
     page = max(1, min(page, total_pages))
 
@@ -2804,13 +2802,6 @@ def _render_import_history_refined():
     if not rows_html:
         rows_html = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:30px;">Belum ada data import yang tersedia.</td></tr>'
 
-    # Pagination buttons
-    pg_html = ''
-    pg_html += f'<span class="im-pg-btn {"disabled" if page <= 1 else ""}" data-page="{page - 1}">Previous</span>'
-    for p in range(1, total_pages + 1):
-        pg_html += f'<span class="im-pg-btn {"active" if p == page else ""}" data-page="{p}">{p}</span>'
-    pg_html += f'<span class="im-pg-btn {"disabled" if page >= total_pages else ""}" data-page="{page + 1}">Next</span>'
-
     history_html = (
         '<div class="im-panel im-history">'
         '<div class="im-history-head">'
@@ -2823,7 +2814,7 @@ def _render_import_history_refined():
         '<span class="im-btn-export">Export Log</span>'
         '</div>'
         '</div>'
-        '<div style="overflow-x:auto;">'
+        '<div style="overflow-x:auto; margin-bottom: 0px !important;">'
         '<table class="im-hist-table">'
         '<thead><tr>'
         '<th>Period</th>'
@@ -2839,13 +2830,26 @@ def _render_import_history_refined():
         f'<tbody>{rows_html}</tbody>'
         '</table>'
         '</div>'
-        '<div class="im-pagination-wrap">'
-        f'<span class="im-pagination-info">Showing {start_idx + 1}-{end_idx} of {total} upload sessions</span>'
-        f'<div class="im-pagination-btns">{pg_html}</div>'
-        '</div>'
         '</div>'
     )
     st.markdown(history_html, unsafe_allow_html=True)
+
+    # Render standardized pagination below the table card
+    st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+    im_page_input = render_pagination(
+        current_page=st.session_state.im_hist_page,
+        total_pages=total_pages,
+        first_item=start_idx + 1,
+        last_item=end_idx,
+        total_rows=total,
+        sync_key="im_hist_page_sync",
+    )
+
+    if im_page_input and im_page_input.isdigit():
+        new_page = int(im_page_input)
+        if new_page != st.session_state.im_hist_page:
+            st.session_state.im_hist_page = new_page
+            st.rerun()
 
 
 def _render_new_workspace():
@@ -3071,39 +3075,6 @@ def _patch_upload_limit_text():
                 });
             }
 
-            function setupHistoryPagination() {
-                const buttons = doc.querySelectorAll('.im-pg-btn');
-                buttons.forEach(btn => {
-                    if (btn.classList.contains('disabled') || btn.classList.contains('active')) return;
-                    if (btn.dataset.hasListener) return;
-                    btn.dataset.hasListener = "true";
-
-                    btn.addEventListener('click', () => {
-                        const targetPage = btn.getAttribute('data-page');
-                        if (!targetPage) return;
-
-                        const triggerContainer = doc.querySelector('.im-page-trigger-container');
-                        if (triggerContainer) {
-                            const input = triggerContainer.querySelector('input');
-                            if (input) {
-                                input.value = targetPage;
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                input.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        }
-                    });
-                });
-            }
-
-            function hidePageSyncTrigger() {
-                doc.querySelectorAll('[data-testid="stTextInput"]').forEach((widget) => {
-                    const label = widget.querySelector('label');
-                    if (label && label.textContent.includes('Page Sync Trigger')) {
-                        widget.style.display = 'none';
-                    }
-                });
-            }
-
             function patchRefreshButton() {
                 doc.querySelectorAll('button').forEach((btn) => {
                     if (btn.textContent.trim() === '↻') {
@@ -3116,14 +3087,10 @@ def _patch_upload_limit_text():
             }
 
             patchUploadLimit();
-            setupHistoryPagination();
-            hidePageSyncTrigger();
             patchRefreshButton();
 
             const observer = new MutationObserver(() => {
                 patchUploadLimit();
-                setupHistoryPagination();
-                hidePageSyncTrigger();
                 patchRefreshButton();
             });
 

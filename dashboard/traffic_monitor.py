@@ -370,7 +370,7 @@ def _render_tm_filter_card(active_count: int = 0) -> None:
             st.selectbox(label, options, key=widget_key, label_visibility="collapsed")
 
     st.markdown('<div class="tm-filtercard-footer-marker"></div>', unsafe_allow_html=True)
-    _foot_spacer, foot_r1, foot_r2 = st.columns([3.4, 1.1, 1.3], vertical_alignment="center")
+    _foot_spacer, foot_r1, foot_r2 = st.columns([3.2, 1.3, 1.3], vertical_alignment="center")
     with foot_r1:
         st.button("✕  Bersihkan Semua", key="tm_btn_reset_bottom", use_container_width=True, on_click=clear_tm_filters)
     with foot_r2:
@@ -630,12 +630,17 @@ def _inject_tm_css():
         box-sizing: border-box !important;
         display: flex !important;
         align-items: center !important;
-        overflow: hidden !important;
+        overflow: visible !important;
     }}
 
-    body:has(.tm-page-marker) .tm-fixed-header-spacer {{
+    body:has(.tm-page-marker) .tm-fixed-header-spacer,
+    body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-fixed-header-spacer) {{
+        height: 56px !important;
+        min-height: 56px !important;
+        max-height: 56px !important;
+        margin: 0 !important;
+        padding: 0 !important;
         display: block;
-        height: 56px;
         width: 100%;
         flex-shrink: 0;
     }}
@@ -734,10 +739,27 @@ def _inject_tm_css():
         font-family: {TM_FONT} !important;
     }}
     .tm-filter-label {{
-        display: flex; align-items: center; gap: 6px;
-        color: #475569; font-size: 11.5px; font-weight: 700;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        color: #475569 !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
         font-family: {TM_FONT} !important;
-        margin: 0 0 6px 4px;
+        margin: 0 0 6px 4px !important;
+        height: 16px !important;
+        line-height: 16px !important;
+    }}
+    .tm-filter-label svg {{
+        display: block !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    .tm-filter-label span {{
+        line-height: 1 !important;
+        display: inline-block !important;
     }}
     body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-filter-label) {{
         margin-bottom: -4px !important;
@@ -754,11 +776,19 @@ def _inject_tm_css():
         height: 1px !important;
         border-top: 1px solid #F1F5F9 !important;
     }}
-    body:has(.tm-page-marker) div[data-testid="stHorizontalBlock"]:has(.tm-filtercard-marker) [data-testid="baseButton-secondary"] {{
-        border: 1px solid #E2E8F0 !important; border-radius: 10px !important;
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="baseButton-secondary"] {{
+        border: 1px solid #E2E8F0 !important; border-radius: 8px !important;
         background: #ffffff !important; color: #475569 !important;
-        font-size: 12.5px !important; font-weight: 700 !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
         font-family: {TM_FONT} !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        width: 145px !important;
+        min-width: 145px !important;
+        max-width: 145px !important;
+        padding: 0 !important;
+        margin-left: auto !important; margin-right: 0 !important;
     }}
     body:has(.tm-page-marker) [data-testid="baseButton-primary"],
     body:has(.tm-page-marker) [data-testid="stBaseButton-primary"] {{
@@ -770,10 +800,33 @@ def _inject_tm_css():
         border: none !important;
         box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
     }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="baseButton-primary"],
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stBaseButton-primary"] {{
+        border-radius: 8px !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
+        font-family: {TM_FONT} !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+        border: none !important;
+        box-shadow: 0 3px 10px rgba(99, 102, 241, 0.2) !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        width: 145px !important;
+        min-width: 145px !important;
+        max-width: 145px !important;
+        padding: 0 !important;
+        margin-left: auto !important; margin-right: 0 !important;
+    }}
     body:has(.tm-page-marker) [data-testid="baseButton-primary"]:hover,
     body:has(.tm-page-marker) [data-testid="stBaseButton-primary"]:hover {{
         background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
         box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="baseButton-primary"]:hover,
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stBaseButton-primary"]:hover {{
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3) !important;
     }}
     body:has(.tm-page-marker) [data-testid="baseButton-primary"] svg,
     body:has(.tm-page-marker) [data-testid="stBaseButton-primary"] [data-testid="stIconMaterial"] {{
@@ -785,11 +838,52 @@ def _inject_tm_css():
     body:has(.tm-page-marker) [data-testid="stBaseButton-primary"] p {{
         color: #ffffff !important;
     }}
-    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] > div,
-    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"],
-    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+    /* ── Selectbox Dropdowns in Filter Card ────────────────────────── */
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] {{
+        margin-bottom: 0 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] > div {{
         border: none !important;
+        background: transparent !important;
         box-shadow: none !important;
+        padding: 0 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] > div > div {{
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        backdrop-filter: none !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] {{
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 999px !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.04) !important;
+        transition: all 0.2s ease !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"]:hover {{
+        border-color: #CBD5E1 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within {{
+        border-color: #6366F1 !important;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+        min-height: 32px !important;
+        height: 32px !important;
+        max-height: 32px !important;
+        padding: 0 4px 0 12px !important;
+        display: flex !important;
+        align-items: center !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"] {{
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+    }}
+    body:has(.tm-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.tm-filtercard-marker) [data-testid="stSelectbox"] svg {{
+        color: #64748B !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-grid {{
         display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; width: 100%;

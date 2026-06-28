@@ -1075,15 +1075,18 @@ div[data-testid="stHorizontalBlock"]:has(.premium-card-marker) > div:nth-child(2
     border-collapse: collapse;
     margin-bottom: 8px;
 }
+.custom-table thead tr {
+    background: rgba(99, 102, 241, 0.05);
+}
 .custom-table th {
     text-align: left;
-    font-size: 10.5px;
-    font-weight: 800;
-    color: #64748B;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4F46E5;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
-    padding: 10px 12px;
-    border-bottom: 1px solid #E2E8F0;
+    letter-spacing: 0.5px;
+    padding: 11px 14px;
+    border-bottom: none;
 }
 .custom-table td {
     padding: 12px 12px;
@@ -1732,33 +1735,33 @@ div[data-testid="stElementContainer"]:has(.filters-marker) {
 }
 
 /* Style selectbox dropdown inputs inside filters row as capsules */
-div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"] {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] [data-testid="stMarkdownContainer"] {
     display: none !important;
 }
-div[data-testid="stSelectbox"] > div,
-div[data-testid="stSelectbox"] > div > div {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] > div,
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] > div > div {
     border: none !important;
     background-color: transparent !important;
     padding: 0 !important;
     box-shadow: none !important;
 }
-div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] div[data-baseweb="select"] {
     border: 1px solid #E2E8F0 !important;
     border-radius: 999px !important;
     background-color: #FFFFFF !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
     transition: all 0.2s ease !important;
 }
-div[data-testid="stSelectbox"] div[data-baseweb="select"]:hover {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] div[data-baseweb="select"]:hover {
     border-color: #CBD5E1 !important;
 }
-div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within {
     border-color: #6366F1 !important;
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important;
 }
 
 /* Minimize control container size */
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
     min-height: 28px !important;
     height: 28px !important;
     padding: 0 4px 0 10px !important;
@@ -1767,7 +1770,7 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
 }
 
 /* Override selection text styling inside selectbox */
-div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"] {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"] {
     font-size: 11px !important;
     font-weight: 600 !important;
     color: #1E293B !important;
@@ -1775,29 +1778,29 @@ div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"] {
 }
 
 /* Pseudo-elements for prefixes */
-div[data-testid="column"]:nth-of-type(2) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
+body:has(.lc-page-marker) div[data-testid="column"]:nth-of-type(2) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
     content: "Terminal ";
     font-weight: 400 !important;
     color: #94A3B8 !important;
 }
-div[data-testid="column"]:nth-of-type(3) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
+body:has(.lc-page-marker) div[data-testid="column"]:nth-of-type(3) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
     content: "Contract Type ";
     font-weight: 400 !important;
     color: #94A3B8 !important;
 }
-div[data-testid="column"]:nth-of-type(4) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
+body:has(.lc-page-marker) div[data-testid="column"]:nth-of-type(4) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
     content: "Business Category ";
     font-weight: 400 !important;
     color: #94A3B8 !important;
 }
-div[data-testid="column"]:nth-of-type(5) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
+body:has(.lc-page-marker) div[data-testid="column"]:nth-of-type(5) div[data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"]::before {
     content: "Contract Status ";
     font-weight: 400 !important;
     color: #94A3B8 !important;
 }
 
 /* Reduce size of Chevron Arrow */
-div[data-testid="stSelectbox"] svg {
+body:has(.lc-page-marker) div[data-testid="stSelectbox"] svg {
     width: 14px !important;
     height: 14px !important;
 }
@@ -2266,7 +2269,7 @@ def _render_lc_filter_card(df_full: pd.DataFrame, active_count: int = 0) -> None
             st.selectbox(label, options, key=widget_key, label_visibility="collapsed")
 
     st.markdown('<div class="lc-filtercard-footer-marker"></div>', unsafe_allow_html=True)
-    _foot_spacer, foot_r1, foot_r2 = st.columns([3.4, 1.1, 1.3], vertical_alignment="center")
+    _foot_spacer, foot_r1, foot_r2 = st.columns([3.2, 1.3, 1.3], vertical_alignment="center")
     with foot_r1:
         st.button("✕  Bersihkan Semua", key="lc_btn_reset_bottom", use_container_width=True, on_click=clear_lc_filters)
     with foot_r2:
@@ -2336,10 +2339,27 @@ def _get_lc_extra_css():
         font-family: 'Inter', sans-serif !important;
     }
     .lc-filter-label {
-        display: flex; align-items: center; gap: 6px;
-        color: #475569; font-size: 11.5px; font-weight: 700;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        color: #475569 !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
         font-family: Inter, sans-serif !important;
-        margin: 0 0 6px 4px;
+        margin: 0 0 6px 4px !important;
+        height: 16px !important;
+        line-height: 16px !important;
+    }
+    .lc-filter-label svg {
+        display: block !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .lc-filter-label span {
+        line-height: 1 !important;
+        display: inline-block !important;
     }
     body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-filter-label) {
         margin-bottom: -4px !important;
@@ -2356,11 +2376,19 @@ def _get_lc_extra_css():
         height: 1px !important;
         border-top: 1px solid #F1F5F9 !important;
     }
-    body:has(.lc-page-marker) div[data-testid="stHorizontalBlock"]:has(.lc-filtercard-marker) [data-testid="baseButton-secondary"] {
-        border: 1px solid #E2E8F0 !important; border-radius: 10px !important;
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="baseButton-secondary"] {
+        border: 1px solid #E2E8F0 !important; border-radius: 8px !important;
         background: #ffffff !important; color: #475569 !important;
-        font-size: 12.5px !important; font-weight: 700 !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
         font-family: Inter, sans-serif !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        width: 145px !important;
+        min-width: 145px !important;
+        max-width: 145px !important;
+        padding: 0 !important;
+        margin-left: auto !important; margin-right: 0 !important;
     }
     body:has(.lc-page-marker) [data-testid="baseButton-primary"],
     body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] {
@@ -2372,10 +2400,33 @@ def _get_lc_extra_css():
         border: none !important;
         box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
     }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="baseButton-primary"],
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stBaseButton-primary"] {
+        border-radius: 8px !important;
+        font-size: 11.5px !important; font-weight: 700 !important;
+        font-family: Inter, sans-serif !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+        border: none !important;
+        box-shadow: 0 3px 10px rgba(99, 102, 241, 0.2) !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        width: 145px !important;
+        min-width: 145px !important;
+        max-width: 145px !important;
+        padding: 0 !important;
+        margin-left: auto !important; margin-right: 0 !important;
+    }
     body:has(.lc-page-marker) [data-testid="baseButton-primary"]:hover,
     body:has(.lc-page-marker) [data-testid="stBaseButton-primary"]:hover {
         background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
         box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="baseButton-primary"]:hover,
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stBaseButton-primary"]:hover {
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3) !important;
     }
     body:has(.lc-page-marker) [data-testid="baseButton-primary"] svg,
     body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] [data-testid="stIconMaterial"] {
@@ -2387,12 +2438,52 @@ def _get_lc_extra_css():
     body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] p {
         color: #ffffff !important;
     }
-    /* Remove the rounded border that wraps each filter card selectbox entirely */
-    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] > div,
-    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"],
-    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    /* ── Selectbox Dropdowns in Filter Card ────────────────────────── */
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] {
+        margin-bottom: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] > div {
         border: none !important;
+        background: transparent !important;
         box-shadow: none !important;
+        padding: 0 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] > div > div {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        backdrop-filter: none !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] {
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 999px !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.04) !important;
+        transition: all 0.2s ease !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"]:hover {
+        border-color: #CBD5E1 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within {
+        border-color: #6366F1 !important;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        min-height: 32px !important;
+        height: 32px !important;
+        max-height: 32px !important;
+        padding: 0 4px 0 12px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] [data-testid="stSelectboxSelectedValue"] {
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+    }
+    body:has(.lc-page-marker) [data-testid="stVerticalBlockBorderWrapper"]:has(.lc-filtercard-marker) [data-testid="stSelectbox"] svg {
+        color: #64748B !important;
     }
     </style>
     """)

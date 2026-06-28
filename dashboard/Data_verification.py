@@ -240,7 +240,7 @@ body:has(.dv-page-marker) .dv-fixed-header-active {
     box-sizing: border-box !important;
     display: flex !important;
     align-items: center !important;
-    overflow: hidden !important;
+    overflow: visible !important;
 }
 
 body:has(.dv-page-marker) .dv-fixed-header-spacer {
@@ -437,10 +437,10 @@ body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card)
     border-spacing: 0;
 }
 .dv-table thead tr {
-    background: #F1F0FE !important;
+    background: rgba(99, 102, 241, 0.05) !important;
 }
 .dv-table th {
-    padding: 10px 20px !important;
+    padding: 11px 20px !important;
     text-align: left;
     font-size: 11px;
     font-weight: 700;
@@ -448,7 +448,7 @@ body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card)
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: none;
 }
 .dv-table td {
     padding: 10px 20px !important;
