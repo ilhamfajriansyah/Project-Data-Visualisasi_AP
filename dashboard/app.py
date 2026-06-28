@@ -1236,6 +1236,12 @@ def inject_dashboard_css():
         border: 1px solid #E2E8F0;
         background: #ffffff;
         box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+        transition: all 0.3s ease;
+    }
+
+    .kpi-pro-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025);
     }
 
     .kpi-pro-head {
@@ -2874,9 +2880,10 @@ def _render_overview_filter_card(
             unsafe_allow_html=True,
         )
     with head_r:
+        st.markdown('<div class="ov-reset-top-marker"></div>', unsafe_allow_html=True)
         st.button(
-            "↺  Reset Filter", key="ov_btn_reset_top", use_container_width=True,
-            on_click=clear_overview_filters,
+            "Reset Filter", key="ov_btn_reset_top", use_container_width=True,
+            icon=":material/sync:", on_click=clear_overview_filters,
         )
 
     st.markdown('<div class="ov-filterrow-marker"></div>', unsafe_allow_html=True)
@@ -3028,6 +3035,22 @@ def _get_overview_extra_css():
         max-width: 145px !important;
         padding: 0 !important;
         margin-left: auto !important; margin-right: 0 !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="baseButton-secondary"],
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="stBaseButton-secondary"] {{
+        border-radius: 999px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        padding: 0 18px !important;
+        font-size: 13px !important;
+    }}
+    body:has(.overview-page-marker) div[data-testid="stElementContainer"]:has(.ov-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="stIconMaterial"] {{
+        font-family: 'Material Symbols Rounded' !important;
+        font-size: 15px !important;
     }}
     body:has(.overview-page-marker) [data-testid="baseButton-primary"],
     body:has(.overview-page-marker) [data-testid="stBaseButton-primary"] {{

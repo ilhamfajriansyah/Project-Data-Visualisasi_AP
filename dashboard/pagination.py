@@ -29,25 +29,43 @@ _CSS = """<style>
 /* ── Base pill — semua tombol pagination ── */
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
 div[data-testid="stButton"] button {
     min-width: 38px !important;
     width:      38px !important;
     height:     38px !important;
     padding:    0    !important;
-    border-radius: 999px               !important;
+    border-radius: 10px                !important;
     border:        1.5px solid #d1d5db !important;
     background:    #ffffff             !important;
     color:         #374151             !important;
     font-size:     14px                !important;
     font-weight:   600                 !important;
     box-shadow:    none                !important;
+    outline:       none                !important;
     transition: background 0.15s, border-color 0.15s !important;
 }
 
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] button:focus,
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] button:focus-visible,
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] button:active {
+    border-radius: 10px !important;
+    outline:       none  !important;
+    box-shadow:    none  !important;
+}
+
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
 div[data-testid="stButton"] button:hover:not(:disabled) {
     background:   #f3f4f6 !important;
     border-color: #9ca3af !important;
@@ -55,8 +73,8 @@ div[data-testid="stButton"] button:hover:not(:disabled) {
 
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
-div[data-testid="stButton"] button:disabled {
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] button:disabled:not([kind="primary"]) {
     opacity: 0.35        !important;
     cursor:  not-allowed !important;
 }
@@ -64,43 +82,76 @@ div[data-testid="stButton"] button:disabled {
 /* ── Halaman aktif — biru ── */
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
-[data-testid="baseButton-primary"],
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] [data-testid="baseButton-primary"],
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
-[data-testid="stBaseButton-primary"],
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] [data-testid="stBaseButton-primary"],
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
-button[kind="primary"] {
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] button[kind="primary"] {
     background:   #1d4ed8 !important;
     border-color: #1d4ed8 !important;
     color:        #ffffff  !important;
     font-weight:  700      !important;
     opacity:      1        !important;
     cursor:       default  !important;
+    border-radius: 10px !important;
     box-shadow: 0 2px 8px rgba(29, 78, 216, 0.35) !important;
+    animation: pg-page-activate 0.3s ease-out !important;
+}
+
+/* The visible glyph color comes from the inner <p>, not the <button> —
+   override it explicitly so the active page number is always white
+   regardless of any page-level "button p { color: ... }" default. */
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] [data-testid="baseButton-primary"] p,
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] [data-testid="stBaseButton-primary"] p,
+body:has(.overview-detail-pagination-footer-marker)
+div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
+div[data-testid="stButton"] button[kind="primary"] p {
+    color: #ffffff !important;
+}
+
+@keyframes pg-page-activate {
+    from {
+        background-color: #ffffff;
+        color: #374151;
+        box-shadow: none;
+    }
+    to {
+        background-color: #1d4ed8;
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(29, 78, 216, 0.35);
+    }
 }
 
 /* ── Align button columns closely on the right ── */
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"] {
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"] {
     gap: 4px !important;
 }
 
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
 .stColumn:has(button),
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
 [data-testid="column"]:has(button),
 body:has(.overview-detail-pagination-footer-marker)
 div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker)
-~ div[data-testid="stHorizontalBlock"]
+~ div[data-testid="stLayoutWrapper"] div[data-testid="stHorizontalBlock"]
 > div:has(button) {
     width:      38px !important;
     max-width:  38px !important;

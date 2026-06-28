@@ -349,9 +349,10 @@ def _render_tm_filter_card(active_count: int = 0) -> None:
             unsafe_allow_html=True,
         )
     with head_r:
+        st.markdown('<div class="tm-reset-top-marker"></div>', unsafe_allow_html=True)
         st.button(
-            "↺  Reset Filter", key="tm_btn_reset_top", use_container_width=True,
-            on_click=clear_tm_filters,
+            "Reset Filter", key="tm_btn_reset_top", use_container_width=True,
+            icon=":material/sync:", on_click=clear_tm_filters,
         )
 
     st.markdown('<div class="tm-filterrow-marker"></div>', unsafe_allow_html=True)
@@ -790,6 +791,22 @@ def _inject_tm_css():
         padding: 0 !important;
         margin-left: auto !important; margin-right: 0 !important;
     }}
+    body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="baseButton-secondary"],
+    body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="stBaseButton-secondary"] {{
+        border-radius: 999px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        padding: 0 18px !important;
+        font-size: 13px !important;
+    }}
+    body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="stIconMaterial"] {{
+        font-family: 'Material Symbols Rounded' !important;
+        font-size: 15px !important;
+    }}
     body:has(.tm-page-marker) [data-testid="baseButton-primary"],
     body:has(.tm-page-marker) [data-testid="stBaseButton-primary"] {{
         border-radius: 999px !important;
@@ -897,6 +914,11 @@ def _inject_tm_css():
         display: flex; flex-direction: column; gap: 6px; min-height: 132px; padding: 14px 16px;
         border-radius: 12px; border: 1px solid #E2E8F0; background: #ffffff;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); box-sizing: border-box;
+        transition: all 0.3s ease;
+    }}
+    body:has(.tm-page-marker) .tm-kpi-card:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025);
     }}
     body:has(.tm-page-marker) .tm-kpi-top {{
         display: flex; align-items: center; justify-content: space-between;

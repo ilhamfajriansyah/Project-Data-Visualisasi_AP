@@ -2246,9 +2246,10 @@ def _render_lc_filter_card(df_full: pd.DataFrame, active_count: int = 0) -> None
             unsafe_allow_html=True,
         )
     with head_r:
+        st.markdown('<div class="lc-reset-top-marker"></div>', unsafe_allow_html=True)
         st.button(
-            "↺  Reset Filter", key="lc_btn_reset_top", use_container_width=True,
-            on_click=clear_lc_filters,
+            "Reset Filter", key="lc_btn_reset_top", use_container_width=True,
+            icon=":material/sync:", on_click=clear_lc_filters,
         )
 
     st.markdown('<div class="lc-filterrow-marker"></div>', unsafe_allow_html=True)
@@ -2313,6 +2314,11 @@ def _get_lc_extra_css():
         margin-top: 0px !important;
         margin-bottom: 0px !important;
         height: 0px !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-row1-row2-gap) {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 10px !important;
     }
     .lc-filtercard-head {
         display: flex; align-items: center; gap: 12px;
@@ -2389,6 +2395,22 @@ def _get_lc_extra_css():
         max-width: 145px !important;
         padding: 0 !important;
         margin-left: auto !important; margin-right: 0 !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="baseButton-secondary"],
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="stBaseButton-secondary"] {
+        border-radius: 999px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        padding: 0 18px !important;
+        font-size: 13px !important;
+    }
+    body:has(.lc-page-marker) div[data-testid="stElementContainer"]:has(.lc-reset-top-marker) + div[data-testid="stElementContainer"] [data-testid="stIconMaterial"] {
+        font-family: 'Material Symbols Rounded' !important;
+        font-size: 15px !important;
     }
     body:has(.lc-page-marker) [data-testid="baseButton-primary"],
     body:has(.lc-page-marker) [data-testid="stBaseButton-primary"] {
@@ -2666,7 +2688,7 @@ def render_lease_contract():
         )
         st.markdown(html_expired, unsafe_allow_html=True)
 
-    st.markdown('<div class="lc-vertical-spacer"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="lc-row1-row2-gap"></div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # CONTRACT EXPIRY TIMELINE & DONUT CHARTS (3-COLUMN REDESIGN)

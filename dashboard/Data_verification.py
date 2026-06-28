@@ -180,7 +180,7 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
     position: relative !important;
     overflow: hidden !important;
     padding: 24px 32px !important;
-    margin-top: 8px !important;
+    margin-top: -15px !important;
     border-radius: 20px !important;
     border: 1px solid rgba(255, 255, 255, 0.90) !important;
     background: rgba(255, 255, 255, 0.56) !important;
@@ -340,7 +340,7 @@ body:has(.dv-page-marker) .ap-top-actions {
 
 /* ── KPI Row Spacing & Gap ── */
 body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card) {
-    margin-top: -72px !important;
+    margin-top: -123px !important;
     gap: 24px !important;
     flex-wrap: nowrap !important;
 }
@@ -687,6 +687,9 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
     transition: all 0.2s !important;
     width: 100% !important;
 }
+body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button [data-testid="stIconMaterial"] {
+    font-family: 'Material Symbols Rounded' !important;
+}
 body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button:hover {
     background: #F8FAFC !important;
     color: #0F172A !important;
@@ -1013,13 +1016,7 @@ def render_data_verification():
 
     # ── Action Buttons ──
     st.markdown('<div class="dv-actions-marker"></div>', unsafe_allow_html=True)
-    _, ab1, ab2 = st.columns([6, 1.6, 1.8])
-    with ab1:
-        df_exp = st.session_state.dv_df.copy()
-        csv = df_exp.drop(columns=["Anomali"]).to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ + Export Logs", data=csv,
-                           file_name="data_verification.csv", mime="text/csv",
-                           use_container_width=True, key="dv_export")
+    _, ab2 = st.columns([7.6, 1.8])
     with ab2:
         if st.button("✅ Approve & Publish", use_container_width=True, key="dv_approve"):
             st.toast("✅ Data berhasil dipublikasikan!", icon="✅")
@@ -1143,7 +1140,10 @@ def render_data_verification():
             st.session_state.dv_page = 1
 
         with f_col4:
-            st.button("Reset", key="dv_reset_btn", on_click=handle_reset, use_container_width=True)
+            st.button(
+                "Reset", key="dv_reset_btn", use_container_width=True,
+                icon=":material/sync:", on_click=handle_reset,
+            )
 
         # ── Apply Filters ──
         df = st.session_state.dv_df.copy()

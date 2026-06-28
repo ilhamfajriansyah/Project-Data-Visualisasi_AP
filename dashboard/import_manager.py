@@ -149,6 +149,11 @@ body:has(.im-page-marker) div[data-testid="stElementContainer"]:has(.im-manager-
     margin-top: -85px !important;
 }
 
+/* Nudge the pagination row down 10px on this page only. */
+body:has(.im-page-marker) div[data-testid="stElementContainer"]:has(.overview-detail-pagination-footer-marker) ~ div[data-testid="stLayoutWrapper"] {
+    margin-top: 10px !important;
+}
+
 /* ── STEPPER ── */
 .stepper-wrap {
     display: flex; align-items: center; gap: 0;
@@ -616,6 +621,49 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
     margin: 0 !important;
     border: none !important;
     background: transparent !important;
+}
+
+/* The decorative "Browse files" button/icon/instructions get blown up to
+   100% x 100% by the rule above, which makes them sit on top of (and
+   intercept all pointer/drag events meant for) the real, invisible
+   <input type="file">. That's why clicking worked (the button's own
+   click handler opens the file dialog) but dragging a file onto the
+   zone did not (the drop landed on the button, not the input). Make
+   the decorative layer click/drop-through so the input underneath is
+   what actually receives both clicks and native drag-and-drop. */
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzone"] > span,
+.im-refined-uploader [data-testid="stFileUploaderDropzone"] > span,
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzone"] > span *,
+.im-refined-uploader [data-testid="stFileUploaderDropzone"] > span *,
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzoneInstructions"],
+.im-refined-uploader [data-testid="stFileUploaderDropzoneInstructions"],
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzoneInstructions"] *,
+.im-refined-uploader [data-testid="stFileUploaderDropzoneInstructions"] * {
+    pointer-events: none !important;
+}
+/* The dropzone <section> lays out its <input> and the decorative <span>
+   as side-by-side flex children (each ~50% width), not stacked/overlapping.
+   Forcing width:100% above doesn't escape that — the input still only
+   covers the LEFT half. Anywhere on the right half, pointer/drag events
+   fall through the (pointer-events:none) span straight past the real
+   uploader to our decorative background card behind it, which has no
+   upload handlers at all. Taking the input out of flow with absolute
+   positioning makes it cover the *entire* dropzone regardless of the
+   sibling's flex sizing. */
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzone"],
+.im-refined-uploader [data-testid="stFileUploaderDropzone"] {
+    position: relative !important;
+}
+div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-testid="stFileUploaderDropzoneInput"],
+.im-refined-uploader [data-testid="stFileUploaderDropzoneInput"] {
+    pointer-events: auto !important;
+    position: absolute !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1 !important;
 }
 
 
@@ -1185,7 +1233,7 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     line-height: 1.45;
 }
 .im-info-banner {
-    margin-top: 14px;
+    margin-top: -25px;
     padding: 12px 14px;
     border-radius: 12px;
     background: rgba(99,102,241,0.08);
@@ -1196,7 +1244,7 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     line-height: 1.5;
 }
 .im-history {
-    margin-top: 18px;
+    margin-top: 1px;
     padding: 0;
     overflow: hidden;
 }
@@ -2607,8 +2655,8 @@ def _get_merge_cell_detail(uploaded) -> str:
                 if sheet.merged_cells:
                     ranges = [f"{xlrd.formula.cellname(r[0], r[2])}:{xlrd.formula.cellname(r[1]-1, r[3]-1)}" for r in sheet.merged_cells[:2]]
                     return f"Merge cells ditemukan pada sheet '{sheet.name}', cell {', '.join(ranges)}. Silakan pisahkan."
-    except Exception:
-        pass
+    except Exception as exc:
+        return f"Gagal membaca file: {exc}"
     return "Merge cells ditemukan pada file Excel Anda. Silakan pisahkan."
 
 
@@ -2621,8 +2669,8 @@ def _get_structure_detail(uploaded) -> str:
         if missing:
             clean_cols = [f"'{col}'" for col in missing[:2]]
             return f"Header kolom {', '.join(clean_cols)} tidak ditemukan."
-    except Exception:
-        pass
+    except Exception as exc:
+        return f"Gagal membaca file: {exc}"
     return "Struktur kolom tidak sesuai template. Hindari perubahan struktur kolom."
 
 
@@ -2644,8 +2692,8 @@ def _get_required_filled_detail(uploaded) -> str:
         if missing_fields:
             clean_fields = [f"'{col}'" for col in missing_fields[:2]]
             return f"Kolom wajib memiliki data kosong pada kolom {', '.join(clean_fields)}."
-    except Exception:
-        pass
+    except Exception as exc:
+        return f"Gagal membaca file: {exc}"
     return "Kolom wajib harus terisi penuh. Pastikan tidak ada data kosong."
 
 
@@ -2923,10 +2971,16 @@ def _render_new_workspace():
                 <div class="im-uploader-overlay">
             """, unsafe_allow_html=True)
 
-            # Render uploader inside the overlay
+            # Render uploader inside the overlay.
+            # No `type=` restriction here on purpose: Streamlit silently
+            # rejects mismatched files at the picker/drop level when `type`
+            # is set, leaving `uploaded` as None with no visible feedback
+            # (its own rejection message renders behind our invisible
+            # overlay). Accepting anything and validating it ourselves below
+            # lets the existing "Format file tidak didukung" error actually
+            # surface to the user.
             uploaded = st.file_uploader(
                 "Browse Files",
-                type=["xlsx", "xls"],
                 label_visibility="collapsed",
                 key=uploader_key,
             )
@@ -3023,10 +3077,11 @@ def _render_new_workspace():
                     <div class="im-uploader-overlay">
                 """, unsafe_allow_html=True)
 
-                # Render the overlay file uploader so they can drop a new file
+                # Render the overlay file uploader so they can drop a new file.
+                # No `type=` restriction — see comment on the other
+                # file_uploader call above for why.
                 st.file_uploader(
                     "Browse Files",
-                    type=["xlsx", "xls"],
                     label_visibility="collapsed",
                     key=uploader_key,
                 )
@@ -3059,6 +3114,27 @@ def _patch_upload_limit_text():
         <script>
         (function () {
             const doc = window.parent.document;
+            const win = window.parent;
+
+            // Without this, the moment a real OS file drag crosses any
+            // element outside Streamlit's own dropzone (sidebar, header,
+            // the decorative drop-zone artwork, etc.) the browser's default
+            // behavior kicks in on drop — it navigates the tab to open the
+            // dragged file instead of letting the drop reach the uploader.
+            // That's why clicking to upload works but dragging a file in
+            // from Explorer silently does nothing (or blanks the page).
+            // Globally suppressing the default keeps the drag "live" all
+            // the way to the dropzone, where Streamlit's own handler runs.
+            if (!win.__imDragGuardInstalled) {
+                win.__imDragGuardInstalled = true;
+                ["dragover", "drop"].forEach((evtName) => {
+                    win.addEventListener(evtName, (e) => {
+                        if (!e.target.closest('[data-testid="stFileUploaderDropzone"]')) {
+                            e.preventDefault();
+                        }
+                    }, false);
+                });
+            }
 
             function patchUploadLimit() {
                 doc.querySelectorAll('[data-testid="stFileUploader"]').forEach((uploader) => {
