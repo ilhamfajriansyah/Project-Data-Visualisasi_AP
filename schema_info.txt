@@ -1,0 +1,1 @@
+['import_id', 'periode', 'version', 'filename', 'uploaded_by', 'uploaded_at', 'is_active', 'total_records', 'valid_records', 'rs_total', 'file_size', 'status']
