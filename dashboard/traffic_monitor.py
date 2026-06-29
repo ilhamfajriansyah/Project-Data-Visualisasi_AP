@@ -8,7 +8,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
+from sqlalchemy import text
 
+from .connection import get_engine
 from .enterprise_ui import (
     ED_FONT,
     donut_legend_html,
@@ -26,54 +28,238 @@ TM_TERMINAL_OPTIONS = ["All Terminal", "Terminal 1", "Terminal 2"]
 TM_DONUT_COLORS = ["#7C3AED", "#06B6D4"]
 TM_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-TERMINAL_PROFILES = {
+TERMINAL_STYLES = {
     "Terminal 1": {
         "code": "T1",
         "color": "#7C3AED",
         "soft_bg": "#F5F3FF",
-        "domestic": 14.2,
-        "international": 5.8,
-        "spp": 88_200,
-        "yoy": 8.4,
     },
     "Terminal 2": {
         "code": "T2",
         "color": "#06B6D4",
         "soft_bg": "#ECFEFF",
-        "domestic": 16.8,
-        "international": 11.4,
-        "spp": 102_400,
-        "yoy": 13.2,
     },
+}
+DEFAULT_TERMINAL_COLORS = ["#7C3AED", "#06B6D4", "#2563EB", "#059669", "#EA580C", "#D97706"]
+MONTH_ALIASES = {
+    "january": "January", "jan": "January", "januari": "January",
+    "february": "February", "feb": "February", "februari": "February",
+    "march": "March", "mar": "March", "maret": "March",
+    "april": "April", "apr": "April",
+    "may": "May", "mei": "May",
+    "june": "June", "jun": "June", "juni": "June",
+    "july": "July", "jul": "July", "juli": "July",
+    "august": "August", "aug": "August", "agustus": "August", "agu": "August",
+    "september": "September", "sep": "September",
+    "october": "October", "oct": "October", "oktober": "October", "okt": "October",
+    "november": "November", "nov": "November",
+    "december": "December", "dec": "December", "desember": "December", "des": "December",
 }
 
 
-def _terminal_rows():
-    rows = []
-    for name, profile in TERMINAL_PROFILES.items():
-        total = profile["domestic"] + profile["international"]
-        rows.append({**profile, "name": name, "total": total})
-    return rows
+def _canonical_month(value):
+    if pd.isna(value):
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    key = raw.lower()[:3] if raw.lower() not in MONTH_ALIASES else raw.lower()
+    return MONTH_ALIASES.get(raw.lower(), MONTH_ALIASES.get(key, raw))
 
 
-def _aggregate_metrics(terminal_filter="All Terminal"):
-    term_map = {"T1": "Terminal 1", "T2": "Terminal 2"}
-    normalized_filter = term_map.get(terminal_filter, terminal_filter)
-    rows = _terminal_rows()
-    if normalized_filter != "All Terminal":
-        rows = [r for r in rows if r["name"] == normalized_filter]
+def _month_sort_value(value):
+    month = _canonical_month(value)
+    try:
+        return TM_MONTH_OPTIONS.index(month)
+    except ValueError:
+        return 99
 
+
+def _month_short(value):
+    month = _canonical_month(value)
+    if month in TM_MONTH_OPTIONS:
+        return month[:3]
+    return str(value)[:3] if value is not None else "-"
+
+
+def _terminal_style(name, index=0):
+    style = TERMINAL_STYLES.get(name, {})
+    color = style.get("color", DEFAULT_TERMINAL_COLORS[index % len(DEFAULT_TERMINAL_COLORS)])
+    return {
+        "code": style.get("code", "".join(part[:1] for part in str(name).split()[:2]).upper() or f"T{index + 1}"),
+        "color": color,
+        "soft_bg": style.get("soft_bg", f"{color}12"),
+    }
+
+
+@st.cache_data(ttl=60)
+def _load_traffic_database_data():
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            traffic_df = pd.read_sql(
+                text("""
+                    SELECT
+                        tahun,
+                        bulan AS masa_jasa,
+                        terminal,
+                        SUM(COALESCE(pax_domestik, 0)) AS pax_domestik,
+                        SUM(COALESCE(pax_internasional, 0)) AS pax_internasional,
+                        SUM(COALESCE(total_pax, 0)) AS total_pax
+                    FROM traffic
+                    GROUP BY tahun, bulan, terminal
+                """),
+                conn,
+            )
+            revenue_df = pd.read_sql(
+                text("""
+                    SELECT
+                        tahun,
+                        masa_jasa,
+                        terminal,
+                        SUM(COALESCE(real_omzet, 0)) AS real_omzet,
+                        AVG(NULLIF(spending_per_pax, 0)) AS spending_per_pax
+                    FROM transaction_revenue
+                    GROUP BY tahun, masa_jasa, terminal
+                """),
+                conn,
+            )
+    except Exception:
+        return pd.DataFrame()
+
+    if traffic_df.empty:
+        return pd.DataFrame()
+
+    merged = traffic_df.merge(
+        revenue_df,
+        how="left",
+        on=["tahun", "masa_jasa", "terminal"],
+    )
+    return _normalize_traffic_dataframe(merged)
+
+
+def _traffic_from_dashboard_data(df):
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    mapped = pd.DataFrame()
+    mapped["tahun"] = df["tahun"] if "tahun" in df.columns else pd.NA
+    mapped["masa_jasa"] = df["masa_jasa"] if "masa_jasa" in df.columns else pd.NA
+    mapped["terminal"] = df["terminal"] if "terminal" in df.columns else "Unknown"
+    mapped["pax_domestik"] = df["subtotal_trafik_dom"] if "subtotal_trafik_dom" in df.columns else 0
+    mapped["pax_internasional"] = df["subtotal_trafik_int"] if "subtotal_trafik_int" in df.columns else 0
+    if "total_trafik" in df.columns:
+        mapped["total_pax"] = df["total_trafik"]
+    elif "jumlah_pax" in df.columns:
+        mapped["total_pax"] = df["jumlah_pax"]
+    else:
+        mapped["total_pax"] = mapped["pax_domestik"] + mapped["pax_internasional"]
+    mapped["real_omzet"] = df["real_omzet"] if "real_omzet" in df.columns else 0
+    mapped["spending_per_pax"] = df["spending_per_pax"] if "spending_per_pax" in df.columns else pd.NA
+    return _normalize_traffic_dataframe(mapped)
+
+
+def _normalize_traffic_dataframe(df):
+    if df is None or df.empty:
+        return pd.DataFrame(columns=[
+            "tahun", "masa_jasa", "terminal", "pax_domestik",
+            "pax_internasional", "total_pax", "real_omzet", "spending_per_pax",
+        ])
+
+    normalized = df.copy()
+    for col in ["tahun", "pax_domestik", "pax_internasional", "total_pax", "real_omzet", "spending_per_pax"]:
+        if col in normalized.columns:
+            normalized[col] = pd.to_numeric(normalized[col], errors="coerce")
+        else:
+            normalized[col] = 0
+
+    normalized["tahun"] = normalized["tahun"].dropna().astype(int).reindex(normalized.index)
+    normalized["masa_jasa"] = normalized["masa_jasa"].map(_canonical_month)
+    normalized["terminal"] = normalized["terminal"].fillna("Unknown").astype(str).str.strip()
+    normalized["terminal"] = normalized["terminal"].replace("", "Unknown")
+
+    missing_total = normalized["total_pax"].isna() | normalized["total_pax"].eq(0)
+    normalized.loc[missing_total, "total_pax"] = (
+        normalized.loc[missing_total, "pax_domestik"].fillna(0)
+        + normalized.loc[missing_total, "pax_internasional"].fillna(0)
+    )
+    missing_split = normalized["pax_domestik"].fillna(0).eq(0) & normalized["pax_internasional"].fillna(0).eq(0)
+    normalized.loc[missing_split, "pax_domestik"] = normalized.loc[missing_split, "total_pax"].fillna(0)
+    normalized[["pax_domestik", "pax_internasional", "total_pax", "real_omzet"]] = (
+        normalized[["pax_domestik", "pax_internasional", "total_pax", "real_omzet"]].fillna(0)
+    )
+    return normalized.dropna(subset=["tahun", "masa_jasa"])
+
+
+def get_traffic_monitor_data(df_raw=None):
+    db_df = _load_traffic_database_data()
+    if not db_df.empty:
+        return db_df
+    return _traffic_from_dashboard_data(df_raw)
+
+
+def _apply_filters(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal"):
+    filtered = df.copy()
+    if year_filter != "All Year":
+        filtered = filtered[filtered["tahun"] == int(year_filter)]
+    if month_filter != "All Month":
+        filtered = filtered[filtered["masa_jasa"] == month_filter]
+    if terminal_filter != "All Terminal":
+        filtered = filtered[filtered["terminal"] == terminal_filter]
+    return filtered
+
+
+def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal"):
+    current_df = _apply_filters(df, year_filter, month_filter, terminal_filter)
+    current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
+    prior_df = df[df["tahun"] == current_year - 1] if current_year is not None else df.iloc[0:0]
+    if month_filter != "All Month":
+        prior_df = prior_df[prior_df["masa_jasa"] == month_filter]
+    if terminal_filter != "All Terminal":
+        prior_df = prior_df[prior_df["terminal"] == terminal_filter]
+
+    def build_rows(source):
+        rows = []
+        if source.empty:
+            return rows
+        grouped = source.groupby("terminal", dropna=False).agg(
+            domestic=("pax_domestik", "sum"),
+            international=("pax_internasional", "sum"),
+            total=("total_pax", "sum"),
+            revenue=("real_omzet", "sum"),
+            spp_avg=("spending_per_pax", "mean"),
+        ).reset_index()
+        for idx, record in grouped.iterrows():
+            total = float(record["total"] or 0)
+            revenue = float(record["revenue"] or 0)
+            spp = float(record["spp_avg"]) if pd.notna(record["spp_avg"]) else (revenue / total if total else 0)
+            rows.append({
+                **_terminal_style(record["terminal"], idx),
+                "name": record["terminal"],
+                "domestic": float(record["domestic"] or 0) / 1_000_000,
+                "international": float(record["international"] or 0) / 1_000_000,
+                "total": total / 1_000_000,
+                "spp": spp,
+            })
+        return rows
+
+    rows = build_rows(current_df)
     total = sum(r["total"] for r in rows)
     domestic = sum(r["domestic"] for r in rows)
     international = sum(r["international"] for r in rows)
-    if total:
+    revenue = float(current_df["real_omzet"].sum()) if not current_df.empty else 0
+    spp = revenue / (total * 1_000_000) if total else 0
+    if not spp and rows and total:
         spp = sum(r["spp"] * r["total"] for r in rows) / total
-        yoy = sum(r["yoy"] * r["total"] for r in rows) / total
-    else:
-        spp = yoy = 0
 
+    prior_total = float(prior_df["total_pax"].sum()) / 1_000_000 if not prior_df.empty else 0
+    yoy = ((total - prior_total) / prior_total * 100) if prior_total else 0
     shares = {r["name"]: (r["total"] / total * 100 if total else 0) for r in rows}
-    prior_total = total / (1 + yoy / 100) if yoy else total
+
+    for row in rows:
+        prior_terminal = prior_df[prior_df["terminal"] == row["name"]]
+        prior_terminal_total = float(prior_terminal["total_pax"].sum()) / 1_000_000 if not prior_terminal.empty else 0
+        row["yoy"] = ((row["total"] - prior_terminal_total) / prior_terminal_total * 100) if prior_terminal_total else 0
 
     return {
         "total": total,
@@ -86,56 +272,72 @@ def _aggregate_metrics(terminal_filter="All Terminal"):
         "prior_total": prior_total,
         "rows": rows,
         "shares": shares,
+        "current_year": current_year,
+        "prior_year": current_year - 1 if current_year is not None else None,
+        "terminal_label": terminal_filter if terminal_filter != "All Terminal" else "All Terminals",
     }
-
 
 def _fmt_millions(value):
     return f"{value:.1f}".replace(".", ",") + " Jt pax"
 
-
 def _fmt_rp_k(value):
     return f"Rp {value / 1_000:.1f}".replace(".", ",") + " K"
 
+def get_monthly_traffic_trend(df, year_filter="All Year", terminal_filter="All Terminal"):
+    current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
+    prior_year = current_year - 1 if current_year is not None else None
 
-def _monthly_traffic_series(total_m, seed=7):
-    rng = np.random.default_rng(seed)
-    weights = rng.uniform(0.85, 1.15, 12)
-    weights = weights / weights.sum()
-    return (weights * total_m).tolist()
+    def series_for(year):
+        if year is None:
+            return [0] * 12
+        source = df[df["tahun"] == year]
+        if terminal_filter != "All Terminal":
+            source = source[source["terminal"] == terminal_filter]
+        monthly = source.groupby("masa_jasa")["total_pax"].sum()
+        return [float(monthly.get(month, 0)) / 1_000_000 for month in TM_MONTH_OPTIONS[1:]]
 
-
-def get_monthly_traffic_trend(terminal_filter="All Terminal"):
-    metrics = _aggregate_metrics(terminal_filter)
-    current = _monthly_traffic_series(metrics["total"], seed=11)
-    prior = _monthly_traffic_series(metrics["prior_total"], seed=23)
     return pd.DataFrame({
         "Month": TM_MONTHS,
-        "FY 2024": current,
-        "FY 2023": prior,
+        "Current": series_for(current_year),
+        "Prior": series_for(prior_year),
     })
 
-
-def get_domestic_intl_monthly(terminal_filter="All Terminal"):
-    metrics = _aggregate_metrics(terminal_filter)
-    dom_series = _monthly_traffic_series(metrics["domestic"], seed=31)
-    intl_series = _monthly_traffic_series(metrics["international"], seed=37)
+def get_domestic_intl_monthly(df, year_filter="All Year", terminal_filter="All Terminal"):
+    current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
+    source = df[df["tahun"] == current_year] if current_year is not None else df.iloc[0:0]
+    if terminal_filter != "All Terminal":
+        source = source[source["terminal"] == terminal_filter]
+    grouped = source.groupby("masa_jasa").agg(
+        Domestic=("pax_domestik", "sum"),
+        International=("pax_internasional", "sum"),
+    )
     return pd.DataFrame({
         "Month": TM_MONTHS,
-        "Domestic": dom_series,
-        "International": intl_series,
+        "Domestic": [float(grouped["Domestic"].get(month, 0)) / 1_000_000 if not grouped.empty else 0 for month in TM_MONTH_OPTIONS[1:]],
+        "International": [float(grouped["International"].get(month, 0)) / 1_000_000 if not grouped.empty else 0 for month in TM_MONTH_OPTIONS[1:]],
     })
 
-
-def get_spp_monthly(terminal_filter="All Terminal"):
-    metrics = _aggregate_metrics(terminal_filter)
-    base = metrics["spp"] / 1_000
-    rng = np.random.default_rng(45)
-    values = base + rng.uniform(-8, 14, 12)
+def get_spp_monthly(df, year_filter="All Year", terminal_filter="All Terminal"):
+    current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
+    source = df[df["tahun"] == current_year] if current_year is not None else df.iloc[0:0]
+    if terminal_filter != "All Terminal":
+        source = source[source["terminal"] == terminal_filter]
+    grouped = source.groupby("masa_jasa").agg(
+        total_pax=("total_pax", "sum"),
+        real_omzet=("real_omzet", "sum"),
+        spp=("spending_per_pax", "mean"),
+    )
+    values = []
+    for month in TM_MONTH_OPTIONS[1:]:
+        if grouped.empty or month not in grouped.index:
+            values.append(0)
+            continue
+        row = grouped.loc[month]
+        spp = row["spp"] if pd.notna(row["spp"]) else (row["real_omzet"] / row["total_pax"] if row["total_pax"] else 0)
+        values.append(float(spp or 0) / 1_000)
     return pd.DataFrame({"Month": TM_MONTHS, "SPP": values})
 
-
-def get_terminal_table_df():
-    metrics = _aggregate_metrics("All Terminal")
+def get_terminal_table_df(metrics):
     rows = []
     for row in metrics["rows"]:
         total = row["total"]
@@ -171,7 +373,6 @@ def get_terminal_table_df():
         "_total": total_all,
     })
     return pd.DataFrame(rows)
-
 
 def _sparkline_svg(values, color):
     if not values:
@@ -381,6 +582,11 @@ def _render_tm_filter_card(active_count: int = 0) -> None:
         )
 
 
+def _filter_state_marker(kind, is_active):
+    state = "active" if is_active else "empty"
+    return f'<span class="tm-filter-marker tm-filter-kind-{kind} tm-filter-state-{state}" aria-hidden="true"></span>'
+
+
 def _mount_tm_fixed_header():
     components.html(
         """
@@ -473,15 +679,15 @@ def _insight_card_html(title, body, badge, accent, soft_bg):
     """).strip()
 
 
-def _traffic_trend_figure(df):
+def _traffic_trend_figure(df, current_label="Current", prior_label="Prior"):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=df["Month"], y=df["FY 2024"], mode="lines+markers", name="FY 2024",
+        x=df["Month"], y=df["Current"], mode="lines+markers", name=current_label,
         line=dict(color="#7C3AED", width=2.8),
         marker=dict(size=5, color="#ffffff", line=dict(color="#7C3AED", width=2)),
     ))
     fig.add_trace(go.Scatter(
-        x=df["Month"], y=df["FY 2023"], mode="lines+markers", name="FY 2023",
+        x=df["Month"], y=df["Prior"], mode="lines+markers", name=prior_label,
         line=dict(color="#C4B5FD", width=2, dash="dash"),
         marker=dict(size=4, color="#ffffff", line=dict(color="#C4B5FD", width=1.5)),
     ))
@@ -1339,7 +1545,9 @@ def _inject_tm_css():
     """))
 
 
-def page_traffic_monitor():
+def page_traffic_monitor(df_raw=None):
+    data_df = get_traffic_monitor_data(df_raw)
+
     for key, default in [
         ("tm_year", "All Year"),
         ("tm_month", "All Month"),
@@ -1354,10 +1562,39 @@ def page_traffic_monitor():
         if pend_key not in st.session_state:
             st.session_state[pend_key] = st.session_state[applied_key]
 
-    metrics = _aggregate_metrics(st.session_state.tm_terminal)
-    trend_df = get_monthly_traffic_trend(st.session_state.tm_terminal)
-    dom_intl_df = get_domestic_intl_monthly(st.session_state.tm_terminal)
-    spp_df = get_spp_monthly(st.session_state.tm_terminal)
+    year_options = ["All Year"] + (
+        [str(int(year)) for year in sorted(data_df["tahun"].dropna().unique(), reverse=True)]
+        if not data_df.empty else []
+    )
+    month_options = ["All Month"] + [
+        month for month in TM_MONTH_OPTIONS[1:]
+        if not data_df.empty and month in set(data_df["masa_jasa"].dropna())
+    ]
+    if len(month_options) == 1:
+        month_options = TM_MONTH_OPTIONS
+    terminal_options = ["All Terminal"] + (
+        sorted(data_df["terminal"].dropna().unique().tolist()) if not data_df.empty else []
+    )
+
+    if st.session_state.tm_year not in year_options:
+        st.session_state.tm_year = "All Year"
+    if st.session_state.tm_month not in month_options:
+        st.session_state.tm_month = "All Month"
+    if st.session_state.tm_terminal not in terminal_options:
+        st.session_state.tm_terminal = "All Terminal"
+
+    metrics = _aggregate_metrics(
+        data_df,
+        st.session_state.tm_year,
+        st.session_state.tm_month,
+        st.session_state.tm_terminal,
+    )
+    trend_df = get_monthly_traffic_trend(data_df, st.session_state.tm_year, st.session_state.tm_terminal)
+    dom_intl_df = get_domestic_intl_monthly(data_df, st.session_state.tm_year, st.session_state.tm_terminal)
+    spp_df = get_spp_monthly(data_df, st.session_state.tm_year, st.session_state.tm_terminal)
+    current_year_label = f"FY {metrics['current_year']}" if metrics["current_year"] else "Current"
+    prior_year_label = f"FY {metrics['prior_year']}" if metrics["prior_year"] else "Prior"
+    scope_label = metrics["terminal_label"]
 
     active_count = sum([
         st.session_state.get("tm_year", "All Year") != "All Year",
@@ -1384,14 +1621,14 @@ def page_traffic_monitor():
     domestic_pct_str = f"{metrics['domestic_pct']:.1f}".replace(".", ",")
     intl_pct_str = f"{metrics['intl_pct']:.1f}".replace(".", ",")
 
-    spark_total = trend_df["FY 2024"].tolist()
+    spark_total = trend_df["Current"].tolist()
     spark_dom = dom_intl_df["Domestic"].tolist()
     spark_intl = dom_intl_df["International"].tolist()
     spark_spp = spp_df["SPP"].tolist()
 
     kpi_html = "".join([
         _tm_kpi_card("Total Traffic", _fmt_millions(metrics["total"]),
-                     "FY 2024 · Terminal 1 & 2", metrics["yoy"], "#7C3AED", "users", spark_total),
+                     f"{current_year_label} · {scope_label}", metrics["yoy"], "#7C3AED", "users", spark_total),
         _tm_kpi_card("Domestic Traffic", _fmt_millions(metrics["domestic"]),
                      f"{domestic_pct_str}% of total traffic", metrics["yoy"] * 0.9,
                      "#2563EB", "map-pin", spark_dom),
@@ -1401,7 +1638,7 @@ def page_traffic_monitor():
         _tm_kpi_card("Spending Per Pax", _fmt_rp_k(metrics["spp"]),
                      "Average across selected terminals", 6.6, "#D97706", "credit-card", spark_spp),
         _tm_kpi_card("Traffic Growth", f"+{yoy_val_str}%",
-                     "YoY vs FY 2023", metrics["yoy"], "#059669", "trending-up", spark_total),
+                     f"YoY vs {prior_year_label}", metrics["yoy"], "#059669", "trending-up", spark_total),
         _tm_kpi_card("Avg Spending Per Pax", _fmt_rp_k(metrics["spp"]),
                      "Weighted terminal average", 6.6, "#EA580C", "shopping-bag", spark_spp),
     ])
@@ -1409,8 +1646,8 @@ def page_traffic_monitor():
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     row1_left, row1_right = st.columns([1.55, 1], gap="small")
-    peak_month = trend_df.loc[trend_df["FY 2024"].idxmax(), "Month"]
-    peak_value = trend_df["FY 2024"].max()
+    peak_month = trend_df.loc[trend_df["Current"].idxmax(), "Month"] if not trend_df.empty else "-"
+    peak_value = trend_df["Current"].max() if not trend_df.empty else 0
 
     with row1_left:
         st.markdown('<div class="ed-card-marker tm-trend-card"></div>', unsafe_allow_html=True)
@@ -1418,26 +1655,26 @@ def page_traffic_monitor():
         with h1:
             st.markdown(section_title_html(
                 "Total Traffic Trend",
-                "Monthly passengers — FY 2024 vs FY 2023 (Millions) · Terminal 1 & 2",
+                f"Monthly passengers — {current_year_label} vs {prior_year_label} (Millions) · {scope_label}",
             ), unsafe_allow_html=True)
         st.markdown(f'<span class="tm-yoy-pill">YoY +{yoy_val_str} %</span>', unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics">'
-            + _mini_metric_box("FY 2024", _fmt_millions(metrics["total"]), accent="#7C3AED")
-            + _mini_metric_box("FY 2023", _fmt_millions(metrics["prior_total"]), accent="#94A3B8")
+            + _mini_metric_box(current_year_label, _fmt_millions(metrics["total"]), accent="#7C3AED")
+            + _mini_metric_box(prior_year_label, _fmt_millions(metrics["prior_total"]), accent="#94A3B8")
             + _mini_metric_box("Peak Month", f"{peak_month} · {f'{peak_value:.1f}'.replace('.', ',')} Jt", accent="#2563EB")
             + _mini_metric_box("Growth", f"+{yoy_val_str}%", accent="#059669")
             + "</div>",
             unsafe_allow_html=True,
         )
-        st.plotly_chart(_traffic_trend_figure(trend_df), use_container_width=True,
+        st.plotly_chart(_traffic_trend_figure(trend_df, current_year_label, prior_year_label), use_container_width=True,
                         config={"displayModeBar": False})
 
     with row1_right:
         st.markdown('<div class="ed-card-marker tm-split-card"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Domestic vs International",
-            "Monthly split — FY 2024 (Juta) · Terminal 1 & 2",
+            f"Monthly split — {current_year_label} (Juta) · {scope_label}",
         ), unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(2,minmax(0,1fr));">'
@@ -1473,11 +1710,11 @@ def page_traffic_monitor():
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Spending per Pax Trend",
-            "Monthly Rp '000 per passenger vs Rp 90K target · Terminal 1 & 2",
+            f"Monthly Rp '000 per passenger vs Rp 90K target · {scope_label}",
         ), unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(4,minmax(0,1fr));">'
-            + _mini_metric_box("FY 2024 Avg", _fmt_rp_k(metrics["spp"]), accent="#D97706")
+            + _mini_metric_box(f"{current_year_label} Avg", _fmt_rp_k(metrics["spp"]), accent="#D97706")
             + _mini_metric_box("Dec Peak", _fmt_rp_k(spp_peak * 1000), spp_peak_month, "#EA580C")
             + _mini_metric_box("Target", "Rp 90,0 K", accent="#64748B")
             + _mini_metric_box("Achievement", f"+{f'{achievement:.1f}'.replace('.', ',')}%", accent="#059669")
@@ -1490,10 +1727,10 @@ def page_traffic_monitor():
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Traffic by Terminal",
-            "Annual passengers (Juta) — FY 2024",
+            f"Annual passengers (Juta) — {current_year_label}",
         ), unsafe_allow_html=True)
         cards = []
-        all_metrics = _aggregate_metrics("All Terminal")
+        all_metrics = _aggregate_metrics(data_df, st.session_state.tm_year, st.session_state.tm_month, "All Terminal")
         for row in all_metrics["rows"]:
             cards.append(_terminal_card_html(row, all_metrics["shares"][row["name"]]))
         st.markdown(f'<div class="tm-terminal-stack">{"".join(cards)}</div>', unsafe_allow_html=True)
@@ -1502,7 +1739,7 @@ def page_traffic_monitor():
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Traffic Distribution",
-            "Contribution by terminal — FY 2024 · Terminal 1 & 2",
+            f"Contribution by terminal — {current_year_label} · All Terminals",
         ), unsafe_allow_html=True)
         labels = [r["name"] for r in all_metrics["rows"]]
         values = [r["total"] for r in all_metrics["rows"]]
@@ -1524,47 +1761,43 @@ def page_traffic_monitor():
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    t2 = TERMINAL_PROFILES["Terminal 2"]
-    t1 = TERMINAL_PROFILES["Terminal 1"]
-    t2_total = t2["domestic"] + t2["international"]
-    t2_share = t2_total / (t1["domestic"] + t1["international"] + t2_total) * 100
-    intl_premium = t2["spp"] / t1["spp"]
-
-    t2_total_str = f"{t2_total:.1f}".replace(".", ",")
-    t2_share_str = f"{t2_share:.1f}".replace(".", ",")
-    achievement_str = f"{(metrics['spp'] / 90_000 - 1) * 100:.1f}".replace(".", ",")
-    intl_premium_str = f"{intl_premium:.1f}".replace(".", ",")
+    top_row = max(all_metrics["rows"], key=lambda row: row["total"], default=None)
+    top_name = top_row["name"] if top_row else "No terminal"
+    top_total = top_row["total"] if top_row else 0
+    top_share = all_metrics["shares"].get(top_name, 0) if top_row else 0
+    top_spp = top_row["spp"] if top_row else 0
+    intl_mix = (metrics["international"] / metrics["total"] * 100) if metrics["total"] else 0
 
     with st.container():
         st.markdown('<div class="ed-card-marker tm-insights-card"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Executive Insights",
-            "AI-powered traffic & spending analysis · FY 2024 · Terminal 1 & Terminal 2",
+            f"Traffic & spending analysis · {current_year_label} · {scope_label}",
         ), unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-insight-grid">'
             + _insight_card_html(
-                f"Terminal 2 leads at {t2_total_str} M pax ({t2_share_str}%)",
-                "Terminal 2 carries the larger international mix and higher SPP, driving overall airport commercial performance.",
-                f"T2 · {t2_share_str}%",
+                f"{top_name} leads at {top_total:.1f}M pax ({top_share:.1f}%)",
+                "Traffic leader is calculated directly from the latest Import Manager traffic table.",
+                f"{top_share:.1f}% share",
                 "#0891B2", "#ECFEFF",
             )
             + _insight_card_html(
-                f"Terminals grew +{yoy_val_str}% YoY — above 8% target",
-                f"Combined Terminal 1 & 2 traffic reached {_fmt_millions(metrics['total'])} vs {_fmt_millions(metrics['prior_total'])} in FY 2023.",
-                f"+{yoy_val_str}% vs 8% target",
+                f"Traffic growth {metrics['yoy']:+.1f}% YoY",
+                f"{scope_label} traffic reached {_fmt_millions(metrics['total'])} vs {_fmt_millions(metrics['prior_total'])} in {prior_year_label}.",
+                f"{metrics['yoy']:+.1f}% YoY",
                 "#059669", "#F0FDF4",
             )
             + _insight_card_html(
-                f"SPP at {_fmt_rp_k(metrics['spp'])} — above Rp 90 K target",
-                "Terminal 2 exceeds the spending target while Terminal 1 remains below target, creating a blended uplift across both terminals.",
-                f"+{achievement_str}% above target",
+                f"SPP at {_fmt_rp_k(metrics['spp'])}",
+                "Spending per passenger is calculated from imported revenue and traffic values.",
+                f"{(metrics['spp'] / 90_000 - 1) * 100:+.1f}% vs target",
                 "#D97706", "#FFF7ED",
             )
             + _insight_card_html(
-                "International pax spend more per passenger",
-                f"Terminal 2 international mix supports higher SPP at {_fmt_rp_k(t2['spp'])} compared with Terminal 1 at {_fmt_rp_k(t1['spp'])}.",
-                f"{intl_premium_str}x T2 vs T1 SPP",
+                f"International mix {intl_mix:.1f}%",
+                f"Top terminal SPP is {_fmt_rp_k(top_spp)}, based on the current imported period.",
+                f"{_fmt_rp_k(top_spp)} top SPP",
                 "#7C3AED", "#F5F3FF",
             )
             + "</div>",
@@ -1573,7 +1806,7 @@ def page_traffic_monitor():
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    table_df = get_terminal_table_df()
+    table_df = get_terminal_table_df(all_metrics)
     display_df = table_df.drop(columns=["_share", "_total"]).copy()
     col_align = {
         "Domestic Traffic": "right",

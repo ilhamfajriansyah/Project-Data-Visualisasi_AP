@@ -23,7 +23,7 @@ REQUIRED_DASHBOARD_COLUMNS = {
     "real_omzet",
     "pendapatan_sewa",
     "pendapatan_rs",
-    "kontribusi",
+    "total_kontribusi",
     "luas_sqm",
 }
 
@@ -59,8 +59,8 @@ COLUMN_ALIASES = {
     "revenue_sharing": "pendapatan_rs",
     "rs": "pendapatan_rs",
     "pendapatanrs": "pendapatan_rs",
-    "total_kontribusi": "kontribusi",
-    "contribution": "kontribusi",
+    "total_kontribusi": "total_kontribusi",
+    "contribution": "total_kontribusi",
     "luas": "luas_sqm",
     "sqm": "luas_sqm",
     "area_sqm": "luas_sqm",
@@ -93,25 +93,24 @@ def _clean_column_name(column) -> str:
 
 
 def normalize_imported_data(df: pd.DataFrame) -> pd.DataFrame:
-    normalized = df.copy()
-    normalized.columns = [
-        COLUMN_ALIASES.get(_clean_column_name(col), _clean_column_name(col))
-        for col in normalized.columns
-    ]
-    normalized = normalized.loc[:, ~normalized.columns.duplicated()]
+    # Preserve original columns exactly as requested
+    return df
 
-    for col in NUMERIC_COLUMNS:
-        if col in normalized.columns:
-            normalized[col] = pd.to_numeric(normalized[col], errors="coerce")
 
-    if "tahun" in normalized.columns:
-        normalized["tahun"] = normalized["tahun"].fillna(0).astype(int)
-    if {"real_omzet", "luas_sqm"}.issubset(normalized.columns):
-        normalized["rev_sqm"] = normalized["real_omzet"] / normalized["luas_sqm"].replace(0, pd.NA)
-    if {"real_omzet", "min_omzet"}.issubset(normalized.columns):
-        normalized["acv"] = (normalized["real_omzet"] / normalized["min_omzet"].replace(0, pd.NA) * 100).round(2)
+def get_column_mapping(df: pd.DataFrame) -> dict[str, str]:
+    mapping = {}
+    for col in df.columns:
+        cleaned = _clean_column_name(col)
+        if cleaned in COLUMN_ALIASES:
+            mapping[COLUMN_ALIASES[cleaned]] = col
+        elif cleaned in REQUIRED_DASHBOARD_COLUMNS:
+            mapping[cleaned] = col
+    return mapping
 
-    return normalized
+
+def get_mapped_column(required_col: str) -> str | None:
+    mapping = st.session_state.get("shared_import_mapping", {})
+    return mapping.get(required_col)
 
 
 MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024
@@ -168,10 +167,12 @@ def _file_has_merged_cells(uploaded) -> bool:
 
 
 def _required_columns_filled(df: pd.DataFrame) -> bool:
-    for col in REQUIRED_DASHBOARD_COLUMNS:
-        if col not in df.columns:
+    mapping = get_column_mapping(df)
+    for col_req in REQUIRED_DASHBOARD_COLUMNS:
+        orig_col = mapping.get(col_req)
+        if not orig_col:
             return False
-        series = df[col]
+        series = df[orig_col]
         if series.isna().any():
             return False
         if series.dtype == object:
@@ -186,9 +187,9 @@ def validate_import_upload(uploaded) -> dict[str, bool]:
     if uploaded is None:
         return results
 
-    filename = uploaded.name.lower()
+    filename = str(getattr(uploaded, "name", "")).lower()
     results["format"] = filename.endswith(ALLOWED_IMPORT_EXTENSIONS)
-    results["size"] = uploaded.size <= MAX_IMPORT_FILE_BYTES
+    results["size"] = int(getattr(uploaded, "size", 0) or 0) <= MAX_IMPORT_FILE_BYTES
 
     if not (results["format"] and results["size"]):
         return results
@@ -203,26 +204,29 @@ def validate_import_upload(uploaded) -> dict[str, bool]:
         results["required_filled"] = _required_columns_filled(df) if results["structure"] else False
     except Exception:
         pass
+    finally:
+        uploaded.seek(0)
 
     return results
 
 
 def read_import_file(uploaded) -> pd.DataFrame:
     uploaded.seek(0)
-    filename = uploaded.name.lower()
+    filename = str(getattr(uploaded, "name", "")).lower()
     if not filename.endswith(ALLOWED_IMPORT_EXTENSIONS):
         raise ValueError("Format file tidak didukung. Gunakan .xlsx atau .xls.")
     return pd.read_excel(uploaded)
 
 
-# The correct validate_import_upload is defined above using the full validation rules checklist.
-
-
 def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str]]:
     raw_df = read_import_file(uploaded)
-    df = normalize_imported_data(raw_df)
+    df = raw_df.copy()
+    
+    mapping = get_column_mapping(df)
     missing = get_missing_dashboard_columns(df)
+    
     st.session_state[SHARED_DATA_KEY] = df
+    st.session_state["shared_import_mapping"] = mapping
     st.session_state[SHARED_META_KEY] = {
         "file_name": uploaded.name,
         "rows": len(df),
@@ -231,6 +235,8 @@ def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str
         "sbu": sbu,
         "ready_for_dashboard": len(missing) == 0,
         "missing_columns": missing,
+        "original_columns": list(df.columns),
+        "column_types": {col: str(df[col].dtype) for col in df.columns}
     }
     return df, missing
 
@@ -247,7 +253,8 @@ def get_shared_import_meta() -> dict:
 
 
 def get_missing_dashboard_columns(df: pd.DataFrame) -> list[str]:
-    return sorted(REQUIRED_DASHBOARD_COLUMNS.difference(df.columns))
+    mapping = get_column_mapping(df)
+    return sorted(REQUIRED_DASHBOARD_COLUMNS.difference(mapping.keys()))
 
 
 def has_dashboard_ready_import() -> bool:

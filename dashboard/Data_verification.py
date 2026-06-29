@@ -8,6 +8,7 @@ from .shared_import import get_shared_import_data, get_shared_import_meta
 from .navigation import topnav_actions_html
 from .pagination import render_pagination, patch_pagination
 
+
 DV_PAGE_ICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
     'width="18" height="18" fill="none" stroke="currentColor" '
@@ -76,21 +77,17 @@ def _mount_dv_fixed_header():
     )
 
 # ─────────────────────────────────────────────
-# DUMMY DATA — nanti diganti dari session_state import_manager
+# DATA PROCESSING
 # ─────────────────────────────────────────────
-def _get_verification_data() -> pd.DataFrame:
+def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
     """
     DATA SOURCE:
-    Saat ini menggunakan dummy data.
-    Nanti sambungkan ke st.session_state['im_imported_data']
-    yang di-set dari import_manager.py setelah Execute Import.
-
-    Contoh integrasi:
-        if 'im_imported_data' in st.session_state:
-            return st.session_state['im_imported_data']
-        return _dummy_data()
+    Prefers the real `df_raw` passed in by the router (sourced from the
+    backend via get_engine()). Falls back to whatever Import Manager has
+    stashed in session_state, and finally to dummy data so the page still
+    renders something sensible before any real backend is wired up.
     """
-    imported_df = get_shared_import_data()
+    imported_df = df_raw if (df_raw is not None and not df_raw.empty) else get_shared_import_data()
     if imported_df is not None:
         meta = get_shared_import_meta()
         df = imported_df.copy()
@@ -103,16 +100,19 @@ def _get_verification_data() -> pd.DataFrame:
                 conflict_info = str(real_omzet or "-").replace(".", ",")
 
             brand = r.get("brand", r.get("perusahaan", r.get("tenant_name", "-")))
+            perusahaan = r.get("perusahaan", "-")
             kode_ruang = r.get("kode_ruang", r.get("unit", "-"))
             periode = r.get("masa_jasa", r.get("periode", meta.get("period", "April 2026")))
+            status = "Active" if pd.notna(real_omzet) and float(real_omzet or 0) > 0 else "Pending"
             rows.append({
                 "Kode Ruang": kode_ruang if pd.notna(kode_ruang) else "-",
                 "Brand/Tenant": brand if pd.notna(brand) else "-",
+                "Perusahaan": perusahaan if pd.notna(perusahaan) else "-",
                 "SAP ID": str(r.get("sap_id", "SAP: -")),
                 "Legal ID": str(r.get("legal_id", "Legal: -")),
                 "Real Onset": str(periode),
                 "End Kontrak": str(r.get("end_kontrak", "-")),
-                "Status": "Active",
+                "Status": status,
                 "Skema": str(r.get("skema", r.get("bidang_usaha", "-"))),
                 "Conflict Info": conflict_info,
                 "Anomali": bool(pd.isna(real_omzet) or pd.isna(kode_ruang) or pd.isna(brand)),
@@ -142,7 +142,6 @@ def _get_verification_data() -> pd.DataFrame:
         {"Kode Ruang": "LG-02-08", "Brand/Tenant": "Hypermart",       "SAP ID": "SAP: 10409",  "Legal ID": "Legal 4C-2025-004", "Real Onset": "15 Apr 2025 – 14 Apr 2027", "End Kontrak": "14 Apr 2027", "Status": "Expired",       "Skema": "MG45",   "Conflict Info": "Rp 140M", "Anomali": True},
     ]
     return pd.DataFrame(data)
-
 
 # ─────────────────────────────────────────────
 # CSS
@@ -754,13 +753,21 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
 # ─────────────────────────────────────────────
 # INIT STATE
 # ─────────────────────────────────────────────
-def _init_state():
+def _init_state(df_raw: pd.DataFrame | None = None):
     if "dv_page" not in st.session_state: st.session_state.dv_page = 1
-    current_data = _get_verification_data()
-    if get_shared_import_data() is not None:
+    current_data = _get_verification_data(df_raw)
+    current_import_id = (
+        int(pd.to_numeric(df_raw["import_id"], errors="coerce").max())
+        if df_raw is not None and "import_id" in df_raw.columns and not df_raw.empty
+        else None
+    )
+    if (
+        "dv_df" not in st.session_state
+        or st.session_state.get("dv_source_import_id") != current_import_id
+        or get_shared_import_data() is not None
+    ):
         st.session_state.dv_df = current_data
-    elif "dv_df" not in st.session_state:
-        st.session_state.dv_df = current_data
+        st.session_state.dv_source_import_id = current_import_id
 
 
 # ─────────────────────────────────────────────
@@ -913,97 +920,9 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
-def _patch_dv_pagination():
-    components.html(
-        r"""
-        <script>
-        (function () {
-            const doc = window.parent.document;
-            console.log("[DV Pagination] JS injected. Doc:", doc);
-
-            function setupDVPagination() {
-                const buttons = doc.querySelectorAll('.dv-pg-btn');
-                if (buttons.length > 0) {
-                    console.log("[DV Pagination] Found dv-pg-btn buttons:", buttons.length);
-                }
-                buttons.forEach(btn => {
-                    if (btn.classList.contains('disabled') || btn.classList.contains('active')) return;
-                    if (btn.dataset.hasListener) return;
-                    btn.dataset.hasListener = "true";
-
-                    console.log("[DV Pagination] Attaching listener to button:", btn.textContent, "page:", btn.getAttribute('data-page'));
-                    btn.addEventListener('click', () => {
-                        const targetPage = btn.getAttribute('data-page');
-                        console.log("[DV Pagination] Button clicked. Page:", targetPage);
-                        if (!targetPage) return;
-
-                        let targetInput = null;
-                        const widgets = doc.querySelectorAll('[data-testid="stTextInput"]');
-                        widgets.forEach(widget => {
-                            const label = widget.querySelector('label');
-                            if (label) {
-                                const text = label.textContent.replace(/\s+/g, ' ').trim();
-                                if (text.includes('Page Sync Trigger DV')) {
-                                    targetInput = widget.querySelector('input');
-                                }
-                            }
-                        });
-
-                        console.log("[DV Pagination] Target input search result:", targetInput);
-
-                        if (targetInput) {
-                            try {
-                                const targetWindow = targetInput.ownerDocument.defaultView || window.parent;
-                                let nativeInputValueSetter = Object.getOwnPropertyDescriptor(targetWindow.HTMLInputElement.prototype, "value").set;
-                                nativeInputValueSetter.call(targetInput, targetPage);
-                                targetInput.dispatchEvent(new targetWindow.Event('input', { bubbles: true }));
-                                targetInput.dispatchEvent(new targetWindow.Event('change', { bubbles: true }));
-                                targetInput.dispatchEvent(new targetWindow.KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-                                targetInput.dispatchEvent(new targetWindow.Event('blur', { bubbles: true }));
-                                console.log("[DV Pagination] Events dispatched successfully.");
-                            } catch (err) {
-                                console.error("[DV Pagination] Error setting value or dispatching events:", err);
-                            }
-                        } else {
-                            console.warn("[DV Pagination] Target input not found.");
-                        }
-                    });
-                });
-            }
-
-            function hidePageSyncTrigger() {
-                doc.querySelectorAll('[data-testid="stTextInput"]').forEach((widget) => {
-                    const label = widget.querySelector('label');
-                    if (label && label.textContent.includes('Page Sync Trigger')) {
-                        widget.style.display = 'none';
-                    }
-                });
-            }
-
-            setupDVPagination();
-            hidePageSyncTrigger();
-
-            const observer = new MutationObserver(() => {
-                setupDVPagination();
-                hidePageSyncTrigger();
-            });
-
-            observer.observe(doc.body, {
-                childList: true,
-                subtree: true,
-                characterData: true,
-            });
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
-def render_data_verification():
+def render_data_verification(df_raw: pd.DataFrame | None = None):
     """Call this from dashboard.py router."""
-    _init_state()
+    _init_state(df_raw)
     st.markdown('<div class="dv-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
 

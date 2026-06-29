@@ -29,10 +29,53 @@ def _get_room_data() -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
+def _room_data_from_dashboard(df_raw: pd.DataFrame | None) -> pd.DataFrame:
+    if df_raw is None or df_raw.empty:
+        return _get_room_data()
+
+    df = df_raw.copy()
+
+    def col(name, default=""):
+        if name in df.columns:
+            return df[name]
+        return pd.Series([default] * len(df), index=df.index)
+
+    area = df["luas_sqm"] if "luas_sqm" in df.columns else col("produksi_m2", 0)
+    room_df = pd.DataFrame({
+        "Room ID": col("kode_ruang", "Unknown").fillna("Unknown").astype(str),
+        "Terminal": col("terminal", "Unknown").fillna("Unknown").astype(str),
+        "Location": col("lokasi", "").fillna("").astype(str),
+        "Gate Point": col("gate", "").fillna("").astype(str),
+        "Area (mÂ²)": pd.to_numeric(area, errors="coerce").fillna(0),
+        "Facilities": "-",
+        "Classifications": col("bidang_usaha", "Unclassified").fillna("Unclassified").astype(str),
+        "Status": "Occupied",
+    })
+
+    missing_location = room_df["Location"].str.strip().eq("")
+    room_df.loc[missing_location, "Location"] = room_df.loc[missing_location, "Terminal"]
+    missing_gate = room_df["Gate Point"].str.strip().eq("")
+    room_df.loc[missing_gate, "Gate Point"] = col("lantai", "-").fillna("-").astype(str)
+
+    room_df = room_df.drop_duplicates(subset=["Room ID", "Terminal", "Location"]).reset_index(drop=True)
+    return room_df if not room_df.empty else _get_room_data()
+
+
 # ── Session State Init ─────────────────────────────────────────────────────────
-def _init_state():
+def _init_state(df_raw: pd.DataFrame | None = None):
     if "room_df" not in st.session_state:
-        st.session_state.room_df = _get_room_data()
+        st.session_state.room_df = _room_data_from_dashboard(df_raw)
+        st.session_state.room_source_import_id = (
+            int(pd.to_numeric(df_raw["import_id"], errors="coerce").max())
+            if df_raw is not None and "import_id" in df_raw.columns and not df_raw.empty
+            else None
+        )
+    elif df_raw is not None and "import_id" in df_raw.columns and not df_raw.empty:
+        import_id = int(pd.to_numeric(df_raw["import_id"], errors="coerce").max())
+        if st.session_state.get("room_source_import_id") != import_id:
+            st.session_state.room_df = _room_data_from_dashboard(df_raw)
+            st.session_state.room_source_import_id = import_id
+            st.session_state.room_page = 0
     if "room_page" not in st.session_state:
         st.session_state.room_page = 0
     if "show_add_form" not in st.session_state:
@@ -267,10 +310,10 @@ _PAGE_CSS = """
 
 
 # ── Main entrypoint ────────────────────────────────────────────────────────────
-def render_room_database():
+def render_room_database(df_raw: pd.DataFrame | None = None):
     """Call this function from your dashboard.py page router."""
 
-    _init_state()
+    _init_state(df_raw)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
 
     # ── Page Header ──

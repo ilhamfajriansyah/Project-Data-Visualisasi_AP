@@ -78,49 +78,98 @@ def _mount_lc_fixed_header():
     )
 
 # ──────────────────────────────────────────────────────────────────────────────
-# DUMMY DATA GENERATOR (RETAINS ORIGINAL DATA & STRUCTURE, EXPANDS TO 247 ROWS)
+# DATA FROM EXCEL
 # ──────────────────────────────────────────────────────────────────────────────
-def _get_contract_data() -> pd.DataFrame:
+from .shared_import import get_mapped_column
+
+LC_CONTRACT_COLUMNS = [
+    "No",
+    "Name/Tenant",
+    "Sub",
+    "Valid Period",
+    "Unit Name/Loc",
+    "Status",
+    "Conflict Info",
+    "Kode",
+    "Skema",
+    "Sisa",
+    "Terminal",
+]
+
+
+def _get_contract_data(df: pd.DataFrame | None = None) -> pd.DataFrame:
+    if df is None or df.empty:
+        return _get_dummy_contract_data()
+
+    col_perusahaan = get_mapped_column("perusahaan") or "perusahaan"
+    col_terminal = get_mapped_column("terminal") or "terminal"
+    col_kode = get_mapped_column("kode_ruang") or "kode_ruang"
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+
+    data = []
+    for i, row in df.iterrows():
+        data.append({
+            "No": i + 1,
+            "Name/Tenant": row.get(col_perusahaan, "-"),
+            "Sub": "General Contract",
+            "Valid Period": "N/A",
+            "Unit Name/Loc": row.get(col_kode, "-"),
+            "Status": "Valid",
+            "Conflict Info": False,
+            "Kode": row.get(col_kode, "-"),
+            "Skema": row.get(col_bidang, "-"),
+            "Sisa": 365,
+            "Terminal": row.get(col_terminal, "-")
+        })
+        
+    return pd.DataFrame(data, columns=LC_CONTRACT_COLUMNS)
+
+
+def _get_dummy_contract_data() -> pd.DataFrame:
+    """247-row dummy dataset used until real lease data is wired in.
+    Status/Terminal/Skema counts are deliberately tuned to match the
+    KPI cards on this page (T1=48, T2=112, T3=61, T3U=26; Revenue
+    Sharing=128, RS+MO=81, MGRS=38; Valid=218, Anomaly=18, Expired=11)."""
     # Important specific records required by the new design
     data = [
         # Critical (Status = Expiring Soon / Critical, Sisa <= 30)
         {"No": 1, "Name/Tenant": "7-Eleven", "Sub": "Critical - Expires Soon", "Valid Period": "01 Jan 2023 - 31 Jan 2025", "Unit Name/Loc": "T1 - Area A", "Status": "Anomaly", "Conflict Info": True, "Kode": "FB-01-01", "Skema": "Revenue Sharing", "Sisa": 16, "Terminal": "T1"},
         {"No": 2, "Name/Tenant": "Sari Roti", "Sub": "Critical - Expires Soon", "Valid Period": "15 Feb 2023 - 14 Feb 2025", "Unit Name/Loc": "T2 - Area B", "Status": "Anomaly", "Conflict Info": True, "Kode": "RT-02-07", "Skema": "Revenue Sharing", "Sisa": 30, "Terminal": "T2"},
-        
+
         # Expiring Soon (Status = Anomaly, 31 <= Sisa <= 90)
         {"No": 3, "Name/Tenant": "KFC", "Sub": "Expiring Soon", "Valid Period": "01 Mar 2023 - 01 Mar 2025", "Unit Name/Loc": "T3 - Area A", "Status": "Anomaly", "Conflict Info": False, "Kode": "FB-01-03", "Skema": "Revenue Sharing", "Sisa": 44, "Terminal": "T3"},
         {"No": 4, "Name/Tenant": "Timezone", "Sub": "Expiring Soon", "Valid Period": "02 Apr 2023 - 02 Apr 2025", "Unit Name/Loc": "T1 - Area C", "Status": "Anomaly", "Conflict Info": True, "Kode": "RT-01-02", "Skema": "RS+MO", "Sisa": 75, "Terminal": "T1"},
         {"No": 5, "Name/Tenant": "Lion Lounge", "Sub": "Expiring Soon", "Valid Period": "16 Apr 2023 - 16 Apr 2025", "Unit Name/Loc": "T1 - Area VIP", "Status": "Anomaly", "Conflict Info": True, "Kode": "LG-01-12", "Skema": "MGRS", "Sisa": 89, "Terminal": "T1"},
-        
+
         # Approaching Renewal (Status = Valid, Sisa > 90)
         {"No": 6, "Name/Tenant": "Burger King", "Sub": "Approaching Renewal", "Valid Period": "02 May 2023 - 02 May 2025", "Unit Name/Loc": "T2 - Area D", "Status": "Valid", "Conflict Info": False, "Kode": "FB-02-05", "Skema": "RS+MO", "Sisa": 105, "Terminal": "T2"},
         {"No": 7, "Name/Tenant": "Mie Ayam 99", "Sub": "Approaching Renewal", "Valid Period": "02 Jun 2023 - 02 Jun 2025", "Unit Name/Loc": "T3 - Area B", "Status": "Valid", "Conflict Info": False, "Kode": "RT-03-02", "Skema": "Revenue Sharing", "Sisa": 136, "Terminal": "T3"},
         {"No": 8, "Name/Tenant": "Gramedia", "Sub": "Approaching Renewal", "Valid Period": "02 Jul 2023 - 02 Jul 2025", "Unit Name/Loc": "T1 - Area E", "Status": "Valid", "Conflict Info": False, "Kode": "SV-01-09", "Skema": "MGRS", "Sisa": 166, "Terminal": "T1"},
-        
+
         # Expired (Status = Expired)
         {"No": 9, "Name/Tenant": "Dunkin", "Sub": "Contract Expired", "Valid Period": "01 Jan 2022 - 31 Dec 2024", "Unit Name/Loc": "T1 - Area F", "Status": "Expired", "Conflict Info": True, "Kode": "FB-01-09", "Skema": "Revenue Sharing", "Sisa": -15, "Terminal": "T1"},
         {"No": 10, "Name/Tenant": "HokBen", "Sub": "Contract Expired", "Valid Period": "01 Jan 2022 - 31 Dec 2024", "Unit Name/Loc": "T2 - Area A", "Status": "Expired", "Conflict Info": True, "Kode": "RT-02-11", "Skema": "Revenue Sharing", "Sisa": -20, "Terminal": "T2"},
         {"No": 11, "Name/Tenant": "Optik Seis", "Sub": "Contract Expired", "Valid Period": "01 Jan 2022 - 31 Dec 2024", "Unit Name/Loc": "T3 - Area C", "Status": "Expired", "Conflict Info": True, "Kode": "SV-03-01", "Skema": "RS+MO", "Sisa": -30, "Terminal": "T3"},
     ]
-    
+
     # We will generate the rest of the 247 rows programmatically to match the exact counts:
     # Terminals: T1 (48), T2 (112), T3 (61), T3U (26)
     # Skema: Revenue Sharing (128), RS+MO (81), MGRS (38)
     # Status: Valid (218), Anomaly (18), Expired (11)
-    
+
     current_t1 = 5 # 7-Eleven, Timezone, Lion Lounge, Gramedia, Dunkin
     current_t2 = 3 # Sari Roti, Burger King, HokBen
     current_t3 = 3 # KFC, Mie Ayam 99, Optik Seis
     current_t3u = 0
-    
+
     current_rs = 6 # 7-Eleven, Sari Roti, KFC, Mie Ayam 99, Dunkin, HokBen
     current_rs_mo = 3 # Timezone, Burger King, Optik Seis
     current_mgrs = 2 # Lion Lounge, Gramedia
-    
+
     current_valid = 3 # Burger King, Mie Ayam 99, Gramedia
     current_anomaly = 5 # 7-Eleven, Sari Roti, KFC, Timezone, Lion Lounge
     current_expired = 3 # Dunkin, HokBen, Optik Seis
-    
+
     for i in range(12, 248):
         # Assign status
         if current_valid < 218:
@@ -135,7 +184,7 @@ def _get_contract_data() -> pd.DataFrame:
             status = "Expired"
             sisa = -1 * (10 + (i % 300))
             current_expired += 1
-            
+
         # Assign terminal
         if current_t1 < 48:
             terminal = "T1"
@@ -149,7 +198,7 @@ def _get_contract_data() -> pd.DataFrame:
         else:
             terminal = "T3U"
             current_t3u += 1
-            
+
         # Assign skema
         if current_rs < 128:
             skema = "Revenue Sharing"
@@ -160,11 +209,11 @@ def _get_contract_data() -> pd.DataFrame:
         else:
             skema = "MGRS"
             current_mgrs += 1
-            
+
         tenant_name = f"Tenant {i}"
         unit_name = f"{terminal} - Loc {i}"
         valid_period = f"01 Jan 2024 - 31 Dec 2025"
-        
+
         data.append({
             "No": i,
             "Name/Tenant": tenant_name,
@@ -178,8 +227,18 @@ def _get_contract_data() -> pd.DataFrame:
             "Sisa": sisa,
             "Terminal": terminal
         })
-        
+
     return pd.DataFrame(data)
+
+
+def _get_contract_types(df):
+    if df is None or df.empty:
+        return {"Revenue Sharing": 0, "Rental": 0, "MGRS": 0}
+
+    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+    if col_bidang in df.columns:
+        return df[col_bidang].value_counts().to_dict()
+    return {}
 
 
 # Expiry Timeline Data (Next 12 Months: Jan - Dec)
@@ -1857,8 +1916,8 @@ div[data-testid="stElementContainer"]:has(.btn-apply-marker) + div[data-testid="
 # ──────────────────────────────────────────────────────────────────────────────
 # INIT STATE
 # ──────────────────────────────────────────────────────────────────────────────
-def _init_state():
-    if "lc_df"          not in st.session_state: st.session_state.lc_df          = _get_contract_data()
+def _init_state(df_raw=None):
+    if "lc_df"          not in st.session_state: st.session_state.lc_df          = _get_contract_data(df_raw)
     if "lc_page"        not in st.session_state: st.session_state.lc_page        = 0
     if "lc_show_form"   not in st.session_state: st.session_state.lc_show_form   = False
     if "lc_selected"    not in st.session_state: st.session_state.lc_selected    = set()
@@ -2511,9 +2570,9 @@ def _get_lc_extra_css():
     """)
 
 
-def render_lease_contract():
-    _init_state()
-    
+def render_lease_contract(df_raw=None):
+    _init_state(df_raw)
+
     # Apply global filters dynamically on every rerun (auto-apply)
     df_filt = st.session_state.lc_df.copy()
     
@@ -2785,15 +2844,20 @@ def render_lease_contract():
             st.markdown('<div class="premium-card-marker"></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="card-title">Contract Type Distribution</div><div class="card-subtitle">By revenue model · {len(df_all)} active contracts</div>', unsafe_allow_html=True)
             
-            # Calculate dynamic percentages
-            d_rs = len(df_all[df_all["Skema"] == "Revenue Sharing"])
-            d_rs_mo = len(df_all[df_all["Skema"] == "RS+MO"])
-            d_mgrs = len(df_all[df_all["Skema"] == "MGRS"])
-            t_dist = d_rs + d_rs_mo + d_mgrs
+            c_types = _get_contract_types(df_raw)
+            keys = list(c_types.keys())
+            d_rs = c_types.get(keys[0] if len(keys) > 0 else "N/A", 0)
+            d_rs_mo = c_types.get(keys[1] if len(keys) > 1 else "N/A", 0)
+            d_mgrs = c_types.get(keys[2] if len(keys) > 2 else "N/A", 0)
             
-            d_rs_pct = (d_rs / t_dist) * 100 if t_dist > 0 else 0
-            d_rs_mo_pct = (d_rs_mo / t_dist) * 100 if t_dist > 0 else 0
-            d_mgrs_pct = (d_mgrs / t_dist) * 100 if t_dist > 0 else 0
+            d_total = sum(c_types.values()) if sum(c_types.values()) > 0 else 1
+            d_rs_pct = (d_rs / d_total) * 100
+            d_rs_mo_pct = (d_rs_mo / d_total) * 100
+            d_mgrs_pct = (d_mgrs / d_total) * 100
+            
+            label_rs = keys[0] if len(keys) > 0 else "Type 1"
+            label_rs_mo = keys[1] if len(keys) > 1 else "Type 2"
+            label_mgrs = keys[2] if len(keys) > 2 else "Type 3"
             
             st.plotly_chart(_build_donut_chart({"RS": d_rs, "RS+MO": d_rs_mo, "MGRS": d_mgrs}, ["#6366F1", "#0EA5E9", "#F59E0B"], size=140), use_container_width=True, config=dict(displayModeBar=False))
 
@@ -2801,7 +2865,7 @@ def render_lease_contract():
             <div class="dist-stack">
                 <div class="dist-card rs">
                     <div class="dist-card-header">
-                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS</span>
+                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>{label_rs}</span>
                         <span class="dist-card-pct">{f"{d_rs_pct:.1f}%".replace(".", ",")}</span>
                     </div>
                     <div class="dist-card-body">
@@ -2811,7 +2875,7 @@ def render_lease_contract():
                 </div>
                 <div class="dist-card rs_mo">
                     <div class="dist-card-header">
-                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>RS+MO</span>
+                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>{label_rs_mo}</span>
                         <span class="dist-card-pct">{f"{d_rs_mo_pct:.1f}%".replace(".", ",")}</span>
                     </div>
                     <div class="dist-card-body">
@@ -2821,7 +2885,7 @@ def render_lease_contract():
                 </div>
                 <div class="dist-card mgrs">
                     <div class="dist-card-header">
-                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>MGRS</span>
+                        <span class="dist-card-title-row"><span class="dist-card-dot"></span>{label_mgrs}</span>
                         <span class="dist-card-pct">{f"{d_mgrs_pct:.1f}%".replace(".", ",")}</span>
                     </div>
                     <div class="dist-card-body">
