@@ -11,6 +11,7 @@ import streamlit.components.v1 as components
 from sqlalchemy import text
 
 from .connection import get_engine
+from .export_utils import EXCEL_MIME, dataframe_to_excel_bytes
 from .enterprise_ui import (
     ED_FONT,
     donut_legend_html,
@@ -106,7 +107,13 @@ def _load_traffic_database_data():
                         SUM(COALESCE(pax_domestik, 0)) AS pax_domestik,
                         SUM(COALESCE(pax_internasional, 0)) AS pax_internasional,
                         SUM(COALESCE(total_pax, 0)) AS total_pax
-                    FROM traffic
+                    FROM traffic t
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM import_history ih
+                        WHERE ih.import_id = t.import_id
+                          AND COALESCE(ih.is_active, true) = true
+                    )
                     GROUP BY tahun, bulan, terminal
                 """),
                 conn,
@@ -119,7 +126,13 @@ def _load_traffic_database_data():
                         terminal,
                         SUM(COALESCE(real_omzet, 0)) AS real_omzet,
                         AVG(NULLIF(spending_per_pax, 0)) AS spending_per_pax
-                    FROM transaction_revenue
+                    FROM transaction_revenue tr
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM import_history ih
+                        WHERE ih.import_id = tr.import_id
+                          AND COALESCE(ih.is_active, true) = true
+                    )
                     GROUP BY tahun, masa_jasa, terminal
                 """),
                 conn,
@@ -140,7 +153,7 @@ def _load_traffic_database_data():
 
 def _traffic_from_dashboard_data(df):
     if df is None or df.empty:
-        return pd.DataFrame()
+        return _normalize_traffic_dataframe(pd.DataFrame())
 
     mapped = pd.DataFrame()
     mapped["tahun"] = df["tahun"] if "tahun" in df.columns else pd.NA
@@ -1826,17 +1839,13 @@ def page_traffic_monitor(df_raw=None):
                 "Annual traffic and spending summary — FY 2024 · Terminal 1 & Terminal 2",
             ), unsafe_allow_html=True)
         with th2:
-            st.markdown(
-                '<button class="tm-export-btn" type="button">'
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
-                'stroke-linecap="round" stroke-linejoin="round">'
-                '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>'
-                '<polyline points="17 8 12 3 7 8"></polyline>'
-                '<line x1="12" y1="3" x2="12" y2="15"></line>'
-                '</svg>'
-                '<span>Export</span>'
-                '</button>',
-                unsafe_allow_html=True,
+            st.download_button(
+                "Export",
+                data=dataframe_to_excel_bytes(display_df, "Traffic Performance"),
+                file_name="traffic_performance_by_terminal.xlsx",
+                mime=EXCEL_MIME,
+                key="tm_performance_export",
+                use_container_width=True,
             )
         st.markdown(
             f'<div class="tm-table-wrap">{table_inner_html(display_df, col_align=col_align)}</div>',

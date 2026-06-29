@@ -1,6 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
+
+from .export_utils import EXCEL_MIME, dataframe_to_excel_bytes
 from datetime import date, datetime, timedelta
 from textwrap import dedent
 import time
@@ -103,20 +105,60 @@ def _get_pic_history() -> pd.DataFrame:
 def _get_admin_history() -> pd.DataFrame:
     return pd.DataFrame(columns=["PIC", "Periode", "File", "Rows", "Status", "Anomali"])
 
-UPLOAD_HISTORY_DATA = [
-    {"period": "Dec 2024", "upload_date": "03 Jan 2025", "upload_time": "09:14 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1842, "tenants": 247, "file_size": "2,4 MB", "rs_total": "Rp 24,2 M", "status": "Success"},
-    {"period": "Nov 2024", "upload_date": "04 Dec 2024", "upload_time": "06:52 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1836, "tenants": 244, "file_size": "2,3 MB", "rs_total": "Rp 18,9 M", "status": "Success"},
-    {"period": "Oct 2024", "upload_date": "05 Nov 2024", "upload_time": "10:03 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1858, "tenants": 246, "file_size": "2,4 MB", "rs_total": "Rp 20,7 M", "status": "Warning"},
-    {"period": "Sep 2024", "upload_date": "03 Oct 2024", "upload_time": "09:44 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1792, "tenants": 243, "file_size": "2,2 MB", "rs_total": "Rp 19,2 M", "status": "Success"},
-    {"period": "Aug 2024", "upload_date": "04 Sep 2024", "upload_time": "11:21 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1801, "tenants": 245, "file_size": "2,3 MB", "rs_total": "Rp 18,4 M", "status": "Success"},
-    {"period": "Jul 2024", "upload_date": "05 Aug 2024", "upload_time": "08:33 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1776, "tenants": 241, "file_size": "2,2 MB", "rs_total": None,        "status": "Failed"},
-    {"period": "Jun 2024", "upload_date": "03 Jul 2024", "upload_time": "09:58 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1748, "tenants": 239, "file_size": "2,1 MB", "rs_total": "Rp 17,1 M", "status": "Success"},
-    {"period": "May 2024", "upload_date": "04 Jun 2024", "upload_time": "14:05 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1715, "tenants": 237, "file_size": "2,1 MB", "rs_total": "Rp 16,8 M", "status": "Success"},
-    {"period": "Apr 2024", "upload_date": "03 May 2024", "upload_time": "10:30 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1690, "tenants": 235, "file_size": "2,0 MB", "rs_total": "Rp 16,2 M", "status": "Success"},
-    {"period": "Mar 2024", "upload_date": "02 Apr 2024", "upload_time": "08:15 WIB", "uploader": "Budi Santoso",   "role": "Admin",       "initials": "BS", "color": "#10b981", "total_records": 1665, "tenants": 233, "file_size": "2,0 MB", "rs_total": "Rp 15,9 M", "status": "Warning"},
-    {"period": "Feb 2024", "upload_date": "04 Mar 2024", "upload_time": "11:42 WIB", "uploader": "Sari Wulandari", "role": "Admin",       "initials": "SW", "color": "#f59e0b", "total_records": 1638, "tenants": 231, "file_size": "1,9 MB", "rs_total": "Rp 15,3 M", "status": "Success"},
-    {"period": "Jan 2024", "upload_date": "02 Feb 2024", "upload_time": "09:22 WIB", "uploader": "Rudi Darmawan",  "role": "Super Admin", "initials": "RD", "color": "#6366f1", "total_records": 1610, "tenants": 229, "file_size": "1,9 MB", "rs_total": "Rp 14,8 M", "status": "Success"},
-]
+UPLOAD_HISTORY_DATA = []
+
+
+def _load_import_history() -> pd.DataFrame:
+    try:
+        from .connection import get_engine
+        from sqlalchemy import text
+
+        with get_engine().connect() as conn:
+            return pd.read_sql(
+                text("""
+                    SELECT import_id, periode, filename, uploaded_by, uploaded_at,
+                           total_records, valid_records, rs_total, file_size, status
+                    FROM import_history ih
+                    WHERE COALESCE(ih.is_active, true) = true
+                      AND EXISTS (
+                          SELECT 1
+                          FROM transaction_revenue tr
+                          WHERE tr.import_id = ih.import_id
+                      )
+                    ORDER BY uploaded_at DESC NULLS LAST, import_id DESC
+                """),
+                conn,
+            )
+    except Exception:
+        return pd.DataFrame()
+
+
+def _get_refined_history_data() -> list[dict]:
+    history = _load_import_history()
+    if history.empty:
+        return []
+
+    items = []
+    for _, row in history.iterrows():
+        uploaded_at = pd.to_datetime(row.get("uploaded_at"), errors="coerce")
+        uploader = str(row.get("uploaded_by") or "User")
+        initials = "".join(part[:1] for part in uploader.split()[:2]).upper() or "U"
+        rs_total = float(row.get("rs_total") or 0)
+        items.append({
+            "period": row.get("periode") or "-",
+            "upload_date": uploaded_at.strftime("%d %b %Y") if pd.notna(uploaded_at) else "-",
+            "upload_time": uploaded_at.strftime("%H:%M WIB") if pd.notna(uploaded_at) else "-",
+            "uploader": uploader,
+            "role": "User",
+            "initials": initials,
+            "color": "#6366f1",
+            "total_records": int(row.get("total_records") or 0),
+            "tenants": int(row.get("valid_records") or 0),
+            "file_size": row.get("file_size") or "-",
+            "rs_total": f"Rp {rs_total:,.0f}".replace(",", "."),
+            "status": row.get("status") or "Success",
+        })
+    return items
 
 def _get_belum_submit():
     return []
@@ -2152,11 +2194,27 @@ def _render_pic_view():
             st.markdown('<div class="nad-card-sub">Unduh template Excel standar sebagai panduan pengisian data pendapatan.</div>', unsafe_allow_html=True)
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-            template_data = "Kode Ruang,Brand,Omzet,Periode\nFB-01-01,Example Brand,10000000,April 2026\n"
+            template_df = pd.DataFrame([{
+                "Perusahaan": "PT Contoh Tenant",
+                "Brand": "Example Brand",
+                "Terminal": "Terminal 1",
+                "Kode Ruang": "FB-01-01",
+                "Bidang Usaha": "F&B",
+                "Periode": "April",
+                "Tahun": 2026,
+                "Min Omzet": 8000000,
+                "Real Omzet": 10000000,
+                "Pendapatan Sewa": 2000000,
+                "Pendapatan RS": 500000,
+                "Total Kontribusi": 2500000,
+                "Luas SQM": 20,
+                "Total Trafik": 1200,
+            }])
             c1, c2 = st.columns(2)
             with c1:
-                st.download_button("⬇️ Download Template Excel", data=template_data,
-                                   file_name="template_pendapatan.csv", mime="text/csv",
+                st.download_button("⬇️ Download Template Excel",
+                                   data=dataframe_to_excel_bytes(template_df, "Template Pendapatan"),
+                                   file_name="template_pendapatan.xlsx", mime=EXCEL_MIME,
                                    use_container_width=True, key="im_dl_tmpl")
             with c2:
                 if st.button("Lanjut ke Upload →", use_container_width=True, key="im_step1_next"):
@@ -2227,8 +2285,8 @@ def _render_pic_view():
             st.markdown('<div class="nad-card-sub">Periksa ringkasan data sebelum melanjutkan ke submit.</div>', unsafe_allow_html=True)
             st.markdown("""
             <div class="preview-kpi-row">
-                <div class="preview-kpi"><div class="preview-kpi-label">Total Rows</div><div class="preview-kpi-val">1.734</div></div>
-                <div class="preview-kpi"><div class="preview-kpi-label">Total Omzet</div><div class="preview-kpi-val">Rp 21,4 M</div></div>
+                <div class="preview-kpi"><div class="preview-kpi-label">Total Rows</div><div class="preview-kpi-val">0</div></div>
+                <div class="preview-kpi"><div class="preview-kpi-label">Total Omzet</div><div class="preview-kpi-val">Rp 0</div></div>
                 <div class="preview-kpi"><div class="preview-kpi-label">Periode</div><div class="preview-kpi-val" style="font-size:15px;">Apr 2026</div></div>
                 <div class="preview-kpi"><div class="preview-kpi-label">Errors</div><div class="preview-kpi-val err">0</div></div>
             </div>""", unsafe_allow_html=True)
@@ -2316,7 +2374,7 @@ def _render_admin_view():
     belum  = _get_belum_submit()
 
     # KPI
-    total_pic  = len(SBU_LIST)
+    total_pic  = len(SBU_LIST) if not df_all.empty else 0
     sudah      = len(df_all[df_all["Status"].isin(["Success","Approve","Pending"])])
     blm        = len(belum)
     perlu_tl   = int((df_all["Anomali"] > 0).sum())
@@ -2470,37 +2528,67 @@ def _save_to_database():
         return False, "Tidak ada data untuk disimpan."
     
     mapping = st.session_state.get("shared_import_mapping", {})
-    # Rename matching columns
     df_to_save = df.rename(columns={v: k for k, v in mapping.items()})
-    
+
+    # Nama kolom standar Import Manager berbeda dari nama kolom asli di tabel
+    # transaction_revenue (lihat alias "produksi_m2 AS luas_sqm" di
+    # load_dashboard_data), jadi disamakan dulu supaya tidak ikut dibuang
+    # saat filter save_cols di bawah.
+    DB_COLUMN_OVERRIDES = {"luas_sqm": "produksi_m2"}
+    df_to_save = df_to_save.rename(columns={
+        k: v for k, v in DB_COLUMN_OVERRIDES.items() if k in df_to_save.columns
+    })
+
     from .connection import get_engine
-    from sqlalchemy import inspect
+    from sqlalchemy import inspect, text
     import time
     
     try:
         engine = get_engine()
+        import_id = int(time.time())
         inspector = inspect(engine)
         db_columns = [col['name'] for col in inspector.get_columns('transaction_revenue')]
         
-        # Add import_id if missing
-        if 'import_id' not in df_to_save.columns and 'import_id' in db_columns:
-            df_to_save['import_id'] = int(time.time())
+        if 'import_id' in db_columns:
+            df_to_save['import_id'] = import_id
             
         save_cols = [c for c in df_to_save.columns if c in db_columns]
         df_final = df_to_save[save_cols].copy()
-        
-        # Remove duplicate columns to prevent SQLAlchemy/Pandas errors
         df_final = df_final.loc[:, ~df_final.columns.duplicated()]
         
-        # Prevent UniqueViolation by allowing DB to auto-generate 'id'
         if 'id' in df_final.columns:
             df_final = df_final.drop(columns=['id'])
         
         df_final.to_sql("transaction_revenue", con=engine, if_exists="append", index=False)
+
+        if 'import_history' in inspector.get_table_names():
+            meta = get_shared_import_meta()
+            rs_total = 0.0
+            if 'pendapatan_rs' in df_final.columns:
+                rs_total = float(pd.to_numeric(df_final['pendapatan_rs'], errors='coerce').fillna(0).sum())
+            with engine.begin() as conn:
+                conn.execute(
+                    text("""
+                        INSERT INTO import_history
+                            (import_id, periode, filename, uploaded_by, uploaded_at, is_active,
+                             total_records, valid_records, rs_total, file_size, status)
+                        VALUES
+                            (:import_id, :periode, :filename, :uploaded_by, CURRENT_TIMESTAMP, true,
+                             :total_records, :valid_records, :rs_total, :file_size, 'Success')
+                    """),
+                    {
+                        'import_id': import_id,
+                        'periode': meta.get('period') or meta.get('periode') or PERIOD_ACTIVE,
+                        'filename': meta.get('file_name') or st.session_state.get('im_file') or '-',
+                        'uploaded_by': st.session_state.get('user_name', 'Operational User'),
+                        'total_records': int(len(df_final)),
+                        'valid_records': int(len(df_final)),
+                        'rs_total': rs_total,
+                        'file_size': meta.get('file_size') or '-',
+                    },
+                )
         
-        # Clear Streamlit cache to force Data Verification & Dashboard to reload DB
         st.cache_data.clear()
-        
         return True, "Data berhasil disimpan ke database."
     except Exception as e:
         return False, f"Error DB: {str(e)}"
@@ -2801,7 +2889,7 @@ def _render_ketentuan_import(validation: dict[str, bool] | None = None, is_uploa
 
 
 def _render_import_history_refined():
-    data = UPLOAD_HISTORY_DATA
+    data = _get_refined_history_data()
 
     per_page = 7
     total = len(data)

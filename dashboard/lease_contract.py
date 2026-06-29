@@ -81,6 +81,8 @@ def _mount_lc_fixed_header():
 # DATA FROM EXCEL
 # ──────────────────────────────────────────────────────────────────────────────
 from .shared_import import get_mapped_column
+from .connection import get_engine
+from sqlalchemy import text
 
 LC_CONTRACT_COLUMNS = [
     "No",
@@ -97,33 +99,132 @@ LC_CONTRACT_COLUMNS = [
 ]
 
 
-def _get_contract_data(df: pd.DataFrame | None = None) -> pd.DataFrame:
-    if df is None or df.empty:
-        return _get_dummy_contract_data()
 
-    col_perusahaan = get_mapped_column("perusahaan") or "perusahaan"
-    col_terminal = get_mapped_column("terminal") or "terminal"
-    col_kode = get_mapped_column("kode_ruang") or "kode_ruang"
-    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
+def _empty_contract_data() -> pd.DataFrame:
+    return pd.DataFrame(columns=LC_CONTRACT_COLUMNS)
+
+
+def _first_present(row: pd.Series, columns: list[str], default="-"):
+    for col in columns:
+        if col in row.index:
+            value = row.get(col)
+            if pd.notna(value) and str(value).strip() not in {"", "nan", "NaT", "None"}:
+                return value
+    return default
+
+
+def _format_contract_date(value) -> str | None:
+    if pd.isna(value) or str(value).strip() in {"", "nan", "NaT", "None"}:
+        return None
+    parsed = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed):
+        return str(value)
+    return parsed.strftime("%d %b %Y")
+
+
+def _contract_status(end_value) -> tuple[str, int]:
+    parsed = pd.to_datetime(end_value, errors="coerce")
+    if pd.isna(parsed):
+        return "Valid", 365
+
+    remaining = int((parsed.date() - date.today()).days)
+    if remaining < 0:
+        return "Expired", remaining
+    if remaining <= 90:
+        return "Anomaly", remaining
+    return "Valid", remaining
+
+
+def _normalize_contract_data(df: pd.DataFrame | None) -> pd.DataFrame:
+    if df is None or df.empty:
+        return _empty_contract_data()
 
     data = []
-    for i, row in df.iterrows():
+    for no, (_, row) in enumerate(df.iterrows(), start=1):
+        tenant = _first_present(row, ["perusahaan", "tenant", "Name/Tenant", "brand"], "-")
+        brand = _first_present(row, ["brand"], "-")
+        terminal = _first_present(row, ["terminal", "Terminal"], "-")
+        kode = _first_present(row, ["kode_ruang", "Kode", "unit", "Unit Name/Loc"], "-")
+        lokasi = _first_present(row, ["lokasi", "area", "Unit Name/Loc"], kode)
+        start_value = _first_present(row, ["start_kontrak", "start_contract", "Start"], None)
+        end_value = _first_present(row, ["end_kontrak", "end_contract", "End"], None)
+        start_label = _format_contract_date(start_value)
+        end_label = _format_contract_date(end_value)
+        valid_period = f"{start_label or 'N/A'} - {end_label or 'N/A'}"
+        status, remaining = _contract_status(end_value)
+        skema = _first_present(
+            row,
+            ["kerja_sama", "jenis_kontrak", "csp_non_csp", "bidang_usaha", "Skema"],
+            "-",
+        )
+        contract_no = _first_present(row, ["nomor_kontrak_legal", "nomor_kontrak_sistem"], "")
+        sub = str(contract_no).strip() or (str(brand).strip() if str(brand).strip() != "-" else "General Contract")
+
         data.append({
-            "No": i + 1,
-            "Name/Tenant": row.get(col_perusahaan, "-"),
-            "Sub": "General Contract",
-            "Valid Period": "N/A",
-            "Unit Name/Loc": row.get(col_kode, "-"),
-            "Status": "Valid",
-            "Conflict Info": False,
-            "Kode": row.get(col_kode, "-"),
-            "Skema": row.get(col_bidang, "-"),
-            "Sisa": 365,
-            "Terminal": row.get(col_terminal, "-")
+            "No": no,
+            "Name/Tenant": tenant,
+            "Sub": sub,
+            "Valid Period": valid_period,
+            "Unit Name/Loc": lokasi,
+            "Status": status,
+            "Conflict Info": status != "Valid",
+            "Kode": kode,
+            "Skema": skema,
+            "Sisa": remaining,
+            "Terminal": terminal,
         })
-        
+
     return pd.DataFrame(data, columns=LC_CONTRACT_COLUMNS)
 
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _load_contract_data_from_database() -> pd.DataFrame:
+    query = text("""
+        SELECT
+            import_id,
+            nomor_kontrak_sistem,
+            nomor_kontrak_legal,
+            perusahaan,
+            brand,
+            kode_ruang,
+            terminal,
+            lokasi,
+            start_kontrak,
+            end_kontrak,
+            csp_non_csp,
+            kerja_sama,
+            pemilihan_mitra_usaha,
+            rs_percent,
+            min_omzet,
+            mgrs_per_pax
+        FROM vw_lease_contract
+        WHERE EXISTS (
+            SELECT 1
+            FROM import_history ih
+            WHERE ih.import_id = vw_lease_contract.import_id
+              AND COALESCE(ih.is_active, true) = true
+        )
+        ORDER BY end_kontrak NULLS LAST, perusahaan, kode_ruang
+    """)
+    with get_engine().connect() as conn:
+        return pd.read_sql(query, conn)
+
+
+def _get_contract_data(df: pd.DataFrame | None = None) -> pd.DataFrame:
+    return _normalize_contract_data(df)
+
+
+def _get_contract_source_data(df_raw: pd.DataFrame | None = None) -> tuple[pd.DataFrame, str]:
+    try:
+        db_df = _load_contract_data_from_database()
+        if db_df is not None and not db_df.empty:
+            st.session_state.pop("lc_data_error", None)
+            return _normalize_contract_data(db_df), "database"
+    except Exception as exc:
+        st.session_state["lc_data_error"] = str(exc)
+
+    fallback_df = _get_contract_data(df_raw)
+    return fallback_df, "dashboard" if not fallback_df.empty else "empty"
 
 def _get_dummy_contract_data() -> pd.DataFrame:
     """247-row dummy dataset used until real lease data is wired in.
@@ -1916,8 +2017,13 @@ div[data-testid="stElementContainer"]:has(.btn-apply-marker) + div[data-testid="
 # ──────────────────────────────────────────────────────────────────────────────
 # INIT STATE
 # ──────────────────────────────────────────────────────────────────────────────
-def _init_state(df_raw=None):
-    if "lc_df"          not in st.session_state: st.session_state.lc_df          = _get_contract_data(df_raw)
+def _init_state(contract_df=None, data_source="unknown"):
+    if contract_df is None:
+        contract_df = _empty_contract_data()
+    source_key = f"{data_source}:{len(contract_df)}:{tuple(contract_df.columns)}"
+    if "lc_df" not in st.session_state or st.session_state.get("lc_data_source_key") != source_key:
+        st.session_state.lc_df = contract_df
+        st.session_state.lc_data_source_key = source_key
     if "lc_page"        not in st.session_state: st.session_state.lc_page        = 0
     if "lc_show_form"   not in st.session_state: st.session_state.lc_show_form   = False
     if "lc_selected"    not in st.session_state: st.session_state.lc_selected    = set()
@@ -2165,10 +2271,10 @@ def _build_mini_donut(active, expiring, expired):
     return fig
 
 # Sparkline dummy datasets
-SPARK_TOTAL = [10, 15, 12, 18, 14, 22, 20, 25, 24, 28, 26, 30]
-SPARK_ACTIVE = [8, 12, 10, 15, 12, 18, 16, 21, 20, 24, 22, 25]
-SPARK_EXPIRING = [30, 28, 25, 24, 22, 20, 18, 16, 17, 18, 19, 18]
-SPARK_EXPIRED = [15, 14, 13, 14, 12, 11, 10, 9, 8, 10, 11, 11]
+SPARK_TOTAL = [0] * 12
+SPARK_ACTIVE = [0] * 12
+SPARK_EXPIRING = [0] * 12
+SPARK_EXPIRED = [0] * 12
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ADD CONTRACT FORM (PRESERVES EXISTING DESIGN SYSTEM & FUNCTIONALITY)
@@ -2571,7 +2677,8 @@ def _get_lc_extra_css():
 
 
 def render_lease_contract(df_raw=None):
-    _init_state(df_raw)
+    contract_df, data_source = _get_contract_source_data(df_raw)
+    _init_state(contract_df, data_source)
 
     # Apply global filters dynamically on every rerun (auto-apply)
     df_filt = st.session_state.lc_df.copy()
@@ -2677,7 +2784,7 @@ def render_lease_contract(df_raw=None):
         html_total = _render_kpi_card_html(
             icon_svg=icon_total,
             icon_class="total",
-            badge_text="↗ +3.8%",
+            badge_text="0.0%",
             badge_class="positive",
             title="Total Contract",
             value=f"{total_val}",
@@ -2685,7 +2792,7 @@ def render_lease_contract(df_raw=None):
             subtitle="All terminals · FY 2024",
             progress_items=[("T1", t1_val), ("T2", t2_val), ("T3", t3_val), ("T3U", t3u_val)],
             progress_color="#6366F1",
-            comparison="vs 238 prior yr",
+            comparison="No prior data",
             sparkline_svg=svg_spark_total
         )
         st.markdown(html_total, unsafe_allow_html=True)
@@ -2696,15 +2803,15 @@ def render_lease_contract(df_raw=None):
         html_active = _render_kpi_card_html(
             icon_svg=icon_active,
             icon_class="active",
-            badge_text="↗ +2.8%",
+            badge_text="0.0%",
             badge_class="positive",
             title="Active Contract",
             value=f"{active_val}",
             unit="active",
-            subtitle=f"{active_val/total_val*100:.1f}% of total portfolio" if total_val > 0 else "88.3% of total portfolio",
+            subtitle=f"{active_val/total_val*100:.1f}% of total portfolio" if total_val > 0 else "0.0% of total portfolio",
             progress_items=[("RS", rs_val), ("RS+MO", rs_mo_val), ("MGRS", mgrs_val)],
             progress_color="#10B981",
-            comparison="vs 212 prior yr",
+            comparison="No prior data",
             sparkline_svg=svg_spark_active
         )
         st.markdown(html_active, unsafe_allow_html=True)
@@ -2715,7 +2822,7 @@ def render_lease_contract(df_raw=None):
         html_expiring = _render_kpi_card_html(
             icon_svg=icon_expiring,
             icon_class="expiring",
-            badge_text="↘ 22.2%",
+            badge_text="0.0%",
             badge_class="negative",
             title="Expiring Soon",
             value=f"{expiring_val}",
@@ -2723,7 +2830,7 @@ def render_lease_contract(df_raw=None):
             subtitle="Within next 90 days",
             progress_items=[("30d", d30_val), ("60d", d60_val), ("90d", d90_val)],
             progress_color="#F59E0B",
-            comparison="vs 23 prior period",
+            comparison="No prior data",
             sparkline_svg=svg_spark_expiring
         )
         st.markdown(html_expiring, unsafe_allow_html=True)
@@ -2734,7 +2841,7 @@ def render_lease_contract(df_raw=None):
         html_expired = _render_kpi_card_html(
             icon_svg=icon_expired,
             icon_class="expired",
-            badge_text="↘ 15.4%",
+            badge_text="0.0%",
             badge_class="negative",
             title="Expired Contract",
             value=f"{expired_val}",
@@ -2742,7 +2849,7 @@ def render_lease_contract(df_raw=None):
             subtitle="Requires immediate action",
             progress_items=[("T1", exp_t1), ("T2", exp_t2), ("T3", exp_t3), ("T3U", exp_t3u)],
             progress_color="#EF4444",
-            comparison="vs 13 prior yr",
+            comparison="No prior data",
             sparkline_svg=svg_spark_expired
         )
         st.markdown(html_expired, unsafe_allow_html=True)
@@ -2844,7 +2951,7 @@ def render_lease_contract(df_raw=None):
             st.markdown('<div class="premium-card-marker"></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="card-title">Contract Type Distribution</div><div class="card-subtitle">By revenue model · {len(df_all)} active contracts</div>', unsafe_allow_html=True)
             
-            c_types = _get_contract_types(df_raw)
+            c_types = _get_contract_types(st.session_state.lc_df)
             keys = list(c_types.keys())
             d_rs = c_types.get(keys[0] if len(keys) > 0 else "N/A", 0)
             d_rs_mo = c_types.get(keys[1] if len(keys) > 1 else "N/A", 0)

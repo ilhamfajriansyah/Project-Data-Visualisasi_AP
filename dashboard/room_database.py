@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import io
 
+from .export_utils import EXCEL_MIME, dataframe_to_excel_bytes
+
 # ── Sample Data ────────────────────────────────────────────────────────────────
 def _get_room_data() -> pd.DataFrame:
     data = [
@@ -353,16 +355,24 @@ def render_room_database(df_raw: pd.DataFrame | None = None):
                                      label_visibility="collapsed", key="rd_filter_status")
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # Apply Filters
+    df = st.session_state.room_df.copy()
+    if terminal_filter != "All Terminals":
+        df = df[df["Terminal"] == terminal_filter]
+    if cat_filter != "All Classifications":
+        df = df[df["Classifications"] == cat_filter]
+    if status_filter != "All Statuses":
+        df = df[df["Status"] == status_filter]
+    df = df.reset_index(drop=True)
     # ── Action buttons ──
     col_spacer, col_export, col_add = st.columns([6, 1.2, 1.2])
     with col_export:
-        df_all = st.session_state.room_df.drop(columns=["Terminal"])
-        csv_bytes = df_all.to_csv(index=False).encode("utf-8")
+        export_df = df.drop(columns=["Terminal"], errors="ignore")
         st.download_button(
-            label="⬇️  Export",
-            data=csv_bytes,
-            file_name="room_database.csv",
-            mime="text/csv",
+            label="Export",
+            data=dataframe_to_excel_bytes(export_df, "Room Database"),
+            file_name="room_database.xlsx",
+            mime=EXCEL_MIME,
             use_container_width=True,
             key="btn_export"
         )
@@ -377,15 +387,6 @@ def render_room_database(df_raw: pd.DataFrame | None = None):
 
     st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
 
-    # ── Apply Filters ──
-    df = st.session_state.room_df.copy()
-    if terminal_filter != "All Terminals":
-        df = df[df["Terminal"] == terminal_filter]
-    if cat_filter != "All Classifications":
-        df = df[df["Classifications"] == cat_filter]
-    if status_filter != "All Statuses":
-        df = df[df["Status"] == status_filter]
-    df = df.reset_index(drop=True)
 
     # Reset page when filters change
     filter_key = f"{terminal_filter}|{cat_filter}|{status_filter}"

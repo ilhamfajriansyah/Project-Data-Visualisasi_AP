@@ -21,6 +21,7 @@ from .enterprise_ui import (
     table_inner_html,
 )
 from .navigation import show_topnav
+from .export_utils import EXCEL_MIME, dataframe_to_excel_bytes
 
 AB_MONTH_OPTIONS = ["June 2026", "May 2026", "April 2026"]
 AB_TERMINAL_OPTIONS = ["Terminal 1", "Terminal 2", "All Terminal"]
@@ -458,12 +459,16 @@ def page_accrual_billing():
         detail_df = detail_df.sort_values(sort_col, ascending=ascending)
 
         export_df = detail_df.copy()
+        export_df["Accrual Amount"] = export_df["Accrual Amount"].apply(fmt_rp_full)
+        export_df["Invoice Amount"] = export_df["Invoice Amount"].apply(fmt_rp_full)
+        export_df["Amount Collected"] = export_df["Amount Collected"].apply(fmt_rp_full)
+        export_df["Outstanding Balance"] = export_df["Outstanding Balance"].apply(fmt_rp_full)
         with dex:
             st.download_button(
                 "Export",
-                data=export_df.to_csv(index=False).encode("utf-8"),
-                file_name="accrual_billing_detail.csv",
-                mime="text/csv",
+                data=dataframe_to_excel_bytes(export_df, "Accrual Billing Detail"),
+                file_name="accrual_billing_detail.xlsx",
+                mime=EXCEL_MIME,
                 key="ab_detail_export",
                 width="stretch",
             )

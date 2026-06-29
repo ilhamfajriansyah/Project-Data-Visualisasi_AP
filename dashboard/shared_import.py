@@ -64,12 +64,17 @@ COLUMN_ALIASES = {
     "luas": "luas_sqm",
     "sqm": "luas_sqm",
     "area_sqm": "luas_sqm",
-    "traffic": "jumlah_pax",
-    "total_pax": "jumlah_pax",
-    "passenger": "jumlah_pax",
-    "passengers": "jumlah_pax",
-    "penumpang": "jumlah_pax",
-    "jumlah_penumpang": "jumlah_pax",
+    "total_trafik": "total_trafik",
+    "traffic": "total_trafik",
+    "total_pax": "total_trafik",
+    "passenger": "total_trafik",
+    "passengers": "total_trafik",
+    "penumpang": "total_trafik",
+    "jumlah_penumpang": "total_trafik",
+    "trafik": "total_trafik",
+    "total_traffic": "total_trafik",
+    "trafik_total": "total_trafik",
+    "jumlah_trafik": "total_trafik",
     "produksi_m2": "luas_sqm",
     "produksi": "luas_sqm",
 }
@@ -82,7 +87,7 @@ NUMERIC_COLUMNS = [
     "pendapatan_rs",
     "kontribusi",
     "luas_sqm",
-    "jumlah_pax",
+    "total_trafik",
 ]
 
 

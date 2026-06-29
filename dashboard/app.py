@@ -26,6 +26,7 @@ from .shared_import import (
     import_status_html,
 )
 from .connection import get_engine
+from .export_utils import EXCEL_MIME, dataframe_to_excel_bytes
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -2231,7 +2232,16 @@ def load_dashboard_data():
             total_trafik,
             tenant_id,
             import_id
-        FROM transaction_revenue
+        FROM (
+            SELECT tr.*
+            FROM transaction_revenue tr
+            WHERE EXISTS (
+                SELECT 1
+                FROM import_history ih
+                WHERE ih.import_id = tr.import_id
+                  AND COALESCE(ih.is_active, true) = true
+            )
+        ) transaction_revenue
         ORDER BY import_id DESC NULLS LAST, tahun DESC NULLS LAST, masa_jasa
     """)
 
@@ -2243,7 +2253,7 @@ def load_dashboard_data():
         return None
 
     st.session_state.pop("dashboard_data_error", None)
-    return df if not df.empty else None
+    return df
 
 def get_active_dashboard_data():
     return load_dashboard_data()
@@ -2427,27 +2437,34 @@ def _compact_number(value, decimals=1):
 
 def _pct_change(current, base):
     if not base:
-        return 0.0
+        return None
     return (current - base) / base * 100
 
 
+def _fmt_delta_pct(delta_pct):
+    if delta_pct is None:
+        return "N/A"
+    return f"{delta_pct:+.1f}%".replace(".", ",")
+
+
 def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar_label):
-    is_down = delta_pct < 0
+    has_delta = delta_pct is not None
+    is_down = has_delta and delta_pct < 0
     badge_cls = "is-down" if is_down else ""
     arrow = "↘" if is_down else "↗"
-    bar_width = min(100, max(6, 50 + delta_pct * 2.2))
-    
+    bar_width = min(100, max(6, 50 + delta_pct * 2.2)) if has_delta else 50
+
     # Process unit to extract prefix (like "Rp") and suffix (like "M", "Jt", or empty)
     prefix = ""
     display_unit = unit
     if unit.startswith("Rp"):
         prefix = "Rp "
         display_unit = unit[2:].strip()
-        
+
     unit_span = f'<span class="kpi-pro-unit"> {escape(display_unit)}</span>' if display_unit else ""
-    
+
     # Format percentage display to Indonesian decimal format
-    formatted_pct = f"{arrow} {abs(delta_pct):.1f}%".replace(".", ",")
+    formatted_pct = f"{arrow} {abs(delta_pct):.1f}%".replace(".", ",") if has_delta else "N/A"
     
     html = (
         f'<div class="kpi-pro-card">'
@@ -2993,6 +3010,21 @@ def _overview_normalize_and_ensure_columns(df_raw):
         numeric=True,
     )
 
+    _ensure_column(
+        "total_trafik",
+        aliases=[
+            "total trafik",
+            "trafik",
+            "traffic",
+            "total_traffic",
+            "trafik_total",
+            "jumlah_trafik",
+            "jumlah trafik",
+        ],
+        default_value=0,
+        numeric=True,
+    )
+
     # =========================================================
     # 4. KOLOM KATEGORI WAJIB OVERVIEW
     # =========================================================
@@ -3514,7 +3546,7 @@ def page_overview(df_raw):
     # =========================================================
     # 11. SAFETY FINAL SEBELUM CHART / GROUPBY
     # =========================================================
-    for col in ["real_omzet", "pendapatan_rs", "kontribusi", "pendapatan_sewa", "min_omzet", "luas_sqm", "jumlah_pax"]:
+    for col in ["real_omzet", "pendapatan_rs", "kontribusi", "pendapatan_sewa", "min_omzet", "luas_sqm", "total_trafik"]:
         if col not in df.columns:
             df[col] = 0
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
@@ -3532,11 +3564,11 @@ def page_overview(df_raw):
     rental_revenue     = _safe_sum("pendapatan_sewa")
     total_contribution = _safe_sum("kontribusi")
     total_sqm          = _safe_sum("luas_sqm")
-    total_pax          = _safe_sum("jumlah_pax")
+    total_pax          = _safe_sum("total_trafik")
     target_omzet       = _safe_sum("min_omzet")
     avg_contract_value = _safe_mean("min_omzet")
     rev_per_sqm        = (real_revenue / total_sqm) if total_sqm else 0
-    spending_per_pax   = (real_revenue / total_pax) if total_pax else 0
+    spending_per_pax   = (total_contribution / total_pax) if total_pax else 0
 
     def _psum(col):  return prior_df[col].sum()  if col in prior_df.columns else 0
     def _pmean(col): return prior_df[col].mean() if col in prior_df.columns and not prior_df.empty else 0
@@ -3546,10 +3578,10 @@ def page_overview(df_raw):
     prior_rental_revenue   = _psum("pendapatan_sewa")
     prior_contribution     = _psum("kontribusi")
     prior_sqm              = _psum("luas_sqm")
-    prior_pax              = _psum("jumlah_pax")
+    prior_pax              = _psum("total_trafik")
     prior_avg_contract     = _pmean("min_omzet")
     prior_rev_per_sqm      = (prior_real_revenue / prior_sqm) if prior_sqm else 0
-    prior_spending_per_pax = (prior_real_revenue / prior_pax) if prior_pax else 0
+    prior_spending_per_pax = (prior_contribution / prior_pax) if prior_pax else 0
 
     omzet_val, omzet_scale = _compact_number(real_revenue)
     rs_val, rs_scale = _compact_number(revenue_sharing)
@@ -3562,6 +3594,7 @@ def page_overview(df_raw):
 
     contribution_delta = _pct_change(total_contribution, prior_contribution)
     spending_delta = _pct_change(spending_per_pax, prior_spending_per_pax)
+    revenue_sharing_delta = _pct_change(revenue_sharing, prior_revenue_sharing)
     traffic_subtitle = f"Tahun {current_year}" if sel_tahun != "All Year" else "Seluruh periode"
 
     kpi_cards = [
@@ -3569,16 +3602,16 @@ def page_overview(df_raw):
                        f"Target: {_fmt_rp_compact(target_omzet)}",
                        _pct_change(real_revenue, target_omzet), "#4F46E5", "omzet", "vs target"),
         _kpi_pro_card("Revenue Sharing", rs_val, f"Rp {rs_scale}".strip(),
-                       f"YoY {_pct_change(revenue_sharing, prior_revenue_sharing):+.1f}%".replace(".", ","),
-                       _pct_change(revenue_sharing, prior_revenue_sharing), "#0891B2", "layers", "YoY growth"),
+                       f"YoY {_fmt_delta_pct(revenue_sharing_delta)}",
+                       revenue_sharing_delta, "#0891B2", "layers", "YoY growth"),
         _kpi_pro_card("Rental Revenue", rental_val, f"Rp {rental_scale}".strip(),
                        f"vs {_fmt_rp_compact(prior_rental_revenue)} prior",
                        _pct_change(rental_revenue, prior_rental_revenue), "#2563EB", "file", "vs prior yr"),
         _kpi_pro_card("Total Contribution", contrib_val, f"Rp {contrib_scale}".strip(),
-                       f"{contribution_delta:+.1f}% vs prior period".replace(".", ","),
+                       f"{_fmt_delta_pct(contribution_delta)} vs prior period",
                        contribution_delta, "#059669", "bars", "vs prior yr"),
         _kpi_pro_card("Spending per Pax", spend_val, f"Rp {spend_scale}".strip(),
-                       f"{spending_delta:+.1f}% vs prior period".replace(".", ","),
+                       f"{_fmt_delta_pct(spending_delta)} vs prior period",
                        spending_delta, "#D97706", "users", "vs prior yr"),
         _kpi_pro_card("Rev / SQM", revsqm_val, f"Rp {revsqm_scale}".strip(),
                        "per sqm · annual",
@@ -3723,22 +3756,29 @@ def page_overview(df_raw):
                 | detail_df["kode_ruang"].astype(str).str.lower().str.contains(q, na=False)
             ]
 
+        detail_df["Ach %"] = np.where(detail_df["min_omzet"] > 0, detail_df["real_omzet"] / detail_df["min_omzet"] * 100, 0)
         export_df = detail_df.copy()
+        export_df["Min Omzet"] = export_df["min_omzet"].apply(_fmt_rp_full)
+        export_df["Real Omzet"] = export_df["real_omzet"].apply(_fmt_rp_full)
+        export_df["total_Kontribusi"] = export_df["kontribusi"].apply(_fmt_rp_full)
+        export_df["Ach %"] = export_df["Ach %"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+        export_df["ACV"] = export_df["acv"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+        export_df = export_df[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]]
+        export_df.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
 
         with dex:
             st.markdown('<div class="ov-btn-export-marker"></div>', unsafe_allow_html=True)
             st.download_button(
                 "Export",
-                data=export_df.to_csv(index=False).encode("utf-8"),
-                file_name="detail_revenue_tenant.csv",
-                mime="text/csv",
+                data=dataframe_to_excel_bytes(export_df, "Detail Revenue Tenant"),
+                file_name="detail_revenue_tenant.xlsx",
+                mime=EXCEL_MIME,
                 key="overview_detail_export",
                 width="stretch",
             )
         with dpp:
             rows_per_page = st.selectbox("Rows per page", [10, 25, 50], key="overview_rows_per_page", label_visibility="collapsed")
 
-        detail_df["Ach %"] = np.where(detail_df["min_omzet"] > 0, detail_df["real_omzet"] / detail_df["min_omzet"] * 100, 0)
         total_rows = len(detail_df)
         total_pages = max(1, int(np.ceil(total_rows / rows_per_page)))
         if st.session_state.overview_detail_page > total_pages:
@@ -3860,10 +3900,7 @@ def render_dashboard_app():
         if data_error:
             st.error(f"Gagal membaca data PostgreSQL: {data_error}")
         else:
-            st.warning("Belum ada data aktif di PostgreSQL. Silakan import file melalui Import Manager.")
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
-        st.warning("⚠️ No Excel data has been uploaded yet. Please upload an Excel file from the Import Manager page.")
+            st.warning("Gagal membaca data dashboard. Silakan periksa koneksi PostgreSQL.")
         st.markdown("</div>", unsafe_allow_html=True)
         return
 
@@ -3882,8 +3919,7 @@ def render_dashboard_app():
     elif menu == "Data Verification":
         render_data_verification(df_raw)
     else:
-        if df_raw is not None:
-            page_overview(df_raw)
+        page_overview(df_raw)
 
 def main():
     st.set_page_config(

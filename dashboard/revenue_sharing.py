@@ -9,6 +9,7 @@ from textwrap import dedent
 
 from .navigation import topnav_actions_html
 from .pagination import render_pagination, patch_pagination
+from .export_utils import EXCEL_MIME, dataframe_to_excel_bytes
 
 RS_PAGE_ICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
@@ -218,8 +219,8 @@ def _render_rs_filter_card(active_count: int = 0) -> None:
 def _compute_filtered_kpis(filtered_detail):
     if filtered_detail.empty:
         return 0, 0, 0, 0
-    total_rev = filtered_detail["Revenue"].map(_parse_rp).sum()
-    rev_share = filtered_detail["Management Share"].map(_parse_rp).sum()
+    total_rev = filtered_detail["_total_kontribusi"].sum()
+    rev_share = filtered_detail["_pendapatan_rs"].sum()
     settled_count = (filtered_detail["Settlement Status"] == "Settled").sum()
     total_count = len(filtered_detail)
     settlement_rate = int(round(settled_count / total_count * 100)) if total_count else 0
@@ -229,6 +230,19 @@ RS_SETTLEMENT_FILTER_OPTIONS = ["All", "Settled", "Pending", "Failed", "Conflict
 
 
 from .shared_import import get_mapped_column
+
+
+def _resolve_col(df: pd.DataFrame, canonical: str) -> str:
+    """get_mapped_column() reflects the *last* file the user previewed in
+    Import Manager, which lingers in session_state independently of
+    whichever dataframe (e.g. the DB-sourced df_raw) is being rendered now.
+    If that stale mapping doesn't actually exist on this dataframe, fall
+    back to the canonical DB column name instead of letting it silently
+    zero out the column."""
+    mapped = get_mapped_column(canonical)
+    if mapped and mapped in df.columns:
+        return mapped
+    return canonical
 
 
 # ─────────────────────────────────────────────
@@ -259,10 +273,10 @@ def get_services_data(df: pd.DataFrame):
     if df is None or df.empty:
         return pd.DataFrame()
         
-    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
-    col_rs = get_mapped_column("pendapatan_rs") or "pendapatan_rs"
-    col_kontribusi = get_mapped_column("total_kontribusi") or "total_kontribusi"
-    
+    col_bidang = _resolve_col(df, "bidang_usaha")
+    col_rs = _resolve_col(df, "pendapatan_rs")
+    col_kontribusi = _resolve_col(df, "total_kontribusi")
+
     # Ensure columns exist
     for col in [col_bidang, col_rs, col_kontribusi]:
         if col not in df.columns:
@@ -288,9 +302,9 @@ def get_trend_data_from_df(df: pd.DataFrame):
     if df is None or df.empty:
         return pd.DataFrame(columns=["Bulan"])
 
-    col_masa = get_mapped_column("masa_jasa") or "masa_jasa"
-    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
-    col_rs = get_mapped_column("pendapatan_rs") or "pendapatan_rs"
+    col_masa = _resolve_col(df, "masa_jasa")
+    col_bidang = _resolve_col(df, "bidang_usaha")
+    col_rs = _resolve_col(df, "pendapatan_rs")
 
     for col in [col_masa, col_bidang, col_rs]:
         if col not in df.columns:
@@ -341,14 +355,15 @@ def get_detail_revenue_sharing_data(df: pd.DataFrame):
         return pd.DataFrame(columns=[
             "Date", "Service/SBU", "Terminal", "Revenue", "Share %",
             "Management Share", "Settlement Status", "Variance", "Remark", "_raw_status",
+            "_total_kontribusi", "_pendapatan_rs",
         ])
 
-    col_masa = get_mapped_column("masa_jasa") or "masa_jasa"
-    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
-    col_terminal = get_mapped_column("terminal") or "terminal"
-    col_rs = get_mapped_column("pendapatan_rs") or "pendapatan_rs"
-    col_kontribusi = get_mapped_column("kontribusi") or "kontribusi"
-    
+    col_masa = _resolve_col(df, "masa_jasa")
+    col_bidang = _resolve_col(df, "bidang_usaha")
+    col_terminal = _resolve_col(df, "terminal")
+    col_rs = _resolve_col(df, "pendapatan_rs")
+    col_kontribusi = _resolve_col(df, "kontribusi")
+
     for col in [col_masa, col_bidang, col_terminal, col_rs, col_kontribusi]:
         if col not in df.columns:
             df[col] = 0 if col in [col_rs, col_kontribusi] else "Unknown"
@@ -363,10 +378,51 @@ def get_detail_revenue_sharing_data(df: pd.DataFrame):
         "Settlement Status": "Settled",
         "Variance": 0.0,
         "Remark": "Reconciled",
-        "_raw_status": "SUCCESS"
+        "_raw_status": "SUCCESS",
+        # Kolom numerik tersembunyi untuk KPI cards (tidak ditampilkan di tabel):
+        # Total Revenue = sum(total_kontribusi)
+        "_total_kontribusi": pd.to_numeric(df[col_kontribusi], errors="coerce").fillna(0),
+        # Revenue Share = sum(MAX(%RS*MIN OMZET, %RS*REAL OMZET, MGRS*REAL PAX))
+        "_pendapatan_rs": _compute_pendapatan_rs(df, col_rs),
     })
-    
+
     return result
+
+
+def _compute_pendapatan_rs(df: pd.DataFrame, col_rs: str) -> pd.Series:
+    """Rumus Pendapatan RS: =MAX(%RS*MIN OMZET; %RS*REAL OMZET; MGRS*REAL PAX).
+
+    Banyak data lama hanya menyimpan hasil akhir rumus ini (kolom
+    pendapatan_rs, sudah dihitung di Excel sebelum diimpor) tanpa menyimpan
+    input mentahnya (rs_percent/mgrs_per_pax/real_pax kosong di DB). Jadi
+    nilai pendapatan_rs yang sudah tersimpan dipakai sebagai fallback
+    per baris ketika input mentahnya tidak tersedia.
+    """
+    col_rs_percent = _resolve_col(df, "rs_percent")
+    col_min_omzet = _resolve_col(df, "min_omzet")
+    col_real_omzet = _resolve_col(df, "real_omzet")
+    col_mgrs = _resolve_col(df, "mgrs_per_pax")
+    col_real_pax = _resolve_col(df, "real_pax")
+
+    def _num(col):
+        if col not in df.columns:
+            return pd.Series(0, index=df.index)
+        return pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    rs_percent = _num(col_rs_percent)
+    min_omzet = _num(col_min_omzet)
+    real_omzet = _num(col_real_omzet)
+    mgrs_per_pax = _num(col_mgrs)
+    real_pax = _num(col_real_pax)
+    existing_rs = _num(col_rs)
+
+    formula_value = pd.concat([
+        rs_percent * min_omzet,
+        rs_percent * real_omzet,
+        mgrs_per_pax * real_pax,
+    ], axis=1).max(axis=1)
+
+    return formula_value.where(formula_value > 0, existing_rs)
 
 
 
@@ -1608,14 +1664,16 @@ def page_revenue_sharing(df_raw=None):
             ]
 
         export_df = detail_df[["Date", "Service/SBU", "Terminal", "Revenue", "Share %", "Management Share"]].copy()
+        for col in ["Revenue", "Share %", "Management Share"]:
+            export_df[col] = export_df[col].apply(lambda x: str(x).translate(str.maketrans({",": ".", ".": ","})))
 
         with dex:
             st.markdown('<div class="rs-btn-export-marker"></div>', unsafe_allow_html=True)
             st.download_button(
                 "Export",
-                data=export_df.to_csv(index=False).encode("utf-8"),
-                file_name="detail_revenue_sharing.csv",
-                mime="text/csv",
+                data=dataframe_to_excel_bytes(export_df, "Detail Revenue Sharing"),
+                file_name="detail_revenue_sharing.xlsx",
+                mime=EXCEL_MIME,
                 key="rs_detail_export",
                 width="stretch",
             )
