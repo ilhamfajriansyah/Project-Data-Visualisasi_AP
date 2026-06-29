@@ -40,7 +40,7 @@ COLUMN_ALIASES = {
     "sbu": "terminal",
     "office_sbu": "terminal",
     "terminal_sbu": "terminal",
-    "sub_terminal": "terminal",
+    "sub_terminal": "sub_terminal",
     "business_category": "bidang_usaha",
     "kategori": "bidang_usaha",
     "sub_bidang_usaha": "bidang_usaha",

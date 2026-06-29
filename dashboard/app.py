@@ -3070,6 +3070,15 @@ def _overview_normalize_and_ensure_columns(df_raw):
         numeric=False,
     )
 
+    # masa_jasa kadang berisi tanggal utuh (mis. Excel menampilkan "Jun-26"
+    # tapi nilai selnya tetap tanggal 2026-06-01), kadang teks "Jun-2025",
+    # kadang sudah nama bulan penuh. Samakan semua jadi nama bulan penuh
+    # ("June") supaya dropdown/filter/chart yang membaca kolom ini konsisten.
+    _parsed_masa = pd.to_datetime(df["masa_jasa"], errors="coerce")
+    df["masa_jasa"] = _parsed_masa.dt.strftime("%B").where(
+        _parsed_masa.notna(), df["masa_jasa"].astype(str)
+    )
+
     # Derived per-row metrics the rest of the page expects to already exist.
     df["rev_sqm"] = df["real_omzet"] / df["luas_sqm"].replace(0, pd.NA)
     df["rev_sqm"] = pd.to_numeric(df["rev_sqm"], errors="coerce").fillna(0)
@@ -3464,13 +3473,38 @@ def page_overview(df_raw):
 
     df_raw = _overview_normalize_and_ensure_columns(df_raw)
 
-    terminal_options = ["All Terminal"] + sorted(df_raw["terminal"].dropna().unique().tolist())
-    db_years = [int(y) for y in df_raw["tahun"].dropna().unique()]
-    all_years = sorted(list(set(db_years + [2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030])), reverse=True)
-    year_options = ["All Year"] + all_years
-    month_options = ["All Month"] + BULAN
+    # Tahun & Bulan ikut apa yang benar-benar ada di data (kolom tahun & masa_jasa),
+    # bukan daftar statis yang dipadatkan secara manual.
+    year_options = ["All Year"] + sorted(
+        (int(y) for y in df_raw["tahun"].dropna().unique()), reverse=True
+    )
+    # _overview_normalize_and_ensure_columns() sudah menyamakan masa_jasa
+    # jadi nama bulan penuh ("June"), jadi cukup cocokkan ke urutan kalender BULAN.
+    masa_jasa_values = set(df_raw["masa_jasa"].dropna().unique().tolist())
+    month_options = ["All Month"] + [m for m in BULAN if m in masa_jasa_values]
     perusahaan_options = ["All Perusahaan"] + sorted(df_raw["perusahaan"].dropna().unique().tolist())
-    kode_ruang_options = ["All Kode Ruang"] + sorted(df_raw["kode_ruang"].dropna().unique().tolist())
+
+    # Terminal & Kode Ruang menyesuaikan Perusahaan yang sedang dipilih di
+    # dropdown (termasuk pilihan yang belum di-"Terapkan Filter"), dan juga
+    # saling menyaring satu sama lain — supaya tidak bisa memilih kombinasi
+    # Terminal + Kode Ruang yang tidak pernah ada di data (hasilnya 0).
+    sel_pend_perusahaan = st.session_state.get("f_pend_perusahaan", "All Perusahaan")
+    sel_pend_terminal = st.session_state.get("f_pend_terminal", "All Terminal")
+    sel_pend_kode_ruang = st.session_state.get("f_pend_kode_ruang", "All Kode Ruang")
+
+    perusahaan_scoped_df = df_raw
+    if sel_pend_perusahaan not in (None, "All Perusahaan"):
+        perusahaan_scoped_df = perusahaan_scoped_df[perusahaan_scoped_df["perusahaan"] == sel_pend_perusahaan]
+
+    terminal_scope = perusahaan_scoped_df
+    if sel_pend_kode_ruang not in (None, "All Kode Ruang"):
+        terminal_scope = terminal_scope[terminal_scope["kode_ruang"] == sel_pend_kode_ruang]
+    terminal_options = ["All Terminal"] + sorted(terminal_scope["terminal"].dropna().unique().tolist())
+
+    kode_ruang_scope = perusahaan_scoped_df
+    if sel_pend_terminal not in (None, "All Terminal"):
+        kode_ruang_scope = kode_ruang_scope[kode_ruang_scope["terminal"] == sel_pend_terminal]
+    kode_ruang_options = ["All Kode Ruang"] + sorted(kode_ruang_scope["kode_ruang"].dropna().unique().tolist())
 
     if st.session_state.get("f_terminal") not in terminal_options:
         st.session_state.f_terminal = terminal_options[0]
@@ -3567,7 +3601,7 @@ def page_overview(df_raw):
     total_pax          = _safe_sum("total_trafik")
     target_omzet       = _safe_sum("min_omzet")
     avg_contract_value = _safe_mean("min_omzet")
-    rev_per_sqm        = (real_revenue / total_sqm) if total_sqm else 0
+    rev_per_sqm        = (total_contribution / total_sqm) if total_sqm else 0
     spending_per_pax   = (total_contribution / total_pax) if total_pax else 0
 
     def _psum(col):  return prior_df[col].sum()  if col in prior_df.columns else 0
@@ -3580,7 +3614,7 @@ def page_overview(df_raw):
     prior_sqm              = _psum("luas_sqm")
     prior_pax              = _psum("total_trafik")
     prior_avg_contract     = _pmean("min_omzet")
-    prior_rev_per_sqm      = (prior_real_revenue / prior_sqm) if prior_sqm else 0
+    prior_rev_per_sqm      = (prior_contribution / prior_sqm) if prior_sqm else 0
     prior_spending_per_pax = (prior_contribution / prior_pax) if prior_pax else 0
 
     omzet_val, omzet_scale = _compact_number(real_revenue)
@@ -3734,14 +3768,14 @@ def page_overview(df_raw):
         dh1, ds, dex, dpp = st.columns([3.85, 2.85, 0.78, 0.72], vertical_alignment="center")
         with dh1:
             st.markdown(
-                '<p class="ed-section-title">Detail Revenue Tenant</p>'
-                '<p class="ed-section-sub">Data lengkap seluruh tenant aktif</p>',
+                '<p class="ed-section-title">Detail Revenue Perusahaan</p>'
+                '<p class="ed-section-sub">Data lengkap seluruh perusahaan aktif</p>',
                 unsafe_allow_html=True,
             )
         with ds:
             search_query = st.text_input(
-                "Search tenant",
-                placeholder="Cari tenant atau brand...",
+                "Search Perusahaan / Brand / Kode Ruang",
+                placeholder="Cari perusahaan atau brand atau kode ruang...",
                 key="overview_detail_search",
                 label_visibility="collapsed",
                 on_change=lambda: st.session_state.update({"overview_detail_page": 1}),
@@ -3764,14 +3798,14 @@ def page_overview(df_raw):
         export_df["Ach %"] = export_df["Ach %"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         export_df["ACV"] = export_df["acv"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         export_df = export_df[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]]
-        export_df.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
+        export_df.columns = ["Perusahaan", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
 
         with dex:
             st.markdown('<div class="ov-btn-export-marker"></div>', unsafe_allow_html=True)
             st.download_button(
                 "Export",
-                data=dataframe_to_excel_bytes(export_df, "Detail Revenue Tenant"),
-                file_name="detail_revenue_tenant.xlsx",
+                data=dataframe_to_excel_bytes(export_df, "Detail Revenue Perusahaan"),
+                file_name="detail_revenue_perusahaan.xlsx",
                 mime=EXCEL_MIME,
                 key="overview_detail_export",
                 width="stretch",
@@ -3795,7 +3829,7 @@ def page_overview(df_raw):
         detail_view["Ach %"] = detail_view["Ach %"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         detail_view["ACV"] = detail_view["acv"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]]
-        detail_view.columns = ["Tenant", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
+        detail_view.columns = ["Perusahaan", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
         detail_col_align = {
             "Min Omzet": "right",
             "Real Omzet": "right",
