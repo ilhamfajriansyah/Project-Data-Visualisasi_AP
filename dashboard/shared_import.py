@@ -57,8 +57,13 @@ COLUMN_ALIASES = {
     "sewa": "pendapatan_sewa",
     "pendapatan": "pendapatan_sewa",
     "revenue_sharing": "pendapatan_rs",
-    "rs": "pendapatan_rs",
     "pendapatanrs": "pendapatan_rs",
+    # "%RS" header → cleaned "rs" → rs_percent (persentase bagi hasil)
+    # "PENDAPATAN RS" header → cleaned "pendapatan_rs" → REQUIRED_DASHBOARD_COLUMNS (jalur sendiri)
+    "rs": "rs_percent",
+    "rs_persen": "rs_percent",
+    "persen_rs": "rs_percent",
+    "rs_percent": "rs_percent",
     "total_kontribusi": "total_kontribusi",
     "contribution": "total_kontribusi",
     "luas": "luas_sqm",
@@ -77,6 +82,34 @@ COLUMN_ALIASES = {
     "jumlah_trafik": "total_trafik",
     "produksi_m2": "luas_sqm",
     "produksi": "luas_sqm",
+    "acv": "acv",
+    "achievement": "acv",
+    "start_kontrak": "start_kontrak",
+    "tanggal_mulai": "start_kontrak",
+    "mulai_kontrak": "start_kontrak",
+    "tgl_mulai": "start_kontrak",
+    "start_contract": "start_kontrak",
+    "end_kontrak": "end_kontrak",
+    "tanggal_selesai": "end_kontrak",
+    "akhir_kontrak": "end_kontrak",
+    "tgl_selesai": "end_kontrak",
+    "tgl_akhir": "end_kontrak",
+    "end_contract": "end_kontrak",
+    "kerja_sama": "kerja_sama",
+    "jenis_kerjasama": "kerja_sama",
+    "jenis_kerja_sama": "kerja_sama",
+    "skema": "kerja_sama",
+    "nomor_kontrak_sistem": "nomor_kontrak_sistem",
+    "no_kontrak_sistem": "nomor_kontrak_sistem",
+    "nomor_kontrak_legal": "nomor_kontrak_legal",
+    "no_kontrak_legal": "nomor_kontrak_legal",
+    "csp_non_csp": "csp_non_csp",
+    "csp": "csp_non_csp",
+    "pemilihan_mitra_usaha": "pemilihan_mitra_usaha",
+    "mgrs_per_pax": "mgrs_per_pax",
+    "mgrs_pax": "mgrs_per_pax",
+    "mgrs": "mgrs_per_pax",
+    "real_pax": "real_pax",
 }
 
 NUMERIC_COLUMNS = [
@@ -93,6 +126,11 @@ NUMERIC_COLUMNS = [
 
 def _clean_column_name(column) -> str:
     name = str(column).strip().lower()
+    # Header asli sering punya keterangan format/instruksi nempel, mis.
+    # "END KONTRAK\n(mm/dd/yyyy)" atau "NOMOR KONTRAK SISTEM (SAP)" — buang
+    # isi dalam tanda kurung supaya nama intinya tetap cocok dengan alias
+    # ("end_kontrak", bukan "end_kontrak_mm_dd_yyyy").
+    name = re.sub(r"\([^)]*\)", " ", name)
     name = re.sub(r"[^a-z0-9]+", "_", name)
     return name.strip("_")
 

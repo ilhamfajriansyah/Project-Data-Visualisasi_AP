@@ -92,6 +92,8 @@ def _empty_verification_data() -> pd.DataFrame:
         "Skema",
         "Conflict Info",
         "Anomali",
+        "Conflict",
+        "_tahun",
     ])
 
 
@@ -131,23 +133,20 @@ def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
     empty shaped dataframe so the page keeps its design with all counters at 0.
     """
     db_df = _filter_active_import_rows(df_raw)
-    if db_df is None or db_df.empty:
+    imported_df = db_df if (db_df is not None and not db_df.empty) else get_shared_import_data()
+    if imported_df is None or imported_df.empty:
         return _empty_verification_data()
 
-    meta = {}
-    df = db_df.copy()
+    meta = get_shared_import_meta()
+    df = imported_df.copy()
     rows = []
     for _, r in df.iterrows():
         real_omzet = r.get("real_omzet", r.get("omzet", 0))
-        try:
-            conflict_info = f"Rp {float(real_omzet) / 1_000_000_000:.2f}M".replace(".", ",")
-        except (TypeError, ValueError):
-            conflict_info = str(real_omzet or "-").replace(".", ",")
-
         brand = r.get("brand", r.get("perusahaan", r.get("tenant_name", "-")))
         perusahaan = r.get("perusahaan", "-")
         kode_ruang = r.get("kode_ruang", r.get("unit", "-"))
         periode = r.get("masa_jasa", r.get("periode", meta.get("period", "-")))
+        tahun = r.get("tahun", "-")
         try:
             omzet_value = float(real_omzet or 0)
         except (TypeError, ValueError):
@@ -163,10 +162,36 @@ def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
             "End Kontrak": str(r.get("end_kontrak", "-")),
             "Status": status,
             "Skema": str(r.get("skema", r.get("bidang_usaha", "-"))),
-            "Conflict Info": conflict_info,
             "Anomali": bool(pd.isna(real_omzet) or pd.isna(kode_ruang) or pd.isna(brand)),
+            "_tahun": str(tahun) if pd.notna(tahun) else "-",
         })
-    return pd.DataFrame(rows)
+    result = pd.DataFrame(rows)
+
+    # Conflict = data bentrok/duplikat: dua baris atau lebih mengklaim Kode
+    # Ruang yang sama di Tahun + Periode (masa_jasa) yang sama. Kode Ruang
+    # placeholder "-" (tidak diketahui) dikecualikan supaya tidak terhitung
+    # bentrok satu sama lain.
+    dup_key = result[["Kode Ruang", "_tahun", "Real Onset"]]
+    has_known_kode = result["Kode Ruang"] != "-"
+    result["Conflict"] = has_known_kode & dup_key.duplicated(keep=False)
+
+    def _conflict_info(row):
+        if not row["Conflict"]:
+            return "-"
+        same_slot = result[
+            (result["Kode Ruang"] == row["Kode Ruang"])
+            & (result["_tahun"] == row["_tahun"])
+            & (result["Real Onset"] == row["Real Onset"])
+            & (result.index != row.name)
+        ]
+        other_tenants = sorted(set(same_slot["Brand/Tenant"].tolist()) - {row["Brand/Tenant"]})
+        if other_tenants:
+            return "Bentrok dengan " + ", ".join(other_tenants)
+        return f"Bentrok ({len(same_slot) + 1} entri kode ruang sama)"
+
+    result["Conflict Info"] = result.apply(_conflict_info, axis=1)
+
+    return result
 
 # ─────────────────────────────────────────────
 # CSS
@@ -178,7 +203,7 @@ body:has(.dv-page-marker) [data-testid="stMainBlockContainer"],
 body:has(.dv-page-marker) [data-testid="stAppViewContainer"] .block-container,
 body:has(.dv-page-marker) section.main > div,
 body:has(.dv-page-marker) .main > div {
-    padding-top: 0 !important;
+    padding-top: 0 !important; 
     padding-bottom: 34px !important;
     margin-top: 0 !important;
 }
@@ -500,6 +525,12 @@ body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card)
 .dv-table tbody tr.anomali-row:hover {
     background-color: rgba(245, 158, 11, 0.05) !important;
 }
+.dv-table tbody tr.conflict-row {
+    background-color: rgba(239, 68, 68, 0.03);
+}
+.dv-table tbody tr.conflict-row:hover {
+    background-color: rgba(239, 68, 68, 0.06) !important;
+}
 .dv-table tbody tr:last-child td {
     border-bottom: none;
 }
@@ -641,6 +672,14 @@ body:has(.dv-page-marker) div[data-testid="stHorizontalBlock"]:has(.dv-kpi-card)
     box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
 }
 
+/* ── CONFLICT DOT ── */
+.conflict-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ef4444;
+    display: inline-block; margin-right: 6px;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+}
+
 /* ── FOOTER & PAGINATION ── */
 .dv-footer {
     display: flex;
@@ -699,6 +738,15 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
     background: #FFFFFF !important;
     height: 42px !important;
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+}
+body:has(.dv-page-marker) div[data-testid="column"]:nth-of-type(4) div[data-testid="stSelectbox"] {
+    width: 90px !important;
+    max-width: 90px !important;
+    margin-left: auto !important;
+}
+body:has(.dv-page-marker) div[data-testid="column"]:nth-of-type(4) div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    padding-left: 10px !important;
+    padding-right: 28px !important;
 }
 body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .ed-card-marker) div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
     border-radius: 9999px !important;
@@ -874,6 +922,8 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
     for _, r in rows.iterrows():
         anomali_class = "anomali-row" if r["Anomali"] else ""
         anomali_dot   = '<span class="anomali-dot"></span>' if r["Anomali"] else ""
+        conflict_class = "conflict-row" if r["Conflict"] else ""
+        conflict_dot   = '<span class="conflict-dot" title="Kode Ruang bentrok/duplikat pada periode yang sama"></span>' if r["Conflict"] else ""
 
         # Get custom brand icon
         brand_icon_html = _get_brand_icon(r['Brand/Tenant'])
@@ -897,9 +947,9 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
         """
 
         rows_html += f"""
-        <tr class="{anomali_class}">
+        <tr class="{anomali_class} {conflict_class}">
           <td>
-            <div class="dv-kode">{r['Kode Ruang']}</div>
+            <div class="dv-kode">{conflict_dot}{r['Kode Ruang']}</div>
           </td>
           <td>
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -975,7 +1025,7 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
     total_records = len(df_all)
     valid_records = int((df_all["Status"] == "Active").sum())
     anomalies     = int(df_all["Anomali"].sum())
-    conflicts     = int((df_all["Status"] == "Expired").sum())
+    conflicts     = int(df_all["Conflict"].sum())
 
     # Define clean, professional SVG icons
     total_svg = (
@@ -1054,7 +1104,7 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
             unsafe_allow_html=True,
         )
 
-        f_col1, f_col2, f_col3, f_col4 = st.columns([4, 2.5, 2.5, 1], vertical_alignment="bottom")
+        f_col1, f_col2, f_col3, f_col_page, f_col4 = st.columns([3.8, 2.2, 2.2, 0.8, 1.0], vertical_alignment="bottom")
         with f_col1:
             search_q = st.text_input(
                 "Search Brand / Tenant",
@@ -1075,6 +1125,13 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
                 ["All Anomalies", "Dengan Anomali", "Tanpa Anomali"],
                 label_visibility="collapsed",
                 key="dv_fanom"
+            )
+        with f_col_page:
+            st.selectbox(
+                "Rows per page",
+                [10, 25, 50],
+                key="dv_rows_per_page",
+                label_visibility="collapsed",
             )
         # Define callback to reset filter values safely before next render run
         def handle_reset():
@@ -1113,15 +1170,16 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
         df = df.reset_index(drop=True)
 
         # Reset page on filter change
-        fkey = f"{search_q}|{status_f}|{anom_f}"
+        dv_rows = st.session_state.get("dv_rows_per_page", 10)
+        fkey = f"{search_q}|{status_f}|{anom_f}|{dv_rows}"
         if st.session_state.get("_dv_last_filter") != fkey:
             st.session_state.dv_page = 1
             st.session_state["_dv_last_filter"] = fkey
 
         # ── Table ──
-        page, n_pages = _render_table(df, st.session_state.dv_page)
-        first_item = 0 if len(df) == 0 else ((page - 1) * 5) + 1
-        last_item = min(page * 5, len(df))
+        page, n_pages = _render_table(df, st.session_state.dv_page, page_size=dv_rows)
+        first_item = 0 if len(df) == 0 else ((page - 1) * dv_rows) + 1
+        last_item = min(page * dv_rows, len(df))
 
     # ── Pagination di LUAR with main_section agar CSS DV tidak override ──
     st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)

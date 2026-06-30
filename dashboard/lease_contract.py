@@ -80,7 +80,6 @@ def _mount_lc_fixed_header():
 # ──────────────────────────────────────────────────────────────────────────────
 # DATA FROM EXCEL
 # ──────────────────────────────────────────────────────────────────────────────
-from .shared_import import get_mapped_column
 from .connection import get_engine
 from sqlalchemy import text
 
@@ -336,9 +335,12 @@ def _get_contract_types(df):
     if df is None or df.empty:
         return {"Revenue Sharing": 0, "Rental": 0, "MGRS": 0}
 
-    col_bidang = get_mapped_column("bidang_usaha") or "bidang_usaha"
-    if col_bidang in df.columns:
-        return df[col_bidang].value_counts().to_dict()
+    # df di sini adalah lc_df (level kontrak: No/Name/Tenant/.../Skema/...),
+    # bukan transaction_revenue mentah — jadi field skemanya ada di kolom
+    # "Skema", bukan "bidang_usaha".
+    if "Skema" in df.columns:
+        counts = df[df["Skema"] != "-"]["Skema"].value_counts().to_dict()
+        return counts if counts else {}
     return {}
 
 
@@ -769,7 +771,8 @@ body:has(.lc-page-marker) [data-testid="stMain"] .btn-secondary button:hover {
     font-size: 11px;
     font-weight: 600;
     color: #64748B;
-    width: 36px;
+    min-width: 64px;
+    white-space: nowrap;
     flex-shrink: 0;
 }
 .kpi-progress-track {
@@ -2167,8 +2170,9 @@ def _lc_timeline_icon_svg(icon_key: str) -> str:
 
 def _build_timeline_chart(df):
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    months_labels = [f"{m} 25" for m in months]
-    
+    year_suffix = str(date.today().year)[-2:]
+    months_labels = [f"{m} {year_suffix}" for m in months]
+
     # Calculate expiring count per month from the filtered dataframe
     expiring_counts = {m: 0 for m in months}
     for _, r in df[df["Status"] == "Anomaly"].iterrows():
@@ -2180,23 +2184,13 @@ def _build_timeline_chart(df):
         except Exception:
             m_idx = (r["Sisa"] // 30) % 12
             expiring_counts[months[m_idx]] += 1
-            
-    # Renewed counts are derived from expiring (e.g. ~60% rate as mock renewal success)
-    renewed_counts = {m: int(expiring_counts[m] * 0.6) for m in months}
-    
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=months_labels,
         y=[expiring_counts[m] for m in months],
         name="Expiring",
         marker_color="#6366F1",
-        width=0.25
-    ))
-    fig.add_trace(go.Bar(
-        x=months_labels,
-        y=[renewed_counts[m] for m in months],
-        name="Renewed",
-        marker_color="#10B981",
         width=0.25
     ))
     fig.update_layout(
@@ -2387,10 +2381,50 @@ def _render_lc_filter_card(df_full: pd.DataFrame, active_count: int = 0) -> None
     clicks "Terapkan Filter" / "Bersihkan Semua" / the header "Reset Filter"."""
     perusahaan_options = ["All Perusahaan"] + sorted(df_full["Name/Tenant"].dropna().unique().tolist())
     kode_options = ["All Kode Ruang"] + sorted(df_full["Kode"].dropna().unique().tolist())
-    terminal_options = ["All Terminal", "Terminal 1", "Terminal 2"]
-    tahun_options = ["All Year", 2030, 2029, 2028, 2027, 2026, 2025, 2024, 2023]
-    bulan_options = ["All Month", "January", "February", "March", "April", "May", "June",
-                      "July", "August", "September", "October", "November", "December"]
+    terminal_options = ["All Terminal"] + sorted(
+        v for v in df_full["Terminal"].dropna().unique().tolist() if v not in ("-", "Unknown", "")
+    )
+
+    # Tahun & Bulan diambil dari tanggal akhir kontrak ("Valid Period",
+    # format "dd Mon yyyy" hasil _format_contract_date) yang benar-benar
+    # ada di data — bukan daftar statis.
+    def _end_date_parts(valid_period):
+        if " - " not in str(valid_period):
+            return None, None
+        end_part = str(valid_period).split(" - ")[1].strip()
+        parts = end_part.split(" ")
+        if len(parts) == 3 and parts[2].isdigit():
+            return parts[1], parts[2]  # (bulan singkat "Jun", tahun "2026")
+        return None, None
+
+    end_parts = df_full["Valid Period"].apply(_end_date_parts)
+    years_present = sorted({y for _, y in end_parts if y}, reverse=True)
+    tahun_options = ["All Year"] + years_present
+
+    _MONTH_ABBR_ORDER = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    _MONTH_FULL_NAME = {
+        "Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April",
+        "May": "May", "Jun": "June", "Jul": "July", "Aug": "August",
+        "Sep": "September", "Oct": "October", "Nov": "November", "Dec": "December",
+    }
+    months_present = {m for m, _ in end_parts if m}
+    bulan_options = ["All Month"] + [
+        _MONTH_FULL_NAME[m] for m in _MONTH_ABBR_ORDER if m in months_present
+    ]
+
+    # Opsi dropdown berubah mengikuti data (bukan daftar tetap), jadi nilai
+    # yang sudah dipilih sebelumnya bisa jadi tidak valid lagi setelah data
+    # berubah — reset ke default supaya tidak error/nyangkut.
+    for applied_key, pend_key, options in (
+        ("f_terminal", "lc_pend_terminal", terminal_options),
+        ("f_tahun", "lc_pend_tahun", tahun_options),
+        ("f_masa", "lc_pend_masa", bulan_options),
+    ):
+        if st.session_state.get(applied_key) not in options:
+            st.session_state[applied_key] = options[0]
+        if st.session_state.get(pend_key) not in options:
+            st.session_state[pend_key] = st.session_state[applied_key]
 
     st.markdown('<div class="lc-filtercard-marker"></div>', unsafe_allow_html=True)
 
@@ -2685,12 +2719,7 @@ def render_lease_contract(df_raw=None):
     
     sel_term = st.session_state.get("f_terminal", "All Terminal")
     if sel_term != "All Terminal" and not df_filt.empty:
-        term_map = {
-            "Terminal 1": "T1",
-            "Terminal 2": "T2",
-        }
-        sel_term_code = term_map.get(sel_term, sel_term)
-        df_filt = df_filt[df_filt["Terminal"] == sel_term_code]
+        df_filt = df_filt[df_filt["Terminal"] == sel_term]
         
     sel_year = st.session_state.get("f_tahun", "All Year")
     if sel_year != "All Year" and not df_filt.empty:
@@ -2752,29 +2781,32 @@ def render_lease_contract(df_raw=None):
     # TOP KPI CARDS
     # ─────────────────────────────────────────────
     total_val = len(df_all)
-    t1_val = len(df_all[df_all["Terminal"] == "T1"])
-    t2_val = len(df_all[df_all["Terminal"] == "T2"])
-    t3_val = len(df_all[df_all["Terminal"] == "T3"])
-    t3u_val = len(df_all[df_all["Terminal"] == "T3U"])
-    
+
+    # Label Terminal & Skema ikut nilai yang benar-benar ada di data
+    # (mis. "Terminal 1"/"Terminal 2"/"Terminal 3"), bukan kode tetap
+    # "T1"/"T2"/"T3"/"T3U" atau "Revenue Sharing"/"RS+MO"/"MGRS" yang
+    # tidak pernah cocok dengan data riil.
+    terminal_labels = sorted(
+        v for v in df_all["Terminal"].dropna().unique().tolist() if v not in ("-", "Unknown", "")
+    )
+    total_progress_items = [(t, len(df_all[df_all["Terminal"] == t])) for t in terminal_labels]
+
     active_df = df_all[df_all["Status"] == "Valid"]
     active_val = len(active_df)
-    rs_val = len(active_df[active_df["Skema"] == "Revenue Sharing"])
-    rs_mo_val = len(active_df[active_df["Skema"] == "RS+MO"])
-    mgrs_val = len(active_df[active_df["Skema"] == "MGRS"])
-    
+    skema_labels = sorted(
+        v for v in df_all["Skema"].dropna().unique().tolist() if v not in ("-", "Unknown", "")
+    )
+    active_progress_items = [(s, len(active_df[active_df["Skema"] == s])) for s in skema_labels]
+
     anomaly_df = df_all[df_all["Status"] == "Anomaly"]
     expiring_val = len(anomaly_df)
     d30_val = len(anomaly_df[anomaly_df["Sisa"] <= 30])
     d60_val = len(anomaly_df[(anomaly_df["Sisa"] > 30) & (anomaly_df["Sisa"] <= 60)])
     d90_val = len(anomaly_df[(anomaly_df["Sisa"] > 60) & (anomaly_df["Sisa"] <= 90)])
-    
+
     expired_df = df_all[df_all["Status"] == "Expired"]
     expired_val = len(expired_df)
-    exp_t1 = len(expired_df[expired_df["Terminal"] == "T1"])
-    exp_t2 = len(expired_df[expired_df["Terminal"] == "T2"])
-    exp_t3 = len(expired_df[expired_df["Terminal"] == "T3"])
-    exp_t3u = len(expired_df[expired_df["Terminal"] == "T3U"])
+    expired_progress_items = [(t, len(expired_df[expired_df["Terminal"] == t])) for t in terminal_labels]
 
     col1, col2, col3, col4 = st.columns(4)
     
@@ -2784,13 +2816,13 @@ def render_lease_contract(df_raw=None):
         html_total = _render_kpi_card_html(
             icon_svg=icon_total,
             icon_class="total",
-            badge_text="0.0%",
+            badge_text="N/A",
             badge_class="positive",
             title="Total Contract",
             value=f"{total_val}",
             unit="contracts",
-            subtitle="All terminals · FY 2024",
-            progress_items=[("T1", t1_val), ("T2", t2_val), ("T3", t3_val), ("T3U", t3u_val)],
+            subtitle=f"All terminals · FY {date.today().year}",
+            progress_items=total_progress_items,
             progress_color="#6366F1",
             comparison="No prior data",
             sparkline_svg=svg_spark_total
@@ -2803,13 +2835,13 @@ def render_lease_contract(df_raw=None):
         html_active = _render_kpi_card_html(
             icon_svg=icon_active,
             icon_class="active",
-            badge_text="0.0%",
+            badge_text="N/A",
             badge_class="positive",
             title="Active Contract",
             value=f"{active_val}",
             unit="active",
             subtitle=f"{active_val/total_val*100:.1f}% of total portfolio" if total_val > 0 else "0.0% of total portfolio",
-            progress_items=[("RS", rs_val), ("RS+MO", rs_mo_val), ("MGRS", mgrs_val)],
+            progress_items=active_progress_items,
             progress_color="#10B981",
             comparison="No prior data",
             sparkline_svg=svg_spark_active
@@ -2822,7 +2854,7 @@ def render_lease_contract(df_raw=None):
         html_expiring = _render_kpi_card_html(
             icon_svg=icon_expiring,
             icon_class="expiring",
-            badge_text="0.0%",
+            badge_text="N/A",
             badge_class="negative",
             title="Expiring Soon",
             value=f"{expiring_val}",
@@ -2841,13 +2873,13 @@ def render_lease_contract(df_raw=None):
         html_expired = _render_kpi_card_html(
             icon_svg=icon_expired,
             icon_class="expired",
-            badge_text="0.0%",
+            badge_text="N/A",
             badge_class="negative",
             title="Expired Contract",
             value=f"{expired_val}",
             unit="contracts",
             subtitle="Requires immediate action",
-            progress_items=[("T1", exp_t1), ("T2", exp_t2), ("T3", exp_t3), ("T3U", exp_t3u)],
+            progress_items=expired_progress_items,
             progress_color="#EF4444",
             comparison="No prior data",
             sparkline_svg=svg_spark_expired
@@ -2865,7 +2897,11 @@ def render_lease_contract(df_raw=None):
     with col_left:
         with st.container():
             st.markdown('<div class="premium-card-marker"></div>', unsafe_allow_html=True)
-            st.markdown('<div class="card-title">Contract Expiry Timeline</div><div class="card-subtitle">Monthly contract expirations — Next 12 months (Jan-Dec 2025)</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="card-title">Contract Expiry Timeline</div>'
+                f'<div class="card-subtitle">Monthly contract expirations — Next 12 months (Jan-Dec {date.today().year})</div>',
+                unsafe_allow_html=True,
+            )
             
             # Dynamic calculations for timeline stats
             months_list = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -2880,13 +2916,12 @@ def render_lease_contract(df_raw=None):
                     m_idx = (r["Sisa"] // 30) % 12
                     exp_month_counts[months_list[m_idx]] += 1
             
-            ren_month_counts = {m: int(exp_month_counts[m] * 0.6) for m in months_list}
-            
             tot_exp_val = sum(exp_month_counts.values())
-            tot_ren_val = sum(ren_month_counts.values())
-            tot_ren_rate = int(tot_ren_val / tot_exp_val * 100) if tot_exp_val > 0 else 0
             risk_months_count = sum(1 for v in exp_month_counts.values() if v >= 8)
 
+            # "Renewed"/"Renewal Rate" dihapus — tidak ada data riwayat
+            # perpanjangan kontrak yang bisa dilacak; sebelumnya ini cuma
+            # estimasi fiktif 60% dari jumlah expiring.
             html_timeline_kpis = f"""
             <div class="timeline-kpi-row">
                 <div class="timeline-kpi-card expiring">
@@ -2895,20 +2930,6 @@ def render_lease_contract(df_raw=None):
                         <div class="timeline-kpi-val">{tot_exp_val}</div>
                     </div>
                     <div class="timeline-kpi-lbl">Contracts<span>Expiring</span></div>
-                </div>
-                <div class="timeline-kpi-card renewed">
-                    <div class="timeline-kpi-top">
-                        <div class="timeline-kpi-icon">{_lc_timeline_icon_svg("check-circle")}</div>
-                        <div class="timeline-kpi-val">{tot_ren_val}</div>
-                    </div>
-                    <div class="timeline-kpi-lbl">Contracts<span>Renewed</span></div>
-                </div>
-                <div class="timeline-kpi-card rate">
-                    <div class="timeline-kpi-top">
-                        <div class="timeline-kpi-icon">{_lc_timeline_icon_svg("clock")}</div>
-                        <div class="timeline-kpi-val">{tot_ren_rate}%</div>
-                    </div>
-                    <div class="timeline-kpi-lbl">Renewal Rate<span>of expiring</span></div>
                 </div>
                 <div class="timeline-kpi-card risk">
                     <div class="timeline-kpi-top">
@@ -2931,7 +2952,6 @@ def render_lease_contract(df_raw=None):
             html_risk_strip = f"""
             <div class="risk-legend-row" style="justify-content: center; margin-top: 4px; margin-bottom: 8px;">
                 <div class="risk-legend-item"><span class="risk-legend-dot" style="background-color: #6366F1;"></span><span>Expiring</span></div>
-                <div class="risk-legend-item"><span class="risk-legend-dot" style="background-color: #10B981;"></span><span>Renewed</span></div>
             </div>
             <div class="risk-strip-container">
                 <span class="risk-strip-label">Risk Level &rarr;</span>
@@ -2977,7 +2997,7 @@ def render_lease_contract(df_raw=None):
                     </div>
                     <div class="dist-card-body">
                         <span class="dist-card-count">{d_rs}</span>
-                        <span class="dist-card-val">Rp {f"{d_rs*0.74:.1f}".replace(".", ",")} M</span>
+                        <span class="dist-card-val">N/A</span>
                     </div>
                 </div>
                 <div class="dist-card rs_mo">
@@ -2987,7 +3007,7 @@ def render_lease_contract(df_raw=None):
                     </div>
                     <div class="dist-card-body">
                         <span class="dist-card-count">{d_rs_mo}</span>
-                        <span class="dist-card-val">Rp {f"{d_rs_mo*0.74:.1f}".replace(".", ",")} M</span>
+                        <span class="dist-card-val">N/A</span>
                     </div>
                 </div>
                 <div class="dist-card mgrs">
@@ -2997,19 +3017,21 @@ def render_lease_contract(df_raw=None):
                     </div>
                     <div class="dist-card-body">
                         <span class="dist-card-count">{d_mgrs}</span>
-                        <span class="dist-card-val">Rp {f"{d_mgrs*0.72:.1f}".replace(".", ",")} M</span>
+                        <span class="dist-card-val">N/A</span>
                     </div>
                 </div>
             </div>
             """
             st.markdown(html_dist_stack, unsafe_allow_html=True)
 
-            total_est_revenue = d_rs * 0.74 + d_rs_mo * 0.74 + d_mgrs * 0.72
+            # "Total Estimated Revenue" dihapus dari sini — sebelumnya dihitung
+            # dari multiplier fiktif (0.74/0.72 per kontrak), bukan data riil.
+            # Kartu di bawah ini hanya menunjukkan jumlah kontrak per skema.
             html_dist_footer = f"""
             <div class="dist-total-footer">
                 <span class="dist-total-icon">{_lc_timeline_icon_svg("file-text")}</span>
-                <span class="dist-total-label">Total Estimated Revenue</span>
-                <span class="dist-total-val">Rp {f"{total_est_revenue:.2f}".replace(".", ",")} M</span>
+                <span class="dist-total-label">Total Contracts</span>
+                <span class="dist-total-val">{d_rs + d_rs_mo + d_mgrs}</span>
             </div>
             """
             st.markdown(html_dist_footer, unsafe_allow_html=True)
@@ -3135,7 +3157,7 @@ def render_lease_contract(df_raw=None):
                 f'<div class="lc-exp-table-wrap">'
                 f'<table class="custom-table">'
                 f'<thead><tr><th>Tenant</th><th>Terminal</th><th>Contract Type</th>'
-                f'<th>End Date</th><th>Remaining</th><th>Value</th><th>Status</th></tr></thead>'
+                f'<th>End Date</th><th>Remaining</th><th>Contract Value</th><th>Status</th></tr></thead>'
                 f'<tbody>{rows_html}</tbody>'
                 f'</table>'
                 f'</div>'
@@ -3157,10 +3179,9 @@ def render_lease_contract(df_raw=None):
     crit_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] <= 30)]
     for _, r in crit_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "31 Jan 2025"
-        val_m = f"Rp {2.0 + (r['No'] % 10) * 0.9:.1f}M".replace(".", ",")
         dynamic_critical.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
-            "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Critical"
+            "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": "N/A", "status": "Critical"
         })
 
     # Build dynamic list of expiring soon contracts
@@ -3168,10 +3189,9 @@ def render_lease_contract(df_raw=None):
     exp_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] > 30) & (df_all["Sisa"] <= 90)]
     for _, r in exp_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "01 Mar 2025"
-        val_m = f"Rp {4.0 + (r['No'] % 10) * 1.2:.1f}M".replace(".", ",")
         dynamic_expiring.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
-            "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Expiring Soon"
+            "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": "N/A", "status": "Expiring Soon"
         })
 
     # Build dynamic list of approaching renewal contracts (no cap here —
@@ -3180,10 +3200,9 @@ def render_lease_contract(df_raw=None):
     app_df = df_all[(df_all["Status"] == "Valid") & (df_all["Sisa"] > 90)].sort_values(by="Sisa")
     for _, r in app_df.iterrows():
         end_date = r["Valid Period"].split(" - ")[1] if " - " in r["Valid Period"] else "02 May 2025"
-        val_m = f"Rp {2.0 + (r['No'] % 5) * 1.5:.1f}M".replace(".", ",")
         dynamic_approaching.append({
             "tenant": r["Name/Tenant"], "terminal": r["Terminal"], "type": r["Skema"],
-            "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": val_m, "status": "Approaching"
+            "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": "N/A", "status": "Approaching"
         })
 
     # Header card: title + 3 stat pills, all wrapped in one outer card

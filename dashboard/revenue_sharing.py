@@ -82,11 +82,10 @@ def _mount_rs_fixed_header():
     )
 
 RS_FONT = "Inter, sans-serif"
-RS_YEAR_OPTIONS = ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"]
-RS_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-RS_TERMINAL_OPTIONS = ["All Terminal", "T1", "T2", "T3"]
-RS_PERIOD_OPTIONS = ["June 2026", "May 2026", "April 2026"]
+RS_MONTH_ORDER = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
 RS_DONUT_COLORS = ["#6366F1", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#64748B"]
 
 # Fixed icon + color per service, so the donut slice, table row icon, and
@@ -134,7 +133,6 @@ def clear_rs_filters():
     for applied_key, default in _RS_FILTER_DEFAULTS.items():
         st.session_state[applied_key] = default
         st.session_state[f"rs_pend_{applied_key[3:]}"] = default
-    st.session_state.rs_filter_status = "All"
     if "rs_detail_search" in st.session_state:
         st.session_state.rs_detail_search = ""
 
@@ -161,7 +159,7 @@ def _rs_filter_icon_svg(icon_key: str, size: int = 14) -> str:
     )
 
 
-def _render_rs_filter_card(active_count: int = 0) -> None:
+def _render_rs_filter_card(active_count, terminal_options, year_options, month_options) -> None:
     """"Filter Data" card matching the Lease Contract page — filters are
     staged in rs_pend_* widget keys and only take effect once the user
     clicks "Terapkan Filter" / "Bersihkan Semua" / the header "Reset Filter"."""
@@ -193,9 +191,9 @@ def _render_rs_filter_card(active_count: int = 0) -> None:
     st.markdown('<div class="rs-filterrow-marker"></div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3, gap="small")
     field_defs = [
-        (c1, "monitor", "Terminal", RS_TERMINAL_OPTIONS, "rs_pend_terminal"),
-        (c2, "calendar", "Tahun", RS_YEAR_OPTIONS, "rs_pend_year"),
-        (c3, "calendar", "Bulan", RS_MONTH_OPTIONS, "rs_pend_month"),
+        (c1, "monitor", "Terminal", terminal_options, "rs_pend_terminal"),
+        (c2, "calendar", "Tahun", year_options, "rs_pend_year"),
+        (c3, "calendar", "Bulan", month_options, "rs_pend_month"),
     ]
     for col, icon_key, label, options, widget_key in field_defs:
         with col:
@@ -218,15 +216,16 @@ def _render_rs_filter_card(active_count: int = 0) -> None:
 
 def _compute_filtered_kpis(filtered_detail):
     if filtered_detail.empty:
-        return 0, 0, 0, 0
+        return 0, 0
     total_rev = filtered_detail["_total_kontribusi"].sum()
     rev_share = filtered_detail["_pendapatan_rs"].sum()
-    settled_count = (filtered_detail["Settlement Status"] == "Settled").sum()
-    total_count = len(filtered_detail)
-    settlement_rate = int(round(settled_count / total_count * 100)) if total_count else 0
-    issues = int(filtered_detail["Settlement Status"].isin(["Failed", "Conflict"]).sum())
-    return total_rev, rev_share, settlement_rate, issues
-RS_SETTLEMENT_FILTER_OPTIONS = ["All", "Settled", "Pending", "Failed", "Conflict"]
+    return total_rev, rev_share
+
+
+def _pct_change(current, base):
+    if not base:
+        return None
+    return (current - base) / base * 100
 
 
 from .shared_import import get_mapped_column
@@ -244,27 +243,6 @@ def _resolve_col(df: pd.DataFrame, canonical: str) -> str:
         return mapped
     return canonical
 
-
-# ─────────────────────────────────────────────
-# STATUS BADGE FORMATTER
-# ─────────────────────────────────────────────
-def fmt_status_badge(status):
-    colors = {
-        "SUCCESS":  ("rgba(16,185,129,0.12)", "#059669", "rgba(16,185,129,0.24)"),
-        "FAILED":   ("rgba(244,63,94,0.11)",  "#e11d48", "rgba(244,63,94,0.22)"),
-        "CONFLICT": ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
-        "WARNING":  ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
-        "Settled":  ("rgba(16,185,129,0.12)", "#059669", "rgba(16,185,129,0.24)"),
-        "Pending":  ("rgba(245,158,11,0.13)", "#d97706", "rgba(245,158,11,0.24)"),
-        "Failed":   ("rgba(244,63,94,0.11)",  "#e11d48", "rgba(244,63,94,0.22)"),
-        "Conflict": ("rgba(250,204,21,0.16)", "#ca8a04", "rgba(250,204,21,0.28)"),
-    }
-    bg, fg, border = colors.get(status, ("rgba(148,163,184,0.12)", "#64748b", "rgba(148,163,184,0.22)"))
-    return (
-        f'<span style="background:{bg};color:{fg};padding:3px 10px;'
-        f'border:1px solid {border};border-radius:999px;font-size:11px;'
-        f'font-weight:700;letter-spacing:0.2px;white-space:nowrap;">{status}</span>'
-    )
 
 # ─────────────────────────────────────────────
 # DATA TRANSFORMATION FROM REAL EXCEL
@@ -296,11 +274,12 @@ def get_services_data(df: pd.DataFrame):
     return grouped
 
 def get_trend_data_from_df(df: pd.DataFrame):
-    """Real-data equivalent of get_trend_data(), kept for when this chart
-    is wired to the backend; not called yet (see get_trend_data() below,
-    which still drives the dummy/session-state-filtered chart in use)."""
+    """Pivot pendapatan_rs by month x bidang_usaha for the Revenue Trend chart.
+    Returns (pivot_df, unit_label) — unit_label tells the caller which scale
+    (Rp Ribu/Juta/Miliar/Triliun) the values were divided by, chosen
+    dynamically so small data doesn't collapse to near-zero."""
     if df is None or df.empty:
-        return pd.DataFrame(columns=["Bulan"])
+        return pd.DataFrame(columns=["Bulan"]), "Rp"
 
     col_masa = _resolve_col(df, "masa_jasa")
     col_bidang = _resolve_col(df, "bidang_usaha")
@@ -310,13 +289,19 @@ def get_trend_data_from_df(df: pd.DataFrame):
         if col not in df.columns:
             df[col] = 0 if col == col_rs else "Unknown"
 
-    pivot = df.pivot_table(index=col_masa, columns=col_bidang, values=col_rs, aggfunc="sum", fill_value=0)
-    pivot = pivot.reset_index().rename(columns={col_masa: "Bulan"})
+    # Samakan masa_jasa jadi nama bulan penuh ("June") apa pun bentuk
+    # aslinya (tanggal utuh, "Jun-2025", dll), supaya bisa diurutkan
+    # kronologis lewat RS_MONTH_ORDER.
+    parsed_masa = pd.to_datetime(df[col_masa], errors="coerce")
+    bulan = parsed_masa.dt.strftime("%B").where(parsed_masa.notna(), df[col_masa].astype(str))
 
-    # Scale down values to billions for trend chart
-    for col in pivot.columns:
-        if col != "Bulan":
-            pivot[col] = pivot[col] / 1_000_000_000
+    pivot = (
+        df.assign(_bulan=bulan)
+        .pivot_table(index="_bulan", columns=col_bidang, values=col_rs, aggfunc="sum", fill_value=0)
+        .reindex(RS_MONTH_ORDER, fill_value=0)
+        .reset_index()
+        .rename(columns={"_bulan": "Bulan"})
+    )
 
     # Map 'Others' if too many columns
     if len(pivot.columns) > 4:
@@ -325,78 +310,106 @@ def get_trend_data_from_df(df: pd.DataFrame):
         pivot = pivot[["Bulan"] + list(top_cols)].copy()
         pivot["Others"] = others
 
-    return pivot
-
-
-def get_trend_data(terminal_filter="All Terminal"):
-    term_map = {"T1": "Terminal 1", "T2": "Terminal 2", "T3": "Terminal 3"}
-    normalized_filter = term_map.get(terminal_filter, terminal_filter)
-    df = pd.DataFrame({
-        "Bulan":           ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
-        "Ground Handling": [0.9, 1.0, 0.95, 1.1, 1.05, 1.2],
-        "PSC":             [0.7, 0.8, 0.75, 0.85, 0.9, 0.95],
-        "Others":          [0.5, 0.6, 0.55, 0.65, 0.7, 0.8],
-    })
-    if normalized_filter == "Terminal 1":
-        factor = 0.42
-    elif normalized_filter == "Terminal 2":
-        factor = 0.38
-    elif normalized_filter == "Terminal 3":
-        factor = 0.20
+    value_cols = [c for c in pivot.columns if c != "Bulan"]
+    max_val = float(pivot[value_cols].to_numpy().max()) if value_cols and not pivot.empty else 0.0
+    if max_val >= 1_000_000_000_000:
+        divisor, unit_label = 1_000_000_000_000, "Rp Triliun"
+    elif max_val >= 1_000_000_000:
+        divisor, unit_label = 1_000_000_000, "Rp Miliar"
+    elif max_val >= 1_000_000:
+        divisor, unit_label = 1_000_000, "Rp Juta"
+    elif max_val >= 1_000:
+        divisor, unit_label = 1_000, "Rp Ribu"
     else:
-        factor = 1.0
+        divisor, unit_label = 1, "Rp"
+    for col in value_cols:
+        pivot[col] = pivot[col] / divisor
 
-    for col in ["Ground Handling", "PSC", "Others"]:
-        df[col] = df[col] * factor
-    return df
+    return pivot, unit_label
 
 def get_detail_revenue_sharing_data(df: pd.DataFrame):
     if df is None or df.empty:
         return pd.DataFrame(columns=[
-            "Date", "Service/SBU", "Terminal", "Revenue", "Share %",
-            "Management Share", "Settlement Status", "Variance", "Remark", "_raw_status",
-            "_total_kontribusi", "_pendapatan_rs",
+            "Date", "Tenant", "Brand", "Kode Ruang", "Service/SBU", "Terminal", "Omzet",
+            "Revenue", "Share %", "Management Share", "_total_kontribusi",
+            "_pendapatan_rs", "_tahun", "_bulan",
         ])
 
     col_masa = _resolve_col(df, "masa_jasa")
+    col_tahun = _resolve_col(df, "tahun")
+    col_perusahaan = _resolve_col(df, "perusahaan")
+    col_brand = _resolve_col(df, "brand")
+    col_kode_ruang = _resolve_col(df, "kode_ruang")
     col_bidang = _resolve_col(df, "bidang_usaha")
     col_terminal = _resolve_col(df, "terminal")
     col_rs = _resolve_col(df, "pendapatan_rs")
+    col_rs_pct = _resolve_col(df, "rs_percent")
     col_kontribusi = _resolve_col(df, "kontribusi")
 
-    for col in [col_masa, col_bidang, col_terminal, col_rs, col_kontribusi]:
+    for col in [col_masa, col_tahun, col_perusahaan, col_brand, col_kode_ruang, col_bidang, col_terminal, col_rs, col_kontribusi]:
         if col not in df.columns:
-            df[col] = 0 if col in [col_rs, col_kontribusi] else "Unknown"
+            df[col] = 0 if col in [col_rs, col_kontribusi, col_tahun] else "Unknown"
+
+    # masa_jasa kadang berisi tanggal utuh, teks "Jun-2025", atau sudah nama
+    # bulan — samakan jadi nama bulan penuh ("June") supaya filter Bulan
+    # cocok dengan apa pun bentuk aslinya, bukan string-matching yang rapuh.
+    parsed_masa = pd.to_datetime(df[col_masa], errors="coerce")
+    bulan_norm = parsed_masa.dt.strftime("%B").where(parsed_masa.notna(), df[col_masa].astype(str))
+
+    # Omzet basis "menang" -> Share % -> Revenue Sharing, konsisten secara
+    # alur dengan rumus MAX(%RS*MIN OMZET, %RS*REAL OMZET, MGRS*REAL PAX).
+    pendapatan_rs, omzet_basis = _compute_pendapatan_rs_and_omzet(df, col_rs)
 
     result = pd.DataFrame({
         "Date": df[col_masa],
+        "Tenant": df[col_perusahaan],
+        "Brand": df[col_brand],
+        "Kode Ruang": df[col_kode_ruang],
         "Service/SBU": df[col_bidang],
         "Terminal": df[col_terminal],
-        "Revenue": df[col_rs].apply(lambda x: f"Rp {x:,.0f}"),
-        "Share %": "N/A",
+        "Omzet": omzet_basis.apply(lambda x: f"Rp {x:,.0f}"),
+        "Revenue": pendapatan_rs.apply(lambda x: f"Rp {x:,.0f}"),
+        "Share %": (
+            pd.to_numeric(df[col_rs_pct], errors="coerce")
+            .apply(lambda x: f"{x*100:.1f}%".replace(".", ",") if pd.notna(x) and x != 0 else "N/A")
+            if col_rs_pct in df.columns else "N/A"
+        ),
         "Management Share": df[col_kontribusi].apply(lambda x: f"Rp {x:,.0f}"),
-        "Settlement Status": "Settled",
-        "Variance": 0.0,
-        "Remark": "Reconciled",
-        "_raw_status": "SUCCESS",
-        # Kolom numerik tersembunyi untuk KPI cards (tidak ditampilkan di tabel):
+        # Kolom numerik/teks tersembunyi untuk filter & KPI cards (tidak ditampilkan di tabel):
+        "_tahun": pd.to_numeric(df[col_tahun], errors="coerce"),
+        "_bulan": bulan_norm,
         # Total Revenue = sum(total_kontribusi)
         "_total_kontribusi": pd.to_numeric(df[col_kontribusi], errors="coerce").fillna(0),
         # Revenue Share = sum(MAX(%RS*MIN OMZET, %RS*REAL OMZET, MGRS*REAL PAX))
-        "_pendapatan_rs": _compute_pendapatan_rs(df, col_rs),
+        "_pendapatan_rs": pendapatan_rs,
     })
 
     return result
 
 
-def _compute_pendapatan_rs(df: pd.DataFrame, col_rs: str) -> pd.Series:
+def _compute_pendapatan_rs_and_omzet(df: pd.DataFrame, col_rs: str) -> tuple[pd.Series, pd.Series]:
     """Rumus Pendapatan RS: =MAX(%RS*MIN OMZET; %RS*REAL OMZET; MGRS*REAL PAX).
 
-    Banyak data lama hanya menyimpan hasil akhir rumus ini (kolom
-    pendapatan_rs, sudah dihitung di Excel sebelum diimpor) tanpa menyimpan
-    input mentahnya (rs_percent/mgrs_per_pax/real_pax kosong di DB). Jadi
-    nilai pendapatan_rs yang sudah tersimpan dipakai sebagai fallback
-    per baris ketika input mentahnya tidak tersedia.
+    Kolom pendapatan_rs yang sudah tersimpan (hasil rumus ini dari Excel
+    sebelum diimpor) dipakai dulu kalau ada — itu sumber paling bisa
+    dipercaya. Rumus di sini hanya dipakai sebagai fallback kalau
+    pendapatan_rs kosong, KARENA kalau hanya sebagian input mentahnya
+    (rs_percent/mgrs_per_pax/real_pax) yang berhasil ter-import, rumus bisa
+    menghasilkan angka kecil yang salah — bukan 0 — sehingga tanpa urutan
+    prioritas ini nilai pendapatan_rs yang benar malah keabaikan.
+
+    Juga mengembalikan basis Omzet yang "menang" di rumus MAX — supaya
+    kolom Omzet di tabel Detail Revenue Sharing konsisten secara logika
+    dengan kolom Revenue Sharing-nya (Omzet basis -> Share % -> Revenue Sharing).
+
+    - Kalau term %RS*MIN OMZET yang menang -> Omzet = MIN OMZET.
+    - Kalau term %RS*REAL OMZET yang menang -> Omzet = REAL OMZET.
+    - Kalau term MGRS*REAL PAX yang menang (bukan basis omzet sama sekali,
+      melainkan per-pax) -> Omzet tetap pakai REAL OMZET sebagai referensi
+      omzet aktual tenant tersebut.
+    - Kalau pendapatan_rs yang sudah tersimpan dipakai (rumus tidak
+      dieksekusi karena datanya sudah ada), tidak ada "term pemenang" untuk
+      diacu -> Omzet juga pakai REAL OMZET sebagai referensi.
     """
     col_rs_percent = _resolve_col(df, "rs_percent")
     col_min_omzet = _resolve_col(df, "min_omzet")
@@ -416,13 +429,21 @@ def _compute_pendapatan_rs(df: pd.DataFrame, col_rs: str) -> pd.Series:
     real_pax = _num(col_real_pax)
     existing_rs = _num(col_rs)
 
-    formula_value = pd.concat([
-        rs_percent * min_omzet,
-        rs_percent * real_omzet,
-        mgrs_per_pax * real_pax,
-    ], axis=1).max(axis=1)
+    term_min = rs_percent * min_omzet
+    term_real = rs_percent * real_omzet
+    term_mgrs = mgrs_per_pax * real_pax
+    terms = pd.concat([term_min, term_real, term_mgrs], axis=1)
+    terms.columns = ["min", "real", "mgrs"]
 
-    return formula_value.where(formula_value > 0, existing_rs)
+    formula_value = terms.max(axis=1)
+    final_rs = existing_rs.where(existing_rs > 0, formula_value)
+
+    using_formula = existing_rs <= 0
+    winner = terms.idxmax(axis=1)
+    omzet_basis = real_omzet.copy()
+    omzet_basis = omzet_basis.where(~(using_formula & (winner == "min")), min_omzet)
+
+    return final_rs, omzet_basis
 
 
 
@@ -552,16 +573,18 @@ def _filter_select_label(value):
     return "Filter" if value == "All" else value
 
 
-def _kpi_card(label, value, delta, delta_up, accent, icon):
+def _kpi_card(label, value, delta_pct, accent, icon):
+    has_delta = delta_pct is not None
+    delta_up = has_delta and delta_pct >= 0
     delta_bg = "#DCFCE7" if delta_up else "#FEE2E2"
     delta_fg = "#059669" if delta_up else "#DC2626"
     arrow = "↑" if delta_up else "↓"
-    
+
     # Process unit to extract prefix (like "Rp") and suffix (like "M", "Jt", or empty)
     prefix = ""
     val_part = value
     suffix = ""
-    
+
     if value.startswith("Rp"):
         prefix = "Rp "
         rest = value[2:].strip()
@@ -574,14 +597,26 @@ def _kpi_card(label, value, delta, delta_up, accent, icon):
                 break
         else:
             val_part = rest
-            
+
     # Swap dots and commas for values and deltas
     if not value.startswith("Rp"):
         val_part = val_part.translate(str.maketrans({',': '.', '.': ','}))
-    delta_formatted = delta.translate(str.maketrans({',': '.', '.': ','}))
-    
+
     unit_span = f'<span class="kpi-pro-unit" style="font-size:14px;color:#64748b;margin-left:4px;font-weight:600;">{escape(suffix)}</span>' if suffix else ""
-    
+
+    # Tanpa data periode sebelumnya, tidak ada apa pun yang bisa dibandingkan —
+    # sembunyikan baris delta sepenuhnya daripada menampilkan angka palsu.
+    if has_delta:
+        delta_formatted = f"{abs(delta_pct):.1f}%".replace(".", ",")
+        delta_html = (
+            f'<div class="overview-kpi-delta">'
+            f'<strong style="background:{delta_bg};color:{delta_fg};">{arrow} {escape(delta_formatted)}</strong> '
+            f'vs periode sebelumnya'
+            f'</div>'
+        )
+    else:
+        delta_html = ""
+
     html = (
         f'<div class="overview-kpi-card rs-kpi-card">'
         f'<div class="overview-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>'
@@ -591,10 +626,7 @@ def _kpi_card(label, value, delta, delta_up, accent, icon):
         f'<span class="kpi-val-num">{escape(prefix)}{escape(val_part)}</span>'
         f'{unit_span}'
         f'</div>'
-        f'<div class="overview-kpi-delta">'
-        f'<strong style="background:{delta_bg};color:{delta_fg};">{arrow} {escape(delta_formatted)}</strong> '
-        f'vs periode sebelumnya'
-        f'</div>'
+        f'{delta_html}'
         f'</div>'
         f'</div>'
     )
@@ -888,7 +920,7 @@ def _inject_rs_page_css():
 
     body:has(.rs-page-marker) .rs-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
         width: 100%;
         margin: 0;
@@ -1248,25 +1280,16 @@ def _inject_rs_page_css():
     """, unsafe_allow_html=True)
 
 
-def _compute_kpis(services_df):
-    total_revenue = services_df["Gross Revenue"].map(_parse_rp).sum()
-    revenue_share = services_df["Management Share"].map(_parse_rp).sum()
-    success_count = (services_df["Status"] == "SUCCESS").sum()
-    settlement_rate = int(round(success_count / len(services_df) * 100)) if len(services_df) else 0
-    issues = int((services_df["Status"] != "SUCCESS").sum())
-    return total_revenue, revenue_share, settlement_rate, issues
-
-
 def _build_revenue_alerts(services_df):
     alerts = []
     if services_df.empty:
         return alerts
-        
-    top_svc = services_df.iloc[services_df["Gross Revenue"].map(_parse_rp).argmax()]
+
+    top_svc = services_df.loc[services_df["_pendapatan_rs"].idxmax()]
     alerts.append(_alert_card_html(
         "positive", "✓",
-        f"{top_svc['Service/SBU']} memiliki revenue tertinggi",
-        f"Kontribusi management share {top_svc['Management Share']}",
+        f"{top_svc['Service/SBU']} memberikan Revenue Sharing terbesar",
+        f"Total Revenue Sharing {_fmt_rp_compact(top_svc['_pendapatan_rs'])}",
     ))
     return alerts
 
@@ -1300,7 +1323,7 @@ def _donut_figure(services_df, total_revenue):
     return fig
 
 
-def _trend_figure(df_trend):
+def _trend_figure(df_trend, unit_label="Rp"):
     fig = go.Figure()
     if df_trend is None or df_trend.empty or "Bulan" not in df_trend.columns:
         trend_columns = []
@@ -1324,11 +1347,11 @@ def _trend_figure(df_trend):
             line=dict(color=color, width=2.5),
             marker=dict(size=6, color="#ffffff", line=dict(color=color, width=2)),
         ))
-    y_max = 1.6
+    y_max = 1.0
     if trend_columns:
         max_value = df_trend[trend_columns].max(numeric_only=True).max()
         if pd.notna(max_value) and max_value > 0:
-            y_max = max(1.6, float(max_value) * 1.2)
+            y_max = float(max_value) * 1.2
     fig.update_layout(
         autosize=True,
         height=300,
@@ -1347,7 +1370,7 @@ def _trend_figure(df_trend):
         ),
         xaxis=dict(showgrid=False, tickfont=dict(family=RS_FONT, size=11, color="#64748B"), fixedrange=True),
         yaxis=dict(
-            title=dict(text="Rp Miliar", font=dict(family=RS_FONT, size=11, color="#64748B")),
+            title=dict(text=unit_label, font=dict(family=RS_FONT, size=11, color="#64748B")),
             showgrid=True,
             gridcolor="#E2E8F0",
             zeroline=False,
@@ -1390,12 +1413,9 @@ def page_revenue_sharing(df_raw=None):
         ("rs_month", "All Month"),
         ("rs_terminal", "All Terminal"),
         ("rs_detail_page", 1),
-        ("rs_filter_status", "All"),
     ]:
         if key not in st.session_state:
             st.session_state[key] = default
-    if st.session_state.get("rs_filter_status") not in RS_SETTLEMENT_FILTER_OPTIONS:
-        st.session_state.rs_filter_status = "All"
 
     for pend_key, applied_key in (
         ("rs_pend_terminal", "rs_terminal"), ("rs_pend_year", "rs_year"), ("rs_pend_month", "rs_month"),
@@ -1409,6 +1429,34 @@ def page_revenue_sharing(df_raw=None):
         st.session_state.get("rs_terminal", "All Terminal") != "All Terminal",
     ])
 
+    # Load granular detail dataframe — opsi filter & filtering itu sendiri
+    # sama-sama bersumber dari sini, supaya dropdown selalu cocok dengan apa
+    # yang sebenarnya ada di data (bukan daftar tahun/bulan/terminal statis).
+    detail_df_raw = get_detail_revenue_sharing_data(df_raw)
+
+    terminal_options = ["All Terminal"] + sorted(
+        v for v in detail_df_raw["Terminal"].dropna().unique().tolist() if v != "Unknown"
+    )
+    year_options = ["All Year"] + [
+        str(y) for y in sorted(detail_df_raw["_tahun"].dropna().unique().tolist(), reverse=True)
+    ]
+    bulan_values = set(detail_df_raw["_bulan"].dropna().unique().tolist())
+    month_options = ["All Month"] + [m for m in RS_MONTH_ORDER if m in bulan_values]
+
+    if st.session_state.get("rs_terminal") not in terminal_options:
+        st.session_state.rs_terminal = terminal_options[0]
+    if st.session_state.get("rs_year") not in year_options:
+        st.session_state.rs_year = year_options[0]
+    if st.session_state.get("rs_month") not in month_options:
+        st.session_state.rs_month = month_options[0]
+    for pend_key, applied_key, options in (
+        ("rs_pend_terminal", "rs_terminal", terminal_options),
+        ("rs_pend_year", "rs_year", year_options),
+        ("rs_pend_month", "rs_month", month_options),
+    ):
+        if st.session_state.get(pend_key) not in options:
+            st.session_state[pend_key] = st.session_state[applied_key]
+
     st.markdown('<div class="overview-page-marker rs-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     _inject_rs_page_css()
 
@@ -1420,40 +1468,30 @@ def page_revenue_sharing(df_raw=None):
     st.markdown('<div class="ov-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
 
     with st.container(border=True):
-        _render_rs_filter_card(active_count)
+        _render_rs_filter_card(active_count, terminal_options, year_options, month_options)
 
     _mount_rs_fixed_header()
-
-
-    MONTH_MAP = {
-        "Jan": "Jan", "Feb": "Feb", "Mar": "Mar", "Apr": "Apr",
-        "May": "Mei", "Jun": "Jun", "Jul": "Jul", "Aug": "Aug",
-        "Sep": "Sep", "Oct": "Oct", "Nov": "Nov", "Dec": "Dec"
-    }
-
-    # Load granular detail dataframe
-    detail_df_raw = get_detail_revenue_sharing_data(df_raw)
 
     # Apply global filters (Year, Month, Terminal)
     filtered_detail = detail_df_raw.copy()
     if st.session_state.rs_year != "All Year":
-        filtered_detail = filtered_detail[filtered_detail["Date"].str.endswith(st.session_state.rs_year)]
+        filtered_detail = filtered_detail[filtered_detail["_tahun"] == int(st.session_state.rs_year)]
     if st.session_state.rs_month != "All Month":
-        month_abbr = MONTH_MAP.get(st.session_state.rs_month)
-        if month_abbr:
-            filtered_detail = filtered_detail[filtered_detail["Date"].str.contains(month_abbr, case=False)]
+        filtered_detail = filtered_detail[filtered_detail["_bulan"] == st.session_state.rs_month]
     if st.session_state.rs_terminal != "All Terminal":
-        term_map = {"T1": "Terminal 1", "T2": "Terminal 2", "T3": "Terminal 3"}
-        normalized_term = term_map.get(st.session_state.rs_terminal, st.session_state.rs_terminal)
-        filtered_detail = filtered_detail[filtered_detail["Terminal"] == normalized_term]
+        filtered_detail = filtered_detail[filtered_detail["Terminal"] == st.session_state.rs_terminal]
 
     # Dynamically build SBU services summary from filtered details
     if not filtered_detail.empty:
         grouped_svc = filtered_detail.groupby("Service/SBU").agg(
-            Gross_Revenue_Val=("Revenue", lambda x: x.map(_parse_rp).sum()),
+            # Donut "Revenue Contribution by Service" pakai Total Kontribusi,
+            # supaya konsisten dengan total di tengah donut (juga dari kontribusi).
+            Gross_Revenue_Val=("Management Share", lambda x: x.map(_parse_rp).sum()),
             Mgmt_Share_Val=("Management Share", lambda x: x.map(_parse_rp).sum()),
+            # Revenue Sharing asli (pendapatan_rs) per kategori — dipakai khusus
+            # untuk "Revenue Alerts", terpisah dari Total Kontribusi di donut.
+            RS_Val=("_pendapatan_rs", "sum"),
             Share_Rule=("Share %", "first"),
-            Status=("Settlement Status", lambda x: "SUCCESS" if (x == "Settled").all() else "FAILED")
         ).reset_index()
 
         services_df = pd.DataFrame({
@@ -1461,24 +1499,58 @@ def page_revenue_sharing(df_raw=None):
             "Gross Revenue": grouped_svc["Gross_Revenue_Val"].map(_fmt_rp_compact),
             "SBU Share Rule %": grouped_svc["Share_Rule"],
             "Management Share": grouped_svc["Mgmt_Share_Val"].map(_fmt_rp_compact),
-            "Status": grouped_svc["Status"]
+            "_pendapatan_rs": grouped_svc["RS_Val"],
         })
     else:
-        services_df = pd.DataFrame(columns=["Service/SBU", "Gross Revenue", "SBU Share Rule %", "Management Share", "Status"])
+        services_df = pd.DataFrame(columns=["Service/SBU", "Gross Revenue", "SBU Share Rule %", "Management Share", "_pendapatan_rs"])
 
     # Compute KPIs
-    total_revenue, revenue_share, settlement_rate, issues = _compute_filtered_kpis(filtered_detail)
+    total_revenue, revenue_share = _compute_filtered_kpis(filtered_detail)
+
+    # Periode pembanding: tahun yang sama dikurangi 1, dengan filter bulan &
+    # terminal yang sama. Tanpa tahun spesifik dipilih ("All Year"), tidak ada
+    # satu "tahun sebelumnya" yang jelas, jadi delta-nya N/A.
+    if st.session_state.rs_year != "All Year":
+        prior_year = int(st.session_state.rs_year) - 1
+        prior_detail = detail_df_raw.copy()
+        prior_detail = prior_detail[prior_detail["_tahun"] == prior_year]
+        if st.session_state.rs_month != "All Month":
+            prior_detail = prior_detail[prior_detail["_bulan"] == st.session_state.rs_month]
+        if st.session_state.rs_terminal != "All Terminal":
+            prior_detail = prior_detail[prior_detail["Terminal"] == st.session_state.rs_terminal]
+        prior_revenue, prior_share = _compute_filtered_kpis(prior_detail)
+        revenue_delta = _pct_change(total_revenue, prior_revenue)
+        share_delta = _pct_change(revenue_share, prior_share)
+    else:
+        revenue_delta = None
+        share_delta = None
 
     st.markdown(
         _kpi_grid_html(
-            _kpi_card("Total Revenue", _fmt_rp_compact(total_revenue), "5.2%", True, "#2563EB", "Rp"),
-            _kpi_card("Revenue Share", _fmt_rp_compact(revenue_share), "3.1%", True, "#7C3AED", "%"),
-            _kpi_card("Issues", str(issues), "2 vs May 2026", False, "#DC2626", "!"),
+            _kpi_card("Total Revenue", _fmt_rp_compact(total_revenue), revenue_delta, "#2563EB", "Rp"),
+            _kpi_card("Revenue Share", _fmt_rp_compact(revenue_share), share_delta, "#7C3AED", "%"),
         ),
         unsafe_allow_html=True,
     )
 
     st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
+
+    # Sumber trend chart: df_raw mentah (bukan detail_df_raw yang sudah
+    # diformat jadi teks "Rp ..."), difilter Tahun & Terminal yang sama
+    # dengan filter aktif di halaman ini.
+    trend_source = df_raw.copy() if df_raw is not None else pd.DataFrame()
+    if not trend_source.empty:
+        if st.session_state.rs_year != "All Year":
+            col_tahun_raw = _resolve_col(trend_source, "tahun")
+            if col_tahun_raw in trend_source.columns:
+                trend_source = trend_source[
+                    pd.to_numeric(trend_source[col_tahun_raw], errors="coerce") == int(st.session_state.rs_year)
+                ]
+        if st.session_state.rs_terminal != "All Terminal":
+            col_terminal_raw = _resolve_col(trend_source, "terminal")
+            if col_terminal_raw in trend_source.columns:
+                trend_source = trend_source[trend_source[col_terminal_raw] == st.session_state.rs_terminal]
+    trend_df, trend_unit_label = get_trend_data_from_df(trend_source)
 
     chart_left, chart_right = st.columns([46, 54], gap="small")
     with chart_left:
@@ -1491,8 +1563,18 @@ def page_revenue_sharing(df_raw=None):
                 unsafe_allow_html=True,
             )
         with ch2:
+            if st.session_state.rs_year != "All Year":
+                fy_label = f"FY {st.session_state.rs_year}"
+            else:
+                years = sorted(filtered_detail["_tahun"].dropna().unique().tolist())
+                if len(years) == 1:
+                    fy_label = f"FY {int(years[0])}"
+                elif len(years) > 1:
+                    fy_label = f"FY {int(years[0])}–{int(years[-1])}"
+                else:
+                    fy_label = "All Year"
             st.markdown(
-                f'<div class="rs-fy-pill">{_rs_service_icon_svg("calendar")}<span>FY 2024</span></div>',
+                f'<div class="rs-fy-pill">{_rs_service_icon_svg("calendar")}<span>{fy_label}</span></div>',
                 unsafe_allow_html=True,
             )
         chart_slot, legend_slot = st.columns([1.05, 1], gap="small")
@@ -1512,7 +1594,7 @@ def page_revenue_sharing(df_raw=None):
             f'<span class="rs-donut-footnote-icon">{_rs_service_icon_svg("bar-chart")}</span>'
             '<div class="rs-donut-footnote-copy">'
             f'<p>{len(services_df)} layanan berkontribusi terhadap total gross revenue</p>'
-            '<p class="rs-donut-footnote-sub">Sumber: Data Finance FY 2024</p>'
+            f'<p class="rs-donut-footnote-sub">Sumber: Data Finance {fy_label}</p>'
             '</div>'
             '</div>',
             unsafe_allow_html=True,
@@ -1521,12 +1603,12 @@ def page_revenue_sharing(df_raw=None):
     with chart_right:
         st.markdown('<div class="ed-card-marker rs-trend-card"></div>', unsafe_allow_html=True)
         st.markdown(
-            '<p class="ed-section-title">Revenue Trend</p>'
-            '<p class="ed-section-sub">Monthly revenue trend by service category (Rp billion)</p>',
+            f'<p class="ed-section-title">Revenue Trend</p>'
+            f'<p class="ed-section-sub">Monthly revenue trend by service category ({trend_unit_label})</p>',
             unsafe_allow_html=True,
         )
         st.plotly_chart(
-            _trend_figure(get_trend_data(st.session_state.rs_terminal)),
+            _trend_figure(trend_df, trend_unit_label),
             use_container_width=True,
             config={"displayModeBar": False},
         )
@@ -1557,8 +1639,16 @@ def page_revenue_sharing(df_raw=None):
         if col not in tenant_df.columns:
             tenant_df[col] = 0 if col in ("real_omzet", "min_omzet", "luas_sqm", "kontribusi") else "Tidak diketahui"
     if not tenant_df.empty:
-        tenant_df["acv"] = (tenant_df["real_omzet"] / tenant_df["min_omzet"].replace(0, pd.NA) * 100).fillna(0)
-        tenant_df["rev_sqm"] = (tenant_df["real_omzet"] / tenant_df["luas_sqm"].replace(0, pd.NA)).fillna(0)
+        # Pakai kolom acv asli dari data kalau terisi; rumus real_omzet/min_omzet
+        # cuma fallback kalau memang kosong di sumbernya (sama seperti Overview).
+        # Sel ACV di Excel berformat persen, nilai mentahnya pecahan (1 = 100%),
+        # jadi dikali 100 dulu supaya skalanya sama dengan rumus fallback.
+        acv_raw = pd.to_numeric(tenant_df["acv"], errors="coerce") if "acv" in tenant_df.columns else pd.Series(pd.NA, index=tenant_df.index)
+        acv_raw = acv_raw * 100
+        acv_fallback = (tenant_df["real_omzet"] / tenant_df["min_omzet"].replace(0, pd.NA) * 100).fillna(0)
+        tenant_df["acv"] = acv_raw.where(acv_raw.notna() & (acv_raw != 0), acv_fallback)
+        # Rev/Sqm = Total Kontribusi / Produksi M2 (luas_sqm), bukan Real Omzet / luas_sqm.
+        tenant_df["rev_sqm"] = (tenant_df["kontribusi"] / tenant_df["luas_sqm"].replace(0, pd.NA)).fillna(0)
 
     if tenant_df.empty:
         tenant_summary = pd.DataFrame(columns=["perusahaan", "brand", "real_revenue", "acv", "contribution"])
@@ -1659,12 +1749,16 @@ def page_revenue_sharing(df_raw=None):
         if search_query:
             q = search_query.lower().strip()
             detail_df = detail_df[
-                detail_df["Service/SBU"].astype(str).str.lower().str.contains(q, na=False)
+                detail_df["Tenant"].astype(str).str.lower().str.contains(q, na=False)
+                | detail_df["Brand"].astype(str).str.lower().str.contains(q, na=False)
+                | detail_df["Kode Ruang"].astype(str).str.lower().str.contains(q, na=False)
+                | detail_df["Service/SBU"].astype(str).str.lower().str.contains(q, na=False)
                 | detail_df["Terminal"].astype(str).str.lower().str.contains(q, na=False)
             ]
 
-        export_df = detail_df[["Date", "Service/SBU", "Terminal", "Revenue", "Share %", "Management Share"]].copy()
-        for col in ["Revenue", "Share %", "Management Share"]:
+        export_df = detail_df[["Tenant", "Brand", "Kode Ruang", "Terminal", "Service/SBU", "Omzet", "Share %", "Revenue"]].copy()
+        export_df.columns = ["Tenant", "Brand", "Kode Ruang", "Terminal", "Service", "Omzet", "Share %", "Revenue Sharing"]
+        for col in ["Omzet", "Share %", "Revenue Sharing"]:
             export_df[col] = export_df[col].apply(lambda x: str(x).translate(str.maketrans({",": ".", ".": ","})))
 
         with dex:
@@ -1696,17 +1790,17 @@ def page_revenue_sharing(df_raw=None):
         end_idx = start_idx + rows_per_page
         detail_view = detail_df.iloc[start_idx:end_idx].copy()
         # Translate static numeric strings (e.g. "Rp 12.1M" -> "Rp 12,1M") to Indonesian format
+        detail_view["Omzet"] = detail_view["Omzet"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
         detail_view["Revenue"] = detail_view["Revenue"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
-        detail_view["Management Share"] = detail_view["Management Share"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
         detail_view["Share %"] = detail_view["Share %"].apply(lambda x: str(x).translate(str.maketrans({',': '.', '.': ','})))
         detail_view = detail_view[[
-            "Date", "Service/SBU", "Terminal", "Revenue", "Share %",
-            "Management Share",
+            "Tenant", "Brand", "Kode Ruang", "Terminal", "Service/SBU", "Omzet", "Share %", "Revenue",
         ]]
+        detail_view.columns = ["Tenant", "Brand", "Kode Ruang", "Terminal", "Service", "Omzet", "Share %", "Revenue Sharing"]
         detail_align = {
-            "Revenue": "right",
+            "Omzet": "right",
             "Share %": "right",
-            "Management Share": "right",
+            "Revenue Sharing": "right",
         }
         st.markdown(_enterprise_table_inner_html(detail_view, col_align=detail_align), unsafe_allow_html=True)
 

@@ -1,8 +1,8 @@
 from .navigation import show_topnav, topnav_actions_html
 from .accrual_billing import page_accrual_billing
-from .revenue_sharing import page_revenue_sharing
+from .revenue_sharing import page_revenue_sharing, get_detail_revenue_sharing_data
 from .room_database import render_room_database
-from .lease_contract import render_lease_contract
+from .lease_contract import render_lease_contract, _get_contract_source_data
 from .import_manager import render_import_manager
 from .Data_verification import render_data_verification
 from .traffic_monitor import page_traffic_monitor
@@ -1414,6 +1414,9 @@ def inject_dashboard_css():
         margin-top: 12px;
         margin-bottom: 14px;
         flex: 1 1 auto;
+        max-height: 360px;
+        overflow-y: auto;
+        padding-right: 4px;
     }
 
     .ed-alert-item {
@@ -2441,12 +2444,6 @@ def _pct_change(current, base):
     return (current - base) / base * 100
 
 
-def _fmt_delta_pct(delta_pct):
-    if delta_pct is None:
-        return "N/A"
-    return f"{delta_pct:+.1f}%".replace(".", ",")
-
-
 def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar_label):
     has_delta = delta_pct is not None
     is_down = has_delta and delta_pct < 0
@@ -2461,11 +2458,27 @@ def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar
         prefix = "Rp "
         display_unit = unit[2:].strip()
 
-    unit_span = f'<span class="kpi-pro-unit"> {escape(display_unit)}</span>' if display_unit else ""
+    unit_gap = "" if display_unit == "%" else " "
+    unit_span = f'<span class="kpi-pro-unit">{unit_gap}{escape(display_unit)}</span>' if display_unit else ""
 
     # Format percentage display to Indonesian decimal format
     formatted_pct = f"{arrow} {abs(delta_pct):.1f}%".replace(".", ",") if has_delta else "N/A"
-    
+
+    # Tanpa data pembanding, baris label + progress bar di footer tidak punya
+    # makna apa pun untuk ditampilkan (bar_width fallback bukan nilai nyata) —
+    # daripada terlihat seperti ada angka 50%, footer ini disembunyikan saja.
+    foot_html = (
+        f'<div class="kpi-pro-foot">'
+        f'<div class="kpi-pro-bar-row">'
+        f'<span>{escape(bar_label)}</span>'
+        f'<span style="color:{accent};">{formatted_pct}</span>'
+        f'</div>'
+        f'<div class="kpi-pro-bar-track">'
+        f'<div class="kpi-pro-bar-fill" style="width:{bar_width:.0f}%;background:{accent};"></div>'
+        f'</div>'
+        f'</div>'
+    ) if has_delta else ""
+
     html = (
         f'<div class="kpi-pro-card">'
         f'<div class="kpi-pro-head">'
@@ -2480,15 +2493,7 @@ def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar
         f'</div>'
         f'<div class="kpi-pro-sub">{escape(subtitle)}</div>'
         f'</div>'
-        f'<div class="kpi-pro-foot">'
-        f'<div class="kpi-pro-bar-row">'
-        f'<span>{escape(bar_label)}</span>'
-        f'<span style="color:{accent};">{formatted_pct}</span>'
-        f'</div>'
-        f'<div class="kpi-pro-bar-track">'
-        f'<div class="kpi-pro-bar-fill" style="width:{bar_width:.0f}%;background:{accent};"></div>'
-        f'</div>'
-        f'</div>'
+        f'{foot_html}'
         f'</div>'
     )
     return html
@@ -2502,7 +2507,6 @@ def _alert_item_html(icon, accent, title, subtitle):
             <p class="ed-alert-title">{escape(title)}</p>
             <p class="ed-alert-sub">{escape(subtitle)}</p>
         </div>
-        <div style="color:#94A3B8;font-weight:900;">&gt;</div>
     </div>
     """).strip()
 
@@ -3082,7 +3086,16 @@ def _overview_normalize_and_ensure_columns(df_raw):
     # Derived per-row metrics the rest of the page expects to already exist.
     df["rev_sqm"] = df["real_omzet"] / df["luas_sqm"].replace(0, pd.NA)
     df["rev_sqm"] = pd.to_numeric(df["rev_sqm"], errors="coerce").fillna(0)
-    df["acv"] = (df["real_omzet"] / df["min_omzet"].replace(0, pd.NA) * 100).round(2)
+
+    # Kolom acv (% ACV) dari Excel/database dipakai apa adanya kalau terisi;
+    # baru dihitung dari real_omzet/min_omzet kalau memang kosong di sumbernya.
+    # Sel ACV di Excel berformat persen (mis. "100,00%"), jadi nilai mentahnya
+    # tersimpan sebagai pecahan (1 = 100%) — perlu dikali 100 dulu supaya
+    # satuannya sama dengan hasil rumus fallback (yang sudah dalam skala 0-100).
+    acv_raw = pd.to_numeric(df["acv"], errors="coerce") if "acv" in df.columns else pd.Series(pd.NA, index=df.index)
+    acv_raw = acv_raw * 100
+    acv_fallback = (df["real_omzet"] / df["min_omzet"].replace(0, pd.NA) * 100).round(2)
+    df["acv"] = acv_raw.where(acv_raw.notna() & (acv_raw != 0), acv_fallback)
     df["acv"] = pd.to_numeric(df["acv"], errors="coerce").fillna(0)
 
     return df
@@ -3599,8 +3612,7 @@ def page_overview(df_raw):
     total_contribution = _safe_sum("kontribusi")
     total_sqm          = _safe_sum("luas_sqm")
     total_pax          = _safe_sum("total_trafik")
-    target_omzet       = _safe_sum("min_omzet")
-    avg_contract_value = _safe_mean("min_omzet")
+    avg_acv            = _safe_mean("acv")
     rev_per_sqm        = (total_contribution / total_sqm) if total_sqm else 0
     spending_per_pax   = (total_contribution / total_pax) if total_pax else 0
 
@@ -3613,7 +3625,7 @@ def page_overview(df_raw):
     prior_contribution     = _psum("kontribusi")
     prior_sqm              = _psum("luas_sqm")
     prior_pax              = _psum("total_trafik")
-    prior_avg_contract     = _pmean("min_omzet")
+    prior_avg_acv          = _pmean("acv")
     prior_rev_per_sqm      = (prior_contribution / prior_sqm) if prior_sqm else 0
     prior_spending_per_pax = (prior_contribution / prior_pax) if prior_pax else 0
 
@@ -3623,7 +3635,10 @@ def page_overview(df_raw):
     contrib_val, contrib_scale = _compact_number(total_contribution)
     spend_val, spend_scale = _compact_number(spending_per_pax, decimals=0)
     revsqm_val, revsqm_scale = _compact_number(rev_per_sqm, decimals=2)
-    acv_val, acv_scale = _compact_number(avg_contract_value)
+    # Tampilkan ",0" hanya kalau memang ada pecahannya (90,7%), bukan untuk
+    # angka bulat seperti 100% yang tidak pernah ditulis "100,0%".
+    acv_decimals = 0 if float(round(avg_acv, 1)).is_integer() else 1
+    acv_val, acv_scale = _compact_number(avg_acv, decimals=acv_decimals)
     traffic_val, traffic_scale = _compact_number(total_pax)
 
     contribution_delta = _pct_change(total_contribution, prior_contribution)
@@ -3633,26 +3648,26 @@ def page_overview(df_raw):
 
     kpi_cards = [
         _kpi_pro_card("Real Omzet", omzet_val, f"Rp {omzet_scale}".strip(),
-                       f"Target: {_fmt_rp_compact(target_omzet)}",
-                       _pct_change(real_revenue, target_omzet), "#4F46E5", "omzet", "vs target"),
+                       "Total realisasi omzet",
+                       None, "#4F46E5", "omzet", "vs target"),
         _kpi_pro_card("Revenue Sharing", rs_val, f"Rp {rs_scale}".strip(),
-                       f"YoY {_fmt_delta_pct(revenue_sharing_delta)}",
+                       "Total bagi hasil pendapatan",
                        revenue_sharing_delta, "#0891B2", "layers", "YoY growth"),
         _kpi_pro_card("Rental Revenue", rental_val, f"Rp {rental_scale}".strip(),
-                       f"vs {_fmt_rp_compact(prior_rental_revenue)} prior",
+                       "Total pendapatan sewa",
                        _pct_change(rental_revenue, prior_rental_revenue), "#2563EB", "file", "vs prior yr"),
         _kpi_pro_card("Total Contribution", contrib_val, f"Rp {contrib_scale}".strip(),
-                       f"{_fmt_delta_pct(contribution_delta)} vs prior period",
+                       "Total kontribusi tenant",
                        contribution_delta, "#059669", "bars", "vs prior yr"),
         _kpi_pro_card("Spending per Pax", spend_val, f"Rp {spend_scale}".strip(),
-                       f"{_fmt_delta_pct(spending_delta)} vs prior period",
+                       "Kontribusi rata-rata per pengunjung",
                        spending_delta, "#D97706", "users", "vs prior yr"),
-        _kpi_pro_card("Rev / SQM", revsqm_val, f"Rp {revsqm_scale}".strip(),
-                       "per sqm · annual",
+        _kpi_pro_card("Rev / SQM", revsqm_val, f"Rp {revsqm_scale}/m2".strip(),
+                       "Revenue per square meter",
                        _pct_change(rev_per_sqm, prior_rev_per_sqm), "#E11D48", "expand", "YoY"),
-        _kpi_pro_card("ACV", acv_val, f"Rp {acv_scale}".strip(),
-                       "Avg Contract Value",
-                       _pct_change(avg_contract_value, prior_avg_contract), "#7C3AED", "award", "vs prior yr"),
+        _kpi_pro_card("ACV", acv_val, f"{acv_scale}%".strip(),
+                       "Rata-rata ACV tenant",
+                       _pct_change(avg_acv, prior_avg_acv), "#7C3AED", "award", "vs prior yr"),
         _kpi_pro_card("Total Traffic", traffic_val, f"{traffic_scale} pax".strip(),
                        traffic_subtitle,
                        _pct_change(total_pax, prior_pax), "#2563EB", "plane", "YoY growth"),
@@ -3673,7 +3688,6 @@ def page_overview(df_raw):
     main_left, main_right = st.columns([65, 35], gap="small")
     with main_left:
         st.markdown('<div class="ed-card-marker overview-trend-card"></div>', unsafe_allow_html=True)
-        st.markdown('<p class="ed-section-title">Revenue Trend</p><p class="ed-section-sub">Monthly revenue, sharing, and contribution in Rp billion</p>', unsafe_allow_html=True)
 
         trend = (
             df.groupby("masa_jasa")
@@ -3687,22 +3701,42 @@ def page_overview(df_raw):
             .rename(columns={"index": "masa_jasa"})
         )
         trend["month"] = trend["masa_jasa"].astype(str).str[:3]
+
+        # Skala mengikuti besar data asli (Ribu/Juta/Miliar/Triliun), bukan
+        # dipatok "Rp Miliar" terus — data kecil jadi mendekati nol & susah
+        # dibaca kalau dipaksa pakai skala miliar.
+        max_val = float(trend[["real_revenue", "revenue_sharing", "contribution"]].to_numpy().max() or 0)
+        if max_val >= 1_000_000_000_000:
+            divisor, unit_label = 1_000_000_000_000, "Rp Triliun"
+        elif max_val >= 1_000_000_000:
+            divisor, unit_label = 1_000_000_000, "Rp Miliar"
+        elif max_val >= 1_000_000:
+            divisor, unit_label = 1_000_000, "Rp Juta"
+        elif max_val >= 1_000:
+            divisor, unit_label = 1_000, "Rp Ribu"
+        else:
+            divisor, unit_label = 1, "Rp"
+
+        st.markdown(
+            f'<p class="ed-section-title">Revenue Trend</p>'
+            f'<p class="ed-section-sub">Monthly revenue, sharing, and contribution in {unit_label}</p>',
+            unsafe_allow_html=True,
+        )
+
+        line_specs = [
+            ("real_revenue", "Real Revenue", "#2563EB"),
+            ("revenue_sharing", "Revenue Sharing", "#7C3AED"),
+            ("contribution", "Contribution", "#059669"),
+        ]
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=trend["month"], y=trend["real_revenue"] / 1_000_000_000,
-            mode="lines+markers", name="Real Revenue",
-            line=dict(color="#2563EB", width=2.5), marker=dict(size=6),
-        ))
-        fig.add_trace(go.Scatter(
-            x=trend["month"], y=trend["revenue_sharing"] / 1_000_000_000,
-            mode="lines+markers", name="Revenue Sharing",
-            line=dict(color="#7C3AED", width=2.5), marker=dict(size=6),
-        ))
-        fig.add_trace(go.Scatter(
-            x=trend["month"], y=trend["contribution"] / 1_000_000_000,
-            mode="lines+markers", name="Contribution",
-            line=dict(color="#059669", width=2.5), marker=dict(size=6),
-        ))
+        for col, name, color in line_specs:
+            fig.add_trace(go.Scatter(
+                x=trend["month"], y=trend[col] / divisor,
+                mode="lines+markers", name=name,
+                line=dict(color=color, width=2.5), marker=dict(size=6),
+                text=[_fmt_rp_full(v) for v in trend[col]],
+                hovertemplate="%{x}<br>" + name + ": %{text}<extra></extra>",
+            ))
         fig.update_layout(
             autosize=True,
             height=388,
@@ -3726,7 +3760,7 @@ def page_overview(df_raw):
             ),
             yaxis=dict(
                 title=dict(
-                    text="Rp Miliar",
+                    text=unit_label,
                     font=dict(family=OVERVIEW_FONT_FAMILY, size=11, color="#64748B"),
                 ),
                 showgrid=True,
@@ -3753,11 +3787,37 @@ def page_overview(df_raw):
         terminal_sum = df.groupby("terminal")["kontribusi"].sum()
         top_terminal = terminal_sum.idxmax() if len(terminal_sum) else "Terminal 1"
         top_terminal_share = int((terminal_sum.max() / terminal_sum.sum()) * 100) if terminal_sum.sum() else 0
+
+        bidang_sum = df.groupby("bidang_usaha")["kontribusi"].sum()
+        top_bidang = bidang_sum.idxmax() if len(bidang_sum) else "-"
+        top_bidang_share = int((bidang_sum.max() / bidang_sum.sum()) * 100) if bidang_sum.sum() else 0
+
+        # Lease Contract — kontrak akan/sudah expired, supaya Overview
+        # mencerminkan kondisi bisnis lintas menu (bukan cuma data revenue).
+        try:
+            contract_df, _ = _get_contract_source_data(df)
+        except Exception:
+            contract_df = pd.DataFrame()
+        expiring_contracts = int((contract_df["Status"] == "Anomaly").sum()) if not contract_df.empty else 0
+        expired_contracts = int((contract_df["Status"] == "Expired").sum()) if not contract_df.empty else 0
+
+        # Revenue Sharing — total periode aktif & kategori penyumbang terbesar.
+        rs_detail = get_detail_revenue_sharing_data(df)
+        total_rs = rs_detail["_pendapatan_rs"].sum() if not rs_detail.empty else 0
+        rs_by_bidang = rs_detail.groupby("Service/SBU")["_pendapatan_rs"].sum() if not rs_detail.empty else pd.Series(dtype=float)
+        top_rs_bidang = rs_by_bidang.idxmax() if len(rs_by_bidang) else "-"
+
         alerts = [
             _alert_item_html("!", "#DC2626", f"Revenue {'turun' if rev_change < 0 else 'naik'} {abs(rev_change):.1f}% dibanding periode lalu".replace(".", ","), f"Realisasi periode aktif: {_fmt_rp_compact(real_revenue)}"),
-            _alert_item_html("A", "#EA580C", f"{low_acv} tenant memiliki ACV < 80%", "Perlu perhatian untuk potensi risiko"),
+            _alert_item_html("B", "#7C3AED", f"{top_bidang} menyumbang {top_bidang_share}% kontribusi", "Bidang usaha dengan kontribusi terbesar"),
             _alert_item_html("i", "#2563EB", f"{top_terminal} menyumbang {top_terminal_share}% kontribusi", "Monitor perubahan komposisi terminal"),
+            _alert_item_html("A", "#EA580C", f"{low_acv} tenant memiliki ACV < 80%", "Perlu perhatian untuk potensi risiko"),
         ]
+        if expired_contracts > 0:
+            alerts.append(_alert_item_html("L", "#DC2626", f"{expired_contracts} kontrak sudah expired", "Perlu tindakan segera di menu Lease Contract"))
+        alerts.append(_alert_item_html("L", "#EA580C", f"{expiring_contracts} kontrak akan expired dalam 90 hari", "Pantau perpanjangan di menu Lease Contract"))
+        alerts.append(_alert_item_html("R", "#059669", f"Total Revenue Sharing {_fmt_rp_compact(total_rs)}", f"{top_rs_bidang} penyumbang RS terbesar" if top_rs_bidang != "-" else "Belum ada data Revenue Sharing"))
+
         st.markdown(f'<div class="ed-alert-list">{"".join(alerts)}</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="ov-vertical-spacer"></div>', unsafe_allow_html=True)
@@ -3790,15 +3850,13 @@ def page_overview(df_raw):
                 | detail_df["kode_ruang"].astype(str).str.lower().str.contains(q, na=False)
             ]
 
-        detail_df["Ach %"] = np.where(detail_df["min_omzet"] > 0, detail_df["real_omzet"] / detail_df["min_omzet"] * 100, 0)
         export_df = detail_df.copy()
         export_df["Min Omzet"] = export_df["min_omzet"].apply(_fmt_rp_full)
         export_df["Real Omzet"] = export_df["real_omzet"].apply(_fmt_rp_full)
         export_df["total_Kontribusi"] = export_df["kontribusi"].apply(_fmt_rp_full)
-        export_df["Ach %"] = export_df["Ach %"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         export_df["ACV"] = export_df["acv"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
-        export_df = export_df[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]]
-        export_df.columns = ["Perusahaan", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
+        export_df = export_df[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "ACV"]]
+        export_df.columns = ["Perusahaan", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "ACV"]
 
         with dex:
             st.markdown('<div class="ov-btn-export-marker"></div>', unsafe_allow_html=True)
@@ -3826,15 +3884,13 @@ def page_overview(df_raw):
         detail_view["Min Omzet"] = detail_view["min_omzet"].apply(_fmt_rp_full)
         detail_view["Real Omzet"] = detail_view["real_omzet"].apply(_fmt_rp_full)
         detail_view["total_Kontribusi"] = detail_view["kontribusi"].apply(_fmt_rp_full)
-        detail_view["Ach %"] = detail_view["Ach %"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
         detail_view["ACV"] = detail_view["acv"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
-        detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]]
-        detail_view.columns = ["Perusahaan", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "Ach %", "ACV"]
+        detail_view = detail_view[["perusahaan", "brand", "kode_ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "ACV"]]
+        detail_view.columns = ["Perusahaan", "Brand", "Kode Ruang", "Min Omzet", "Real Omzet", "total_Kontribusi", "ACV"]
         detail_col_align = {
             "Min Omzet": "right",
             "Real Omzet": "right",
             "total_Kontribusi": "right",
-            "Ach %": "right",
             "ACV": "right",
         }
         st.markdown(_enterprise_table_inner_html(detail_view, col_align=detail_col_align), unsafe_allow_html=True)
