@@ -113,18 +113,20 @@ def _load_import_history() -> pd.DataFrame:
         from .connection import get_engine
         from sqlalchemy import text
 
-        with get_engine().connect() as conn:
+        engine = get_engine()
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE import_history ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255)"))
+        except Exception:
+            pass
+
+        with engine.connect() as conn:
             return pd.read_sql(
                 text("""
                     SELECT import_id, periode, filename, uploaded_by, uploaded_at,
-                           total_records, valid_records, rs_total, file_size, status
+                           total_records, valid_records, rs_total, file_size, status,
+                           deleted_by
                     FROM import_history ih
-                    WHERE COALESCE(ih.is_active, true) = true
-                      AND EXISTS (
-                          SELECT 1
-                          FROM transaction_revenue tr
-                          WHERE tr.import_id = ih.import_id
-                      )
                     ORDER BY uploaded_at DESC NULLS LAST, import_id DESC
                 """),
                 conn,
@@ -145,6 +147,7 @@ def _get_refined_history_data() -> list[dict]:
         initials = "".join(part[:1] for part in uploader.split()[:2]).upper() or "U"
         rs_total = float(row.get("rs_total") or 0)
         items.append({
+            "import_id": row.get("import_id"),
             "period": row.get("periode") or "-",
             "upload_date": uploaded_at.strftime("%d %b %Y") if pd.notna(uploaded_at) else "-",
             "upload_time": uploaded_at.strftime("%H:%M WIB") if pd.notna(uploaded_at) else "-",
@@ -157,6 +160,7 @@ def _get_refined_history_data() -> list[dict]:
             "file_size": row.get("file_size") or "-",
             "rs_total": f"Rp {rs_total:,.0f}".replace(",", "."),
             "status": row.get("status") or "Success",
+            "deleted_by": row.get("deleted_by"),
         })
     return items
 
@@ -1313,11 +1317,19 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     border: 1px solid rgba(99,102,241,0.15);
     color: #4f46e5;
 }
-.im-btn-refresh:hover, .im-btn-export:hover {
+.im-btn-refresh:hover {
     background: #f5f3ff;
     border-color: rgba(99,102,241,0.3);
     transform: none;
     box-shadow: none;
+}
+.im-btn-export.btn-clear-trash {
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.20) !important;
+}
+.im-btn-export.btn-clear-trash:hover {
+    background: #fef2f2 !important;
+    border-color: rgba(239, 68, 68, 0.40) !important;
 }
 /* History Table Row Design */
 .im-hist-table {
@@ -1381,6 +1393,7 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
 .im-period-dot.dot-success { background: #10b981; }
 .im-period-dot.dot-warning { background: #f59e0b; }
 .im-period-dot.dot-failed  { background: #ef4444; }
+.im-period-dot.dot-deleted { background: #64748b; }
 .im-period-name {
     font-size: 13px;
     font-weight: 800;
@@ -1504,6 +1517,12 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     border: 1px solid rgba(239,68,68,0.18);
 }
 .im-status-failed .status-dot { background: #ef4444; }
+.im-status-deleted {
+    background: rgba(100, 116, 139, 0.10);
+    color: #475569;
+    border: 1px solid rgba(100, 116, 139, 0.20);
+}
+.im-status-deleted .status-dot { background: #64748b; }
 /* Action buttons */
 .im-action-btns {
     display: flex;
@@ -2914,6 +2933,8 @@ def _render_import_history_refined():
             return '<span class="im-status-badge im-status-warning"><span class="status-dot"></span>Warning</span>'
         elif s == "failed":
             return '<span class="im-status-badge im-status-failed"><span class="status-dot"></span>Failed</span>'
+        elif s == "deleted":
+            return '<span class="im-status-badge im-status-deleted"><span class="status-dot"></span>Deleted</span>'
         return '<span class="im-status-badge im-status-success"><span class="status-dot"></span>' + status + '</span>'
 
     # Build dot class
@@ -2922,12 +2943,27 @@ def _render_import_history_refined():
         if s == "success": return "dot-success"
         if s == "warning": return "dot-warning"
         if s == "failed": return "dot-failed"
+        if s == "deleted": return "dot-deleted"
         return "dot-success"
 
     # Build rows
     rows_html = ""
     for r in page_data:
         rs_html = f'<span class="im-rs-total">{r["rs_total"]}</span>' if r["rs_total"] else '<span class="im-rs-empty">—</span>'
+        if r["status"].lower() == "deleted":
+            action_content = '<span style="color:#94a3b8;font-size:11.5px;font-weight:500;padding-left:8px;">—</span>'
+        else:
+            action_content = (
+                f'<a href="?menu=Import+Manager&action=view_import&import_id={r["import_id"]}" target="_self" class="im-action-btn" title="View">👁</a>'
+                f'<a href="?menu=Import+Manager&action=download_import&import_id={r["import_id"]}" target="_self" class="im-action-btn" title="Download">⬇</a>'
+                f'<a href="?menu=Import+Manager&action=reload_import&import_id={r["import_id"]}" target="_self" class="im-action-btn" title="Reload">↻</a>'
+                f'<a href="?menu=Import+Manager&action=delete_import&import_id={r["import_id"]}" target="_self" class="im-action-btn btn-delete" title="Delete">🗑</a>'
+            )
+
+        uploader_role_html = f'<div class="im-uploader-role">{r["role"]}</div>'
+        if r["status"].lower() == "deleted" and r.get("deleted_by"):
+            uploader_role_html += f'<div style="font-size:10px;color:#ef4444;font-weight:600;margin-top:1px;">Dihapus oleh: {r["deleted_by"]}</div>'
+
         rows_html += (
             '<tr>'
             '<td>'
@@ -2947,7 +2983,7 @@ def _render_import_history_refined():
             f'<div class="im-uploader-avatar" style="background:{r["color"]};">{r["initials"]}</div>'
             '<div>'
             f'<div class="im-uploader-name">{r["uploader"]}</div>'
-            f'<div class="im-uploader-role">{r["role"]}</div>'
+            f'{uploader_role_html}'
             '</div>'
             '</div>'
             '</td>'
@@ -2960,12 +2996,7 @@ def _render_import_history_refined():
             f'<td>{rs_html}</td>'
             f'<td>{_hist_status(r["status"])}</td>'
             '<td>'
-            '<div class="im-action-btns">'
-            '<div class="im-action-btn" title="View">👁</div>'
-            '<div class="im-action-btn" title="Download">⬇</div>'
-            '<div class="im-action-btn" title="Reload">↻</div>'
-            '<div class="im-action-btn btn-delete" title="Delete">🗑</div>'
-            '</div>'
+            f'<div class="im-action-btns">{action_content}</div>'
             '</td>'
             '</tr>'
         )
@@ -2981,8 +3012,8 @@ def _render_import_history_refined():
         '<div class="im-section-sub">All import sessions — most recent first</div>'
         '</div>'
         '<div class="im-history-actions">'
-        '<span class="im-btn-refresh">Refresh</span>'
-        '<span class="im-btn-export">Export Log</span>'
+        '<a href="?menu=Import+Manager" target="_self" class="im-btn-refresh" style="text-decoration:none;">Refresh</a>'
+        '<a href="?menu=Import+Manager&action=clear_trash" target="_self" class="im-btn-export btn-clear-trash" style="text-decoration:none;">Clear Trash</a>'
         '</div>'
         '</div>'
         '<div style="overflow-x:auto; margin-bottom: 0px !important;">'
@@ -3315,6 +3346,31 @@ def _patch_upload_limit_text():
 
 def render_import_manager():
     _init_state()
+    
+    # Handle query param actions to open dialogs
+    action = st.query_params.get("action")
+    import_id = st.query_params.get("import_id")
+    if action == "clear_trash":
+        show_clear_trash_dialog()
+        del st.query_params["action"]
+    elif action and import_id:
+        try:
+            import_id = int(import_id)
+            if action == "view_import":
+                show_import_details_dialog(import_id)
+            elif action == "download_import":
+                show_download_dialog(import_id)
+            elif action == "reload_import":
+                execute_reload_import(import_id)
+            elif action == "delete_import":
+                show_delete_confirm_dialog(import_id)
+        except Exception:
+            pass
+        # Clear action and import_id params so subsequent runs don't trigger again
+        del st.query_params["action"]
+        if "import_id" in st.query_params:
+            del st.query_params["import_id"]
+
     st.markdown('<div class="overview-page-marker im-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
     st.markdown(_REFINED_IMPORT_CSS, unsafe_allow_html=True)
@@ -3332,6 +3388,368 @@ def render_import_manager():
     _render_new_workspace()
     st.markdown('</div>', unsafe_allow_html=True)
     _patch_upload_limit_text()
+
+
+@st.dialog("Detail Data Import", width="large")
+def show_import_details_dialog(import_id):
+    from .connection import get_engine
+    from sqlalchemy import text
+    import pandas as pd
+    
+    st.write(f"Menampilkan data transaksi untuk **Import ID: {import_id}**")
+    
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            meta = pd.read_sql(
+                text("SELECT filename, periode, uploaded_by, uploaded_at FROM import_history WHERE import_id = :import_id"),
+                conn,
+                params={"import_id": import_id}
+            )
+            df = pd.read_sql(
+                text("""
+                    SELECT document_date, masa_jasa, tahun, perusahaan, brand, perimeter_spending_pax,
+                           kode_ruang, pic, ro_number, terminal, sub_terminal, area, lokasi, lantai, gate,
+                           smoking_status, sub_bidang_usaha, bidang_usaha, coa, nomor_kontrak_sistem,
+                           nomor_kontrak_legal, start_kontrak, end_kontrak, csp_non_csp, kerja_sama,
+                           pemilihan_mitra_usaha, produksi_m2, tarif_sewa_ruang_m2, rs_percent, min_omzet,
+                           real_omzet, mgrs_per_pax, real_pax, pendapatan_rs, pendapatan_sewa, total_kontribusi,
+                           acv, rev_per_sqm, spending_per_pax, doc_number_rs, doc_number_sewa, variant_no,
+                           catatan, trafik_int_arr, trafik_int_dep, subtotal_trafik_int, trafik_dom_arr,
+                           trafik_dom_dep, subtotal_trafik_dom, total_trafik
+                    FROM transaction_revenue
+                    WHERE import_id = :import_id
+                """),
+                conn,
+                params={"import_id": import_id}
+            )
+            
+        if meta.empty:
+            st.error("Data riwayat import tidak ditemukan.")
+            return
+            
+        row = meta.iloc[0]
+        st.markdown(f"""
+        **File:** `{row.get('filename')}` | **Uploader:** `{row.get('uploaded_by')}` | **Tanggal:** `{row.get('uploaded_at')}`
+        """)
+        
+        if df.empty:
+            st.warning("Tidak ada transaksi untuk import ini.")
+        else:
+            for col in ["document_date", "start_kontrak", "end_kontrak"]:
+                if col in df.columns:
+                    df[col] = df[col].apply(lambda x: pd.to_datetime(x).strftime("%Y-%m-%d") if pd.notna(x) else "-")
+            if "masa_jasa" in df.columns:
+                df["masa_jasa"] = df["masa_jasa"].apply(lambda x: pd.to_datetime(x).strftime("%b-%y") if pd.notna(x) else "-")
+            df = df.fillna("-").replace({None: "-", "None": "-", "nan": "-", "NaN": "-"})
+            
+            rename_map = {
+                "document_date": "DOCUMENT DATE",
+                "masa_jasa": "MASA",
+                "tahun": "TAHUN",
+                "perusahaan": "PERUSAHAAN",
+                "brand": "BRAND",
+                "perimeter_spending_pax": "PERIMETER / SPENDING / PAX",
+                "kode_ruang": "KODE RUANG",
+                "pic": "PIC",
+                "ro_number": "RO NUMBER",
+                "terminal": "TERMINAL",
+                "sub_terminal": "SUB TERMINAL",
+                "area": "AREA",
+                "lokasi": "LOKASI",
+                "lantai": "LANTAI",
+                "gate": "GATE",
+                "smoking_status": "SMOKING STATUS",
+                "sub_bidang_usaha": "SUB BIDANG USAHA",
+                "bidang_usaha": "BIDANG USAHA",
+                "coa": "COA",
+                "nomor_kontrak_sistem": "NOMOR KONTRAK SISTEM (SAP)",
+                "nomor_kontrak_legal": "NOMOR KONTRAK LEGAL",
+                "start_kontrak": "START KONTRAK",
+                "end_kontrak": "END KONTRAK",
+                "csp_non_csp": "CSP / NON-CSP",
+                "kerja_sama": "KERJA SAMA",
+                "pemilihan_mitra_usaha": "PEMILIHAN MITRA USAHA",
+                "produksi_m2": "PRODUKSI (M2)",
+                "tarif_sewa_ruang_m2": "TARIF SEWA RUANG / M2",
+                "rs_percent": "% RS",
+                "min_omzet": "MIN OMZET",
+                "real_omzet": "REAL OMZET",
+                "mgrs_per_pax": "MGRS / PAX",
+                "real_pax": "REAL PAX",
+                "pendapatan_rs": "PENDAPATAN RS",
+                "pendapatan_sewa": "PENDAPATAN SEWA",
+                "total_kontribusi": "TOTAL KONTRIBUSI",
+                "acv": "ACV",
+                "rev_per_sqm": "REV / SQM",
+                "spending_per_pax": "SPENDING / PAX",
+                "doc_number_rs": "DOC. NUMBER RS",
+                "doc_number_sewa": "DOC. NUMBER SEWA",
+                "variant_no": "VARIANT NO",
+                "catatan": "CATATAN",
+                "trafik_int_arr": "TRAFIK INT ARR",
+                "trafik_int_dep": "TRAFIK INT DEP",
+                "subtotal_trafik_int": "SUBTOTAL TRAFIK INT",
+                "trafik_dom_arr": "TRAFIK DOM ARR",
+                "trafik_dom_dep": "TRAFIK DOM DEP",
+                "subtotal_trafik_dom": "SUBTOTAL TRAFIK DOM",
+                "total_trafik": "TOTAL TRAFIK",
+            }
+            df = df.rename(columns=rename_map)
+            
+            template_order = [
+                "DOCUMENT DATE", "MASA", "TAHUN", "PERUSAHAAN", "BRAND", "PERIMETER / SPENDING / PAX",
+                "KODE RUANG", "PIC", "RO NUMBER", "TERMINAL", "SUB TERMINAL", "AREA", "LOKASI", "LANTAI",
+                "GATE", "SMOKING STATUS", "SUB BIDANG USAHA", "BIDANG USAHA", "COA",
+                "NOMOR KONTRAK SISTEM (SAP)", "NOMOR KONTRAK LEGAL", "START KONTRAK", "END KONTRAK",
+                "CSP / NON-CSP", "KERJA SAMA", "PEMILIHAN MITRA USAHA", "PRODUKSI (M2)", "TARIF SEWA RUANG / M2",
+                "% RS", "MIN OMZET", "REAL OMZET", "MGRS / PAX", "REAL PAX", "PENDAPATAN RS", "PENDAPATAN SEWA",
+                "TOTAL KONTRIBUSI", "ACV", "REV / SQM", "SPENDING / PAX", "DOC. NUMBER RS", "DOC. NUMBER SEWA",
+                "VARIANT NO", "CATATAN", "TRAFIK INT ARR", "TRAFIK INT DEP", "SUBTOTAL TRAFIK INT",
+                "TRAFIK DOM ARR", "TRAFIK DOM DEP", "SUBTOTAL TRAFIK DOM", "TOTAL TRAFIK"
+            ]
+            df = df[[col for col in template_order if col in df.columns]]
+            st.dataframe(df, use_container_width=True)
+            
+    except Exception as e:
+        st.error(f"Gagal mengambil detail data: {e}")
+
+
+@st.dialog("Unduh Data Import")
+def show_download_dialog(import_id):
+    from .connection import get_engine
+    from sqlalchemy import text
+    import pandas as pd
+    import io
+    
+    st.write(f"Mempersiapkan unduhan untuk **Import ID: {import_id}**...")
+    
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            meta = pd.read_sql(
+                text("SELECT filename FROM import_history WHERE import_id = :import_id"),
+                conn,
+                params={"import_id": import_id}
+            )
+            df = pd.read_sql(
+                text("""
+                    SELECT document_date, masa_jasa, tahun, perusahaan, brand, perimeter_spending_pax,
+                           kode_ruang, pic, ro_number, terminal, sub_terminal, area, lokasi, lantai, gate,
+                           smoking_status, sub_bidang_usaha, bidang_usaha, coa, nomor_kontrak_sistem,
+                           nomor_kontrak_legal, start_kontrak, end_kontrak, csp_non_csp, kerja_sama,
+                           pemilihan_mitra_usaha, produksi_m2, tarif_sewa_ruang_m2, rs_percent, min_omzet,
+                           real_omzet, mgrs_per_pax, real_pax, pendapatan_rs, pendapatan_sewa, total_kontribusi,
+                           acv, rev_per_sqm, spending_per_pax, doc_number_rs, doc_number_sewa, variant_no,
+                           catatan, trafik_int_arr, trafik_int_dep, subtotal_trafik_int, trafik_dom_arr,
+                           trafik_dom_dep, subtotal_trafik_dom, total_trafik
+                    FROM transaction_revenue
+                    WHERE import_id = :import_id
+                """),
+                conn,
+                params={"import_id": import_id}
+            )
+            
+        if df.empty:
+            st.error("Data tidak ditemukan atau kosong.")
+            return
+            
+        filename = meta.iloc[0]["filename"] if not meta.empty else f"import_{import_id}.xlsx"
+        if not filename.endswith((".xlsx", ".xls")):
+            filename = f"{filename}.xlsx"
+            
+        for col in ["document_date", "start_kontrak", "end_kontrak"]:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: pd.to_datetime(x).strftime("%Y-%m-%d") if pd.notna(x) else "-")
+        if "masa_jasa" in df.columns:
+            df["masa_jasa"] = df["masa_jasa"].apply(lambda x: pd.to_datetime(x).strftime("%b-%y") if pd.notna(x) else "-")
+        df = df.fillna("-").replace({None: "-", "None": "-", "nan": "-", "NaN": "-"})
+        
+        rename_map = {
+            "document_date": "DOCUMENT DATE",
+            "masa_jasa": "MASA",
+            "tahun": "TAHUN",
+            "perusahaan": "PERUSAHAAN",
+            "brand": "BRAND",
+            "perimeter_spending_pax": "PERIMETER / SPENDING / PAX",
+            "kode_ruang": "KODE RUANG",
+            "pic": "PIC",
+            "ro_number": "RO NUMBER",
+            "terminal": "TERMINAL",
+            "sub_terminal": "SUB TERMINAL",
+            "area": "AREA",
+            "lokasi": "LOKASI",
+            "lantai": "LANTAI",
+            "gate": "GATE",
+            "smoking_status": "SMOKING STATUS",
+            "sub_bidang_usaha": "SUB BIDANG USAHA",
+            "bidang_usaha": "BIDANG USAHA",
+            "coa": "COA",
+            "nomor_kontrak_sistem": "NOMOR KONTRAK SISTEM (SAP)",
+            "nomor_kontrak_legal": "NOMOR KONTRAK LEGAL",
+            "start_kontrak": "START KONTRAK",
+            "end_kontrak": "END KONTRAK",
+            "csp_non_csp": "CSP / NON-CSP",
+            "kerja_sama": "KERJA SAMA",
+            "pemilihan_mitra_usaha": "PEMILIHAN MITRA USAHA",
+            "produksi_m2": "PRODUKSI (M2)",
+            "tarif_sewa_ruang_m2": "TARIF SEWA RUANG / M2",
+            "rs_percent": "% RS",
+            "min_omzet": "MIN OMZET",
+            "real_omzet": "REAL OMZET",
+            "mgrs_per_pax": "MGRS / PAX",
+            "real_pax": "REAL PAX",
+            "pendapatan_rs": "PENDAPATAN RS",
+            "pendapatan_sewa": "PENDAPATAN SEWA",
+            "total_kontribusi": "TOTAL KONTRIBUSI",
+            "acv": "ACV",
+            "rev_per_sqm": "REV / SQM",
+            "spending_per_pax": "SPENDING / PAX",
+            "doc_number_rs": "DOC. NUMBER RS",
+            "doc_number_sewa": "DOC. NUMBER SEWA",
+            "variant_no": "VARIANT NO",
+            "catatan": "CATATAN",
+            "trafik_int_arr": "TRAFIK INT ARR",
+            "trafik_int_dep": "TRAFIK INT DEP",
+            "subtotal_trafik_int": "SUBTOTAL TRAFIK INT",
+            "trafik_dom_arr": "TRAFIK DOM ARR",
+            "trafik_dom_dep": "TRAFIK DOM DEP",
+            "subtotal_trafik_dom": "SUBTOTAL TRAFIK DOM",
+            "total_trafik": "TOTAL TRAFIK",
+        }
+        df = df.rename(columns=rename_map)
+        
+        template_order = [
+            "DOCUMENT DATE", "MASA", "TAHUN", "PERUSAHAAN", "BRAND", "PERIMETER / SPENDING / PAX",
+            "KODE RUANG", "PIC", "RO NUMBER", "TERMINAL", "SUB TERMINAL", "AREA", "LOKASI", "LANTAI",
+            "GATE", "SMOKING STATUS", "SUB BIDANG USAHA", "BIDANG USAHA", "COA",
+            "NOMOR KONTRAK SISTEM (SAP)", "NOMOR KONTRAK LEGAL", "START KONTRAK", "END KONTRAK",
+            "CSP / NON-CSP", "KERJA SAMA", "PEMILIHAN MITRA USAHA", "PRODUKSI (M2)", "TARIF SEWA RUANG / M2",
+            "% RS", "MIN OMZET", "REAL OMZET", "MGRS / PAX", "REAL PAX", "PENDAPATAN RS", "PENDAPATAN SEWA",
+            "TOTAL KONTRIBUSI", "ACV", "REV / SQM", "SPENDING / PAX", "DOC. NUMBER RS", "DOC. NUMBER SEWA",
+            "VARIANT NO", "CATATAN", "TRAFIK INT ARR", "TRAFIK INT DEP", "SUBTOTAL TRAFIK INT",
+            "TRAFIK DOM ARR", "TRAFIK DOM DEP", "SUBTOTAL TRAFIK DOM", "TOTAL TRAFIK"
+        ]
+        df = df[[col for col in template_order if col in df.columns]]
+        
+        towrite = io.BytesIO()
+        with pd.ExcelWriter(towrite, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Data Revenue")
+        towrite.seek(0)
+        
+        st.success("File Excel berhasil dibuat!")
+        st.download_button(
+            label="📥 Klik di sini untuk mengunduh",
+            data=towrite,
+            file_name=filename,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"Gagal memproses unduhan: {e}")
+
+
+@st.dialog("Hapus Data Import")
+def show_delete_confirm_dialog(import_id):
+    from .connection import get_engine
+    from sqlalchemy import text
+    import pandas as pd
+    import time
+    
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            meta = pd.read_sql(
+                text("SELECT filename FROM import_history WHERE import_id = :import_id"),
+                conn,
+                params={"import_id": import_id}
+            )
+        filename = meta.iloc[0]["filename"] if not meta.empty else f"ID {import_id}"
+        
+        st.warning(f"Apakah Anda yakin ingin menghapus data import dari file **{filename}**?")
+        st.write("Tindakan ini akan menghapus semua data transaksi yang terkait dan tidak dapat dibatalkan.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Ya, Hapus Data", use_container_width=True, type="primary"):
+                with engine.begin() as trans_conn:
+                    try:
+                        trans_conn.execute(text("ALTER TABLE import_history ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255)"))
+                    except Exception:
+                        pass
+                    trans_conn.execute(
+                        text("DELETE FROM transaction_revenue WHERE import_id = :import_id"),
+                        {"import_id": import_id}
+                    )
+                    trans_conn.execute(
+                        text("UPDATE import_history SET is_active = false, status = 'Deleted', deleted_by = :deleted_by WHERE import_id = :import_id"),
+                        {
+                            "import_id": import_id,
+                            "deleted_by": st.session_state.get("user_name", "Operational User")
+                        }
+                    )
+                st.cache_data.clear()
+                st.session_state.pop("shared_import_df", None)
+                st.session_state.pop("shared_import_meta", None)
+                st.session_state.pop("shared_import_mapping", None)
+                st.success("Data berhasil dihapus!")
+                time.sleep(1)
+                st.rerun()
+        with col2:
+            if st.button("Batal", use_container_width=True):
+                st.rerun()
+    except Exception as e:
+        st.error(f"Gagal menghapus data: {e}")
+
+
+def execute_reload_import(import_id):
+    from .connection import get_engine
+    from sqlalchemy import text
+    import time
+    
+    st.toast(f"Memulai memuat ulang data untuk Import ID: {import_id}...", icon="🔄")
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("UPDATE import_history SET status = 'Success' WHERE import_id = :import_id"),
+                {"import_id": import_id}
+            )
+        st.cache_data.clear()
+        st.success("Data berhasil dimuat ulang!")
+        time.sleep(0.5)
+        st.rerun()
+    except Exception as e:
+        st.error(f"Gagal memuat ulang data: {e}")
+
+
+@st.dialog("Hapus Semua Riwayat Deleted")
+def show_clear_trash_dialog():
+    from .connection import get_engine
+    from sqlalchemy import text
+    import time
+    
+    st.warning("Apakah Anda yakin ingin menghapus permanen semua riwayat file yang sudah di-delete?")
+    st.write("Tindakan ini akan membersihkan log riwayat 'Deleted' dari database secara permanen.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Ya, Bersihkan", use_container_width=True, type="primary"):
+            try:
+                engine = get_engine()
+                with engine.begin() as conn:
+                    conn.execute(
+                        text("DELETE FROM import_history WHERE status = 'Deleted' OR COALESCE(is_active, true) = false")
+                    )
+                st.cache_data.clear()
+                st.success("Riwayat berhasil dibersihkan!")
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Gagal membersihkan: {e}")
+    with col2:
+        if st.button("Batal", use_container_width=True):
+            st.rerun()
 
 
 if __name__ == "__main__":

@@ -58,8 +58,6 @@ COLUMN_ALIASES = {
     "pendapatan": "pendapatan_sewa",
     "revenue_sharing": "pendapatan_rs",
     "pendapatanrs": "pendapatan_rs",
-    # "%RS" header → cleaned "rs" → rs_percent (persentase bagi hasil)
-    # "PENDAPATAN RS" header → cleaned "pendapatan_rs" → REQUIRED_DASHBOARD_COLUMNS (jalur sendiri)
     "rs": "rs_percent",
     "rs_persen": "rs_percent",
     "persen_rs": "rs_percent",
@@ -110,6 +108,31 @@ COLUMN_ALIASES = {
     "mgrs_pax": "mgrs_per_pax",
     "mgrs": "mgrs_per_pax",
     "real_pax": "real_pax",
+
+    # Remaining 50 columns
+    "document_date": "document_date",
+    "pic": "pic",
+    "ro_number": "ro_number",
+    "area": "area",
+    "lokasi": "lokasi",
+    "lantai": "lantai",
+    "gate": "gate",
+    "smoking_status": "smoking_status",
+    "sub_bidang_usaha_original": "sub_bidang_usaha",
+    "coa": "coa",
+    "doc_number_rs": "doc_number_rs",
+    "doc_number_sewa": "doc_number_sewa",
+    "variant_no": "variant_no",
+    "catatan": "catatan",
+    "trafik_int_arr": "trafik_int_arr",
+    "trafik_int_dep": "trafik_int_dep",
+    "subtotal_trafik_int": "subtotal_trafik_int",
+    "trafik_dom_arr": "trafik_dom_arr",
+    "trafik_dom_dep": "trafik_dom_dep",
+    "subtotal_trafik_dom": "subtotal_trafik_dom",
+    "perimeter_spending_pax": "perimeter_spending_pax",
+    "rev_sqm": "rev_per_sqm",
+    "spending_pax": "spending_per_pax",
 }
 
 NUMERIC_COLUMNS = [
@@ -268,6 +291,22 @@ def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str
     mapping = get_column_mapping(df)
     missing = get_missing_dashboard_columns(df)
     
+    # Extract period from the Masa Jasa column if available
+    period_str = "-"
+    masa_jasa_col = mapping.get("masa_jasa")
+    if masa_jasa_col and masa_jasa_col in df.columns:
+        valid_vals = df[masa_jasa_col].dropna()
+        if not valid_vals.empty:
+            first_val = valid_vals.iloc[0]
+            if isinstance(first_val, (pd.Timestamp, datetime)):
+                period_str = first_val.strftime("%b-%y")
+            else:
+                parsed_date = pd.to_datetime(first_val, errors="coerce")
+                if pd.notna(parsed_date):
+                    period_str = parsed_date.strftime("%b-%y")
+                else:
+                    period_str = str(first_val).strip()
+
     st.session_state[SHARED_DATA_KEY] = df
     st.session_state["shared_import_mapping"] = mapping
     st.session_state[SHARED_META_KEY] = {
@@ -279,7 +318,9 @@ def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str
         "ready_for_dashboard": len(missing) == 0,
         "missing_columns": missing,
         "original_columns": list(df.columns),
-        "column_types": {col: str(df[col].dtype) for col in df.columns}
+        "column_types": {col: str(df[col].dtype) for col in df.columns},
+        "period": period_str,
+        "periode": period_str
     }
     return df, missing
 

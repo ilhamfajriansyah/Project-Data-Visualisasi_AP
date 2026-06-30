@@ -499,6 +499,13 @@ def _fmt_rp_compact(value):
     return f"Rp {val_str.replace(',', '.')}"
 
 
+def _fmt_rp_full(value):
+    if pd.isna(value):
+        value = 0
+    val_str = f"{value:,.0f}"
+    return f"Rp {val_str.replace(',', '.')}"
+
+
 def _format_mom(value):
     cls = "ed-positive" if value >= 0 else "ed-negative"
     arrow = "↑" if value >= 0 else "↓"
@@ -573,7 +580,7 @@ def _filter_select_label(value):
     return "Filter" if value == "All" else value
 
 
-def _kpi_card(label, value, delta_pct, accent, icon):
+def _kpi_card(label, value, delta_pct, accent, icon, tooltip_val=None):
     has_delta = delta_pct is not None
     delta_up = has_delta and delta_pct >= 0
     delta_bg = "#DCFCE7" if delta_up else "#FEE2E2"
@@ -617,8 +624,10 @@ def _kpi_card(label, value, delta_pct, accent, icon):
     else:
         delta_html = ""
 
+    tooltip_attr = f' title="{escape(tooltip_val)}"' if tooltip_val else ""
+
     html = (
-        f'<div class="overview-kpi-card rs-kpi-card">'
+        f'<div class="overview-kpi-card rs-kpi-card"{tooltip_attr}>'
         f'<div class="overview-kpi-icon" style="background:{accent}14;color:{accent};">{escape(icon)}</div>'
         f'<div class="overview-kpi-copy">'
         f'<div class="overview-kpi-label">{escape(label)}</div>'
@@ -1527,8 +1536,8 @@ def page_revenue_sharing(df_raw=None):
 
     st.markdown(
         _kpi_grid_html(
-            _kpi_card("Total Revenue", _fmt_rp_compact(total_revenue), revenue_delta, "#2563EB", "Rp"),
-            _kpi_card("Revenue Share", _fmt_rp_compact(revenue_share), share_delta, "#7C3AED", "%"),
+            _kpi_card("Total Revenue", _fmt_rp_compact(total_revenue), revenue_delta, "#2563EB", "Rp", tooltip_val=_fmt_rp_full(total_revenue)),
+            _kpi_card("Revenue Share", _fmt_rp_compact(revenue_share), share_delta, "#7C3AED", "%", tooltip_val=_fmt_rp_full(revenue_share)),
         ),
         unsafe_allow_html=True,
     )

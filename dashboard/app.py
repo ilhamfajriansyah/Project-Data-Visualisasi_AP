@@ -2444,7 +2444,7 @@ def _pct_change(current, base):
     return (current - base) / base * 100
 
 
-def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar_label):
+def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar_label, tooltip_val=None):
     has_delta = delta_pct is not None
     is_down = has_delta and delta_pct < 0
     badge_cls = "is-down" if is_down else ""
@@ -2479,8 +2479,10 @@ def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar
         f'</div>'
     ) if has_delta else ""
 
+    tooltip_attr = f' title="{escape(tooltip_val)}"' if tooltip_val else ""
+
     html = (
-        f'<div class="kpi-pro-card">'
+        f'<div class="kpi-pro-card"{tooltip_attr}>'
         f'<div class="kpi-pro-head">'
         f'<div class="kpi-pro-icon" style="background:{accent}1A;color:{accent};">{_kpi_pro_icon_svg(icon_key)}</div>'
         f'<div class="kpi-pro-badge {badge_cls}">{formatted_pct}</div>'
@@ -3606,15 +3608,33 @@ def page_overview(df_raw):
     def _safe_sum(col):  return df[col].sum() if col in df.columns else 0
     def _safe_mean(col): return df[col].mean() if col in df.columns and not df.empty else 0
 
+    def _rev_per_sqm_sum(frame):
+        # Rev/Sqm card = SUM per baris dari (Total Kontribusi / Produksi M2),
+        # bukan rasio dari total agregat. Sesuai kolom "Rev /" di Excel
+        # sumber, yang dihitung per baris lalu dijumlahkan.
+        if frame.empty or "kontribusi" not in frame.columns or "luas_sqm" not in frame.columns:
+            return 0
+        sqm = frame["luas_sqm"].replace(0, pd.NA)
+        return (frame["kontribusi"] / sqm).fillna(0).sum()
+
+    def _spending_per_pax_sum(frame):
+        # Spending/Pax card = SUM per baris dari (Total Kontribusi / Total Trafik),
+        # bukan rasio dari total agregat. Sesuai kolom "Spending / Pax" di Excel
+        # sumber, yang dihitung per baris lalu dijumlahkan.
+        if frame.empty or "kontribusi" not in frame.columns or "total_trafik" not in frame.columns:
+            return 0
+        kontribusi = pd.to_numeric(frame["kontribusi"], errors="coerce").fillna(0)
+        pax = pd.to_numeric(frame["total_trafik"], errors="coerce").replace(0, pd.NA)
+        return (kontribusi / pax).fillna(0).sum()
+
     real_revenue       = _safe_sum("real_omzet")
     revenue_sharing    = _safe_sum("pendapatan_rs")
     rental_revenue     = _safe_sum("pendapatan_sewa")
     total_contribution = _safe_sum("kontribusi")
-    total_sqm          = _safe_sum("luas_sqm")
     total_pax          = _safe_sum("total_trafik")
     avg_acv            = _safe_mean("acv")
-    rev_per_sqm        = (total_contribution / total_sqm) if total_sqm else 0
-    spending_per_pax   = (total_contribution / total_pax) if total_pax else 0
+    rev_per_sqm        = _rev_per_sqm_sum(df)
+    spending_per_pax   = _spending_per_pax_sum(df)
 
     def _psum(col):  return prior_df[col].sum()  if col in prior_df.columns else 0
     def _pmean(col): return prior_df[col].mean() if col in prior_df.columns and not prior_df.empty else 0
@@ -3623,11 +3643,10 @@ def page_overview(df_raw):
     prior_revenue_sharing  = _psum("pendapatan_rs")
     prior_rental_revenue   = _psum("pendapatan_sewa")
     prior_contribution     = _psum("kontribusi")
-    prior_sqm              = _psum("luas_sqm")
     prior_pax              = _psum("total_trafik")
     prior_avg_acv          = _pmean("acv")
-    prior_rev_per_sqm      = (prior_contribution / prior_sqm) if prior_sqm else 0
-    prior_spending_per_pax = (prior_contribution / prior_pax) if prior_pax else 0
+    prior_rev_per_sqm      = _rev_per_sqm_sum(prior_df)
+    prior_spending_per_pax = _spending_per_pax_sum(prior_df)
 
     omzet_val, omzet_scale = _compact_number(real_revenue)
     rs_val, rs_scale = _compact_number(revenue_sharing)
@@ -3649,28 +3668,36 @@ def page_overview(df_raw):
     kpi_cards = [
         _kpi_pro_card("Real Omzet", omzet_val, f"Rp {omzet_scale}".strip(),
                        "Total realisasi omzet",
-                       None, "#4F46E5", "omzet", "vs target"),
+                       None, "#4F46E5", "omzet", "vs target",
+                       tooltip_val=_fmt_rp_full(real_revenue)),
         _kpi_pro_card("Revenue Sharing", rs_val, f"Rp {rs_scale}".strip(),
                        "Total bagi hasil pendapatan",
-                       revenue_sharing_delta, "#0891B2", "layers", "YoY growth"),
+                       revenue_sharing_delta, "#0891B2", "layers", "YoY growth",
+                       tooltip_val=_fmt_rp_full(revenue_sharing)),
         _kpi_pro_card("Rental Revenue", rental_val, f"Rp {rental_scale}".strip(),
                        "Total pendapatan sewa",
-                       _pct_change(rental_revenue, prior_rental_revenue), "#2563EB", "file", "vs prior yr"),
+                       _pct_change(rental_revenue, prior_rental_revenue), "#2563EB", "file", "vs prior yr",
+                       tooltip_val=_fmt_rp_full(rental_revenue)),
         _kpi_pro_card("Total Contribution", contrib_val, f"Rp {contrib_scale}".strip(),
                        "Total kontribusi tenant",
-                       contribution_delta, "#059669", "bars", "vs prior yr"),
+                       contribution_delta, "#059669", "bars", "vs prior yr",
+                       tooltip_val=_fmt_rp_full(total_contribution)),
         _kpi_pro_card("Spending per Pax", spend_val, f"Rp {spend_scale}".strip(),
-                       "Kontribusi rata-rata per pengunjung",
-                       spending_delta, "#D97706", "users", "vs prior yr"),
+                       "Kontribusi per pengunjung",
+                       spending_delta, "#D97706", "users", "vs prior yr",
+                       tooltip_val=_fmt_rp_full(spending_per_pax)),
         _kpi_pro_card("Rev / SQM", revsqm_val, f"Rp {revsqm_scale}/m2".strip(),
                        "Revenue per square meter",
-                       _pct_change(rev_per_sqm, prior_rev_per_sqm), "#E11D48", "expand", "YoY"),
+                       _pct_change(rev_per_sqm, prior_rev_per_sqm), "#E11D48", "expand", "YoY",
+                       tooltip_val=f"{_fmt_rp_full(rev_per_sqm)}/m2"),
         _kpi_pro_card("ACV", acv_val, f"{acv_scale}%".strip(),
                        "Rata-rata ACV tenant",
-                       _pct_change(avg_acv, prior_avg_acv), "#7C3AED", "award", "vs prior yr"),
+                       _pct_change(avg_acv, prior_avg_acv), "#7C3AED", "award", "vs prior yr",
+                       tooltip_val=f"{avg_acv:.2f}%".replace(".", ",")),
         _kpi_pro_card("Total Traffic", traffic_val, f"{traffic_scale} pax".strip(),
                        traffic_subtitle,
-                       _pct_change(total_pax, prior_pax), "#2563EB", "plane", "YoY growth"),
+                       _pct_change(total_pax, prior_pax), "#2563EB", "plane", "YoY growth",
+                       tooltip_val=f"{total_pax:,.0f}".replace(",", ".") + " pax"),
     ]
 
     kpi_row1 = st.columns(4)
@@ -3945,6 +3972,11 @@ def page_coming_soon(name):
 # ══════════════════════════════════════════════
 def init_dashboard_state():
     init_auth_state()
+    q_menu = st.query_params.get("menu")
+    if q_menu and can_access_menu(q_menu):
+        st.session_state.active_menu = q_menu
+        del st.query_params["menu"]
+        
     defaults = {
         "active_menu": "Overview",
         "sidebar_minimized": False,
