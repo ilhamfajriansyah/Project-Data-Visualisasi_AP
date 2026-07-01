@@ -110,6 +110,11 @@ COLUMN_ALIASES = {
     "mgrs_pax": "mgrs_per_pax",
     "mgrs": "mgrs_per_pax",
     "real_pax": "real_pax",
+    "spending": "spending_per_pax",
+    "spending_per_pax": "spending_per_pax",
+    "spending_pax": "spending_per_pax",
+    "spp": "spending_per_pax",
+    "spending_per_passenger": "spending_per_pax",
 }
 
 NUMERIC_COLUMNS = [
@@ -121,6 +126,7 @@ NUMERIC_COLUMNS = [
     "kontribusi",
     "luas_sqm",
     "total_trafik",
+    "spending_per_pax",
 ]
 
 
