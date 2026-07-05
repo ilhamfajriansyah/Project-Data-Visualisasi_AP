@@ -129,21 +129,26 @@ def _load_traffic_database_data():
             df = pd.read_sql(query, conn)
         if df.empty:
             return pd.DataFrame()
-        # Normalise masa_jasa: convert datetime strings to month name
-        def _parse_masa_jasa_str(val):
-            if pd.isna(val):
-                return None
-            s = str(val).strip()
-            try:
-                dt = pd.to_datetime(s, errors="raise")
-                return dt.strftime("%B")   # → 'June', 'May', etc.
-            except Exception:
-                pass
-            return s  # leave as-is; _canonical_month will handle
-        df["masa_jasa"] = df["masa_jasa"].apply(_parse_masa_jasa_str)
         return _normalize_traffic_dataframe(df)
     except Exception:
         return pd.DataFrame()
+
+
+def _parse_masa_jasa_str(val):
+    # masa_jasa bisa berupa: 'Jun', 'June', 'June 2026', '2026-06-01',
+    # '2026-06-01 00:00:00' — baik saat dibaca lewat query agregat sendiri
+    # maupun lewat df_raw yang sama dipakai halaman lain, jadi parsing ini
+    # dipusatkan di _normalize_traffic_dataframe supaya kedua sumber data
+    # diperlakukan sama persis.
+    if pd.isna(val):
+        return None
+    s = str(val).strip()
+    try:
+        dt = pd.to_datetime(s, errors="raise")
+        return dt.strftime("%B")   # → 'June', 'May', etc.
+    except Exception:
+        pass
+    return s  # leave as-is; _canonical_month will handle
 
 
 def _traffic_from_dashboard_data(df):
@@ -165,7 +170,25 @@ def _traffic_from_dashboard_data(df):
     mapped["real_omzet"] = df["real_omzet"] if "real_omzet" in df.columns else 0
     mapped["total_kontribusi"] = df["total_kontribusi"] if "total_kontribusi" in df.columns else 0
     mapped["spending_per_pax"] = df["spending_per_pax"] if "spending_per_pax" in df.columns else pd.NA
-    return _normalize_traffic_dataframe(mapped)
+
+    # df_raw datang per baris transaksi, sedangkan _load_traffic_database_data()
+    # meng-agregasi SUM per kombinasi tahun+masa_jasa+terminal lewat SQL.
+    # Kalau tidak disamakan levelnya di sini, metrik rata-rata (spending_per_pax)
+    # di _aggregate_metrics() akan menghitung rata-rata per baris transaksi
+    # (skala jauh lebih kecil) alih-alih rata-rata per bulan seperti seharusnya.
+    numeric_cols = [
+        "tahun", "pax_domestik", "pax_internasional", "total_pax",
+        "real_omzet", "total_kontribusi", "spending_per_pax",
+    ]
+    for col in numeric_cols:
+        mapped[col] = pd.to_numeric(mapped[col], errors="coerce")
+
+    grouped = (
+        mapped.groupby(["tahun", "masa_jasa", "terminal"], dropna=False)[numeric_cols[1:]]
+        .sum(min_count=1)
+        .reset_index()
+    )
+    return _normalize_traffic_dataframe(grouped)
 
 
 def _normalize_traffic_dataframe(df):
@@ -183,7 +206,7 @@ def _normalize_traffic_dataframe(df):
             normalized[col] = 0
 
     normalized["tahun"] = normalized["tahun"].dropna().astype(int).reindex(normalized.index)
-    normalized["masa_jasa"] = normalized["masa_jasa"].map(_canonical_month)
+    normalized["masa_jasa"] = normalized["masa_jasa"].map(_parse_masa_jasa_str).map(_canonical_month)
     normalized["terminal"] = normalized["terminal"].fillna("Unknown").astype(str).str.strip()
     normalized["terminal"] = normalized["terminal"].replace("", "Unknown")
 
@@ -201,10 +224,15 @@ def _normalize_traffic_dataframe(df):
 
 
 def get_traffic_monitor_data(df_raw=None):
-    db_df = _load_traffic_database_data()
-    if not db_df.empty:
-        return db_df
-    return _traffic_from_dashboard_data(df_raw)
+    # df_raw adalah data yang sama dipakai Overview/Revenue Sharing/dst
+    # (dimuat sekali di app.py), jadi ini dijadikan sumber utama supaya
+    # Traffic Monitor tidak bisa menampilkan angka yang berbeda dari
+    # halaman lain. Query database mandiri di bawah hanya jadi fallback —
+    # misalnya saat dipanggil di luar alur app.py yang normal.
+    mapped = _traffic_from_dashboard_data(df_raw)
+    if not mapped.empty:
+        return mapped
+    return _load_traffic_database_data()
 
 
 def _apply_filters(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal",
@@ -274,8 +302,19 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
     international = sum(r["international"] for r in rows)
     spp = sum(r["spp"] for r in rows)
 
+    prior_rows = build_rows(prior_df)
     prior_total = float(prior_df["total_pax"].sum()) if not prior_df.empty else 0
-    yoy = ((total - prior_total) / prior_total * 100) if prior_total else 0
+    prior_domestic = float(prior_df["pax_domestik"].sum()) if not prior_df.empty else 0
+    prior_international = float(prior_df["pax_internasional"].sum()) if not prior_df.empty else 0
+    prior_spp = sum(r["spp"] for r in prior_rows)
+
+    def _pct_change(curr, prior):
+        return ((curr - prior) / prior * 100) if prior else 0
+
+    yoy = _pct_change(total, prior_total)
+    domestic_yoy = _pct_change(domestic, prior_domestic)
+    international_yoy = _pct_change(international, prior_international)
+    spp_yoy = _pct_change(spp, prior_spp)
     shares = {r["name"]: (r["total"] / total * 100 if total else 0) for r in rows}
 
     for row in rows:
@@ -291,6 +330,9 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
         "intl_pct": (international / total * 100) if total else 0,
         "spp": spp,
         "yoy": yoy,
+        "domestic_yoy": domestic_yoy,
+        "international_yoy": international_yoy,
+        "spp_yoy": spp_yoy,
         "prior_total": prior_total,
         "rows": rows,
         "shares": shares,
@@ -1680,17 +1722,17 @@ def page_traffic_monitor(df_raw=None):
         _tm_kpi_card("Total Traffic", _fmt_millions(metrics["total"]),
                      f"{current_year_label} · {scope_label}", metrics["yoy"], "#7C3AED", "users", spark_total),
         _tm_kpi_card("Domestic Traffic", _fmt_millions(metrics["domestic"]),
-                     f"{domestic_pct_str}% of total traffic", metrics["yoy"] * 0.9,
+                     f"{domestic_pct_str}% of total traffic", metrics["domestic_yoy"],
                      "#2563EB", "map-pin", spark_dom),
         _tm_kpi_card("International Traffic", _fmt_millions(metrics["international"]),
-                     f"{intl_pct_str}% of total traffic", metrics["yoy"] * 1.05,
+                     f"{intl_pct_str}% of total traffic", metrics["international_yoy"],
                      "#06B6D4", "globe", spark_intl),
         _tm_kpi_card("Spending Per Pax", _fmt_rp_k(metrics["spp"]),
-                     "Average across selected terminals", 6.6, "#D97706", "credit-card", spark_spp),
+                     "Average across selected terminals", metrics["spp_yoy"], "#D97706", "credit-card", spark_spp),
         _tm_kpi_card("Traffic Growth", f"+{yoy_val_str}%",
                      f"YoY vs {prior_year_label}", metrics["yoy"], "#059669", "trending-up", spark_total),
         _tm_kpi_card("Avg Spending Per Pax", _fmt_rp_k(metrics["spp"]),
-                     "Weighted terminal average", 6.6, "#EA580C", "shopping-bag", spark_spp),
+                     "Weighted terminal average", metrics["spp_yoy"], "#EA580C", "shopping-bag", spark_spp),
     ])
     st.markdown(f'<div class="tm-kpi-grid">{kpi_html}</div>', unsafe_allow_html=True)
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)

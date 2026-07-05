@@ -688,6 +688,54 @@ div:has(.im-dropzone-wrapper) + div:has([data-testid="stFileUploader"]) [data-te
     z-index: 1 !important;
 }
 
+/* Pure-CSS equivalent of ".im-refined-uploader" above. That class is added
+   by JS (a MutationObserver in a components.html iframe) which needs a
+   moment to load/run — navigate here quickly and the raw Streamlit uploader
+   (visible "Drag and drop"/"Browse files") flashes on top of the decorative
+   dropzone before the JS hides it. Streamlit auto-applies "st-key-<key>" as
+   a class on the widget's own container, so this targets the exact same
+   widget with no JS dependency and no flash. */
+[class*="st-key-im_uploader_refined_"] {
+    opacity: 0 !important;
+    position: relative !important;
+    margin-top: -268px !important;
+    height: 254px !important;
+    z-index: 1000 !important;
+    cursor: pointer !important;
+}
+[class*="st-key-im_uploader_refined_"] * {
+    cursor: pointer !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploadDropzone"],
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploaderDropzone"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    position: relative !important;
+}
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploaderDropzone"] > span,
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploaderDropzone"] > span *,
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploaderDropzoneInstructions"],
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploaderDropzoneInstructions"] * {
+    pointer-events: none !important;
+}
+[class*="st-key-im_uploader_refined_"] [data-testid="stFileUploaderDropzoneInput"] {
+    pointer-events: auto !important;
+    position: absolute !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1 !important;
+}
+
 
 /* Success State styling */
 .im-success-visual {
