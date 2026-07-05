@@ -18,6 +18,7 @@ from .shared_import import (
     normalize_imported_data,
     read_import_file,
     get_missing_dashboard_columns,
+    get_column_mapping,
     REQUIRED_DASHBOARD_COLUMNS,
 )
 from .navigation import topnav_actions_html
@@ -473,20 +474,7 @@ _REFINED_IMPORT_CSS = """
     font-size: 11px;
     font-weight: 800;
 }
-div[data-testid="stVerticalBlock"]:has(.im-upload-shell) {
-    position: relative !important;
-}
-.im-custom-refresh-btn-container {
-    position: absolute !important;
-    top: 20px !important;
-    right: 20px !important;
-    z-index: 9999 !important;
-    width: auto !important;
-    height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-.im-custom-refresh-btn-container button {
+.im-top-refresh-btn {
     background: #eff6ff !important;
     border: 1px solid rgba(37, 99, 235, 0.18) !important;
     border-radius: 50% !important;
@@ -503,19 +491,17 @@ div[data-testid="stVerticalBlock"]:has(.im-upload-shell) {
     transition: all 0.2s ease !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05) !important;
     margin: 0 !important;
-}
-.im-custom-refresh-btn-container button:hover {
-    background: #dbeafe !important;
-    border-color: rgba(37, 99, 235, 0.4) !important;
-    transform: rotate(30deg) !important;
-}
-.im-custom-refresh-btn-container button p {
     color: #2563eb !important;
     font-size: 15px !important;
     font-weight: 800 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    cursor: pointer !important;
     line-height: 1 !important;
+    outline: none !important;
+}
+.im-top-refresh-btn:hover {
+    background: #dbeafe !important;
+    border-color: rgba(37, 99, 235, 0.4) !important;
+    transform: rotate(30deg) !important;
 }
 
 /* Custom Drag & Drop visual styles */
@@ -1302,6 +1288,17 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     font-weight: 500;
     line-height: 1.45;
 }
+.im-ketentuan-warning-list {
+    margin: 0;
+    padding-left: 16px;
+    list-style: disc;
+}
+.im-ketentuan-warning-list li {
+    margin: 2px 0;
+}
+.im-ketentuan-warning-list li::marker {
+    color: #dc2626;
+}
 .im-info-banner {
     margin-top: -25px;
     padding: 12px 14px;
@@ -2062,6 +2059,95 @@ _NEW_DESIGN_CSS = """
     color: #991b1b !important;
     line-height: 1.4 !important;
 }
+/* Kartu notifikasi hasil simpan (lihat _render_save_result_notice) — ikon +
+   judul singkat + penjelasan bahasa awam, dengan detail teknis (mis. kode
+   ruang yang bentrok) dipisah di bawah, bukan digabung jadi satu paragraf. */
+.im-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border-radius: 12px;
+    border: 1px solid;
+    border-left-width: 4px;
+    padding: 14px 16px;
+    margin-top: 8px;
+}
+.im-notice-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.im-notice-icon svg { width: 17px; height: 17px; }
+.im-notice-body { flex: 1; min-width: 0; }
+.im-notice-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 3px;
+}
+.im-notice-desc {
+    font-size: 12.5px;
+    font-weight: 450;
+    color: #475569;
+    line-height: 1.5;
+}
+.im-notice-detail {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+.im-notice-detail-label {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+}
+.im-notice-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.im-notice-tag {
+    font-size: 11.5px;
+    font-weight: 600;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.045);
+    color: #334155;
+    border: 1px solid rgba(15, 23, 42, 0.07);
+}
+.im-notice-error {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+.im-notice-error .im-notice-icon {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+}
+.im-notice-warning {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+.im-notice-warning .im-notice-icon {
+    background: rgba(217, 119, 6, 0.14);
+    color: #d97706;
+}
+.im-notice-success {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.im-notice-success .im-notice-icon {
+    background: rgba(22, 163, 74, 0.14);
+    color: #16a34a;
+}
 .im-ketentuan-footer {
     margin-top: 18px;
     padding-top: 14px;
@@ -2224,11 +2310,61 @@ def _init_state():
             st.session_state[k] = v
 
 
+_IM_NOTICE_ICONS = {
+    "error": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    "warning": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    "success": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+}
+
+
+def _render_save_result_notice(result: dict) -> None:
+    """Kartu notifikasi terstruktur untuk hasil `_save_to_database()`: ikon +
+    judul singkat berbahasa awam + penjelasan, dengan detail teknis (mis.
+    kode ruang yang bentrok) dipisah di baris sendiri — bukan satu paragraf
+    teks polos ala st.error/st.warning bawaan."""
+    from html import escape
+
+    severity = result.get("severity", "error")
+    icon = _IM_NOTICE_ICONS.get(severity, _IM_NOTICE_ICONS["error"])
+
+    detail_html = ""
+    detail_items = result.get("detail_items")
+    if detail_items:
+        tags = "".join(f'<span class="im-notice-tag">{escape(str(v))}</span>' for v in detail_items)
+        detail_html = (
+            '<div class="im-notice-detail">'
+            f'<span class="im-notice-detail-label">{escape(result.get("detail_label", "Detail"))}</span>'
+            f'<div class="im-notice-tags">{tags}</div>'
+            '</div>'
+        )
+
+    st.markdown(
+        f'<div class="im-notice im-notice-{severity}">'
+        f'<div class="im-notice-icon">{icon}</div>'
+        '<div class="im-notice-body">'
+        f'<div class="im-notice-title">{escape(result.get("title", ""))}</div>'
+        f'<div class="im-notice-desc">{escape(result.get("message", ""))}</div>'
+        f'{detail_html}'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _save_to_database():
+    """Simpan data ke transaction_revenue. Selalu mengembalikan
+    (success, result) dengan `result` sebagai dict {severity, title,
+    message, detail_label, detail_items} — bukan string polos — supaya
+    UI bisa menampilkan kartu notifikasi terstruktur (lihat
+    _render_save_result_notice) alih-alih satu paragraf teks teknis."""
     from .shared_import import SHARED_DATA_KEY
     df = st.session_state.get(SHARED_DATA_KEY)
     if df is None or df.empty:
-        return False, "Tidak ada data untuk disimpan."
+        return False, {
+            "severity": "error",
+            "title": "Tidak Ada Data untuk Disimpan",
+            "message": "File yang diunggah tidak berisi data yang bisa diproses.",
+        }
     
     mapping = st.session_state.get("shared_import_mapping", {})
     df_to_save = df.rename(columns={v: k for k, v in mapping.items()})
@@ -2266,6 +2402,7 @@ def _save_to_database():
             df_final = df_final.drop(columns=['id'])
 
         skipped_count = 0
+        skipped_items = []
         if all(c in df_final.columns for c in NATURAL_KEY):
             # Safety net di level database: kombinasi kode_ruang + masa_jasa +
             # tahun harus unik, supaya baris yang sama tidak pernah bisa dobel
@@ -2281,12 +2418,21 @@ def _save_to_database():
 
             dup_mask = df_final.duplicated(subset=NATURAL_KEY, keep=False)
             if dup_mask.any():
-                dup_rooms = sorted(df_final.loc[dup_mask, "kode_ruang"].dropna().astype(str).unique())
-                shown = ", ".join(dup_rooms[:10]) + (", ..." if len(dup_rooms) > 10 else "")
-                return False, (
-                    f"Ditemukan {int(dup_mask.sum())} baris duplikat di dalam file ini "
-                    f"(kode ruang: {shown}). Perbaiki file sebelum diunggah kembali."
-                )
+                dup_items = []
+                for kode, group in df_final.loc[dup_mask].groupby("kode_ruang", dropna=False):
+                    rows = _format_row_list([int(i) + 2 for i in group.index], limit=8)
+                    dup_items.append(f"{kode} — baris {rows}")
+                return False, {
+                    "severity": "error",
+                    "title": "Data Duplikat Ditemukan",
+                    "message": (
+                        f"File ini punya {int(dup_mask.sum())} baris dengan kode ruang dan periode "
+                        "yang sama persis. Hapus atau perbaiki salah satu baris yang bentrok, "
+                        "lalu unggah ulang."
+                    ),
+                    "detail_label": "Kode Ruang yang Bentrok",
+                    "detail_items": dup_items[:15],
+                }
 
             tahun_values = [
                 int(t) for t in pd.to_numeric(df_final["tahun"], errors="coerce").dropna().unique()
@@ -2323,13 +2469,115 @@ def _save_to_database():
                     axis=1,
                 )
                 skipped_count = int(is_dup.sum())
+                skipped_items = [
+                    f"{row['kode_ruang']} — baris {int(idx) + 2}"
+                    for idx, row in df_final.loc[is_dup].iterrows()
+                ][:15]
                 df_final = df_final.loc[~is_dup].copy()
 
             if df_final.empty:
-                return False, (
-                    f"Seluruh {skipped_count} baris pada file ini sudah pernah diimpor "
-                    "sebelumnya (kombinasi kode ruang + periode sama). Tidak ada data baru yang disimpan."
+                return False, {
+                    "severity": "error",
+                    "title": "Semua Data Sudah Pernah Diimpor",
+                    "message": (
+                        f"Seluruh {skipped_count} baris pada file ini sudah ada di database "
+                        "(kode ruang dan periode yang sama). Tidak ada data baru yang ditambahkan."
+                    ),
+                    "detail_label": "Baris yang Sudah Pernah Diimpor",
+                    "detail_items": skipped_items,
+                }
+
+        # Normalisasi tenant: tenant_master adalah satu-satunya sumber
+        # kebenaran untuk identitas tenant (dedup berdasarkan perusahaan +
+        # brand + terminal). transaction_revenue tetap menyimpan kolom
+        # tenant apa adanya (kompatibel dengan halaman lain), tapi sekarang
+        # juga terhubung lewat tenant_id yang benar-benar merujuk ke sana.
+        if (
+            'tenant_id' in db_columns
+            and all(c in df_final.columns for c in ["perusahaan", "brand", "terminal"])
+        ):
+            try:
+                with engine.begin() as ddl_conn:
+                    ddl_conn.execute(text(
+                        "ALTER TABLE tenant_master ADD CONSTRAINT "
+                        "uq_tenant_master_key UNIQUE (perusahaan, brand, terminal)"
+                    ))
+            except Exception:
+                pass
+
+            tenant_cols = [c for c in ["perusahaan", "brand", "terminal", "bidang_usaha", "lokasi"] if c in df_final.columns]
+            tenant_rows = (
+                df_final[tenant_cols]
+                .dropna(subset=["perusahaan", "brand", "terminal"])
+                .drop_duplicates(subset=["perusahaan", "brand", "terminal"])
+            )
+            if not tenant_rows.empty:
+                with engine.begin() as tconn:
+                    for _, row in tenant_rows.iterrows():
+                        tconn.execute(
+                            text("""
+                                INSERT INTO tenant_master (perusahaan, brand, terminal, bidang_usaha, lokasi)
+                                VALUES (:perusahaan, :brand, :terminal, :bidang_usaha, :lokasi)
+                                ON CONFLICT (perusahaan, brand, terminal) DO NOTHING
+                            """),
+                            {
+                                "perusahaan": row["perusahaan"],
+                                "brand": row["brand"],
+                                "terminal": row["terminal"],
+                                "bidang_usaha": row.get("bidang_usaha"),
+                                "lokasi": row.get("lokasi"),
+                            },
+                        )
+                    tenant_lookup = pd.read_sql(
+                        text("SELECT id, perusahaan, brand, terminal FROM tenant_master WHERE perusahaan = ANY(:names)"),
+                        tconn,
+                        params={"names": tenant_rows["perusahaan"].astype(str).unique().tolist()},
+                    )
+                key_to_id = {
+                    (str(r.perusahaan), str(r.brand), str(r.terminal)): r.id
+                    for r in tenant_lookup.itertuples()
+                }
+                df_final["tenant_id"] = df_final.apply(
+                    lambda r: key_to_id.get((str(r.get("perusahaan")), str(r.get("brand")), str(r.get("terminal")))),
+                    axis=1,
                 )
+
+        # Normalisasi kontrak: satu baris kontrak per nomor_kontrak_sistem
+        # (nomor SAP), disimpan terpisah dari transaction_revenue dan
+        # terhubung ke tenant_master. Hanya baris yang benar-benar punya
+        # nomor kontrak sistem yang diproses di sini. Baris kontrak.import_id
+        # merujuk ke import_history, jadi penyiapan datanya di sini, tapi
+        # eksekusi INSERT-nya harus menunggu sampai import_history baris ini
+        # sudah benar-benar ada (lihat di bawah) — kalau tidak, FK gagal
+        # persis seperti bug transaction_revenue vs import_history sebelumnya.
+        kontrak_rows = pd.DataFrame()
+        kontrak_available = {}
+        if "nomor_kontrak_sistem" in df_final.columns:
+            try:
+                with engine.begin() as ddl_conn:
+                    ddl_conn.execute(text(
+                        "ALTER TABLE kontrak ADD CONSTRAINT "
+                        "uq_kontrak_nomor_sistem UNIQUE (nomor_kontrak_sistem)"
+                    ))
+            except Exception:
+                pass
+
+            kontrak_col_map = {
+                "nomor_kontrak_sistem": "nomor_kontrak_sistem",
+                "nomor_kontrak_legal": "nomor_kontrak_legal",
+                "kerja_sama": "jenis_kontrak",
+                "rs_percent": "sharing_percent",
+                "min_omzet": "minimal_omzet",
+                "mgrs_per_pax": "mgrs_per_pax",
+                "start_kontrak": "start_kontrak",
+                "end_kontrak": "end_kontrak",
+            }
+            kontrak_available = {src: dst for src, dst in kontrak_col_map.items() if src in df_final.columns}
+            kontrak_rows = (
+                df_final[list(kontrak_available.keys()) + (["tenant_id"] if "tenant_id" in df_final.columns else [])]
+                .dropna(subset=["nomor_kontrak_sistem"])
+                .drop_duplicates(subset=["nomor_kontrak_sistem"])
+            )
 
         with engine.begin() as conn:
             if 'import_history' in inspector.get_table_names():
@@ -2358,20 +2606,125 @@ def _save_to_database():
                     },
                 )
 
+            if not kontrak_rows.empty:
+                for _, row in kontrak_rows.iterrows():
+                    params = {dst: row.get(src) for src, dst in kontrak_available.items()}
+                    params["tenant_id"] = row.get("tenant_id")
+                    params["import_id"] = import_id
+                    cols = list(params.keys())
+                    conn.execute(
+                        text(
+                            f"INSERT INTO kontrak ({', '.join(cols)}) "
+                            f"VALUES ({', '.join(':' + c for c in cols)}) "
+                            "ON CONFLICT (nomor_kontrak_sistem) DO NOTHING"
+                        ),
+                        params,
+                    )
+
             df_final.to_sql("transaction_revenue", con=conn, if_exists="append", index=False)
+
+            # Normalisasi trafik: berbeda dari tenant_master/kontrak (yang
+            # berbasis identitas), traffic adalah AGREGAT per
+            # tahun+bulan+terminal yang dijumlahkan dari banyak baris tenant
+            # sekaligus. Jadi bukan sekadar insert baris baru — tiap kali ada
+            # baris baru masuk ke transaction_revenue untuk suatu
+            # tahun+bulan+terminal, agregatnya dihitung ULANG dari seluruh
+            # transaction_revenue (bukan cuma batch ini), supaya tetap akurat
+            # walau datanya datang dari beberapa kali import terpisah.
+            if all(c in df_final.columns for c in ["tahun", "masa_jasa", "terminal"]):
+                try:
+                    with engine.begin() as ddl_conn:
+                        ddl_conn.execute(text(
+                            "ALTER TABLE traffic ADD CONSTRAINT "
+                            "uq_traffic_key UNIQUE (tahun, bulan, terminal)"
+                        ))
+                except Exception:
+                    pass
+
+                periods = (
+                    df_final[["tahun", "masa_jasa", "terminal"]]
+                    .dropna()
+                    .drop_duplicates()
+                )
+                for _, p in periods.iterrows():
+                    conn.execute(
+                        text("""
+                            INSERT INTO traffic (tahun, bulan, terminal, pax_domestik, pax_internasional, total_pax, import_id)
+                            SELECT
+                                tahun,
+                                TO_CHAR(MAX(masa_jasa::date), 'FMMonth'),
+                                terminal,
+                                SUM(COALESCE(subtotal_trafik_dom, 0)),
+                                SUM(COALESCE(subtotal_trafik_int, 0)),
+                                SUM(COALESCE(total_trafik, 0)),
+                                :import_id
+                            FROM transaction_revenue
+                            WHERE tahun = :tahun AND masa_jasa::date = CAST(:masa_jasa AS date) AND terminal = :terminal
+                            GROUP BY tahun, terminal
+                            ON CONFLICT (tahun, bulan, terminal) DO UPDATE SET
+                                pax_domestik = EXCLUDED.pax_domestik,
+                                pax_internasional = EXCLUDED.pax_internasional,
+                                total_pax = EXCLUDED.total_pax,
+                                import_id = EXCLUDED.import_id
+                        """),
+                        {
+                            "tahun": p["tahun"],
+                            "masa_jasa": p["masa_jasa"],
+                            "terminal": p["terminal"],
+                            "import_id": import_id,
+                        },
+                    )
 
         st.cache_data.clear()
 
         if skipped_count:
-            return True, (
-                f"{len(df_final)} baris baru disimpan ke database. "
-                f"{skipped_count} baris dilewati karena sudah pernah diimpor sebelumnya."
-            )
-        return True, "Data berhasil disimpan ke database."
+            return True, {
+                "severity": "warning",
+                "title": "Sebagian Data Berhasil Disimpan",
+                "message": (
+                    f"{len(df_final)} baris baru berhasil disimpan. {skipped_count} baris "
+                    "dilewati karena sudah pernah diimpor sebelumnya."
+                ),
+                "detail_label": "Baris yang Dilewati",
+                "detail_items": skipped_items,
+            }
+        return True, {"severity": "success", "title": "Data Berhasil Disimpan", "message": "Seluruh baris pada file ini berhasil disimpan ke database."}
     except IntegrityError:
-        return False, "Sebagian/seluruh data pada file ini sudah ada di database (duplikat). Tidak ada data baru yang disimpan."
+        return False, {
+            "severity": "error",
+            "title": "Data Sudah Ada di Database",
+            "message": "Sebagian atau seluruh data pada file ini sudah ada di database. Tidak ada data baru yang disimpan.",
+        }
     except Exception as e:
-        return False, f"Error DB: {str(e)}"
+        return False, {
+            "severity": "error",
+            "title": "Gagal Menyimpan ke Database",
+            "message": f"Terjadi kesalahan teknis saat menyimpan data: {str(e)}",
+        }
+
+
+_REQUIRED_COLUMN_LABELS = {
+    "perusahaan": "Perusahaan",
+    "brand": "Brand",
+    "terminal": "Terminal",
+    "kode_ruang": "Kode Ruang",
+    "bidang_usaha": "Bidang Usaha",
+    "masa_jasa": "Masa Jasa",
+    "tahun": "Tahun",
+    "min_omzet": "Min Omzet",
+    "real_omzet": "Real Omzet",
+    "pendapatan_sewa": "Pendapatan Sewa",
+    "pendapatan_rs": "Pendapatan RS",
+    "total_kontribusi": "Total Kontribusi",
+    "luas_sqm": "Luas (m2)",
+}
+
+
+def _format_row_list(rows, limit=6) -> str:
+    """Format daftar nomor baris Excel jadi teks ringkas, mis. '5, 8, 12, ...'."""
+    rows = sorted(int(r) for r in rows)
+    shown = ", ".join(str(r) for r in rows[:limit])
+    return shown + (f", +{len(rows) - limit} lainnya" if len(rows) > limit else "")
 
 
 def _get_merge_cell_detail(uploaded) -> str:
@@ -2401,41 +2754,67 @@ def _get_merge_cell_detail(uploaded) -> str:
     return "Merge cells ditemukan pada file Excel Anda. Silakan pisahkan."
 
 
-def _get_structure_detail(uploaded) -> str:
+def _get_structure_detail(uploaded) -> list[str]:
     try:
         uploaded.seek(0)
         df = read_import_file(uploaded)
         df_norm = normalize_imported_data(df)
         missing = get_missing_dashboard_columns(df_norm)
         if missing:
-            clean_cols = [f"'{col}'" for col in missing[:2]]
-            return f"Header kolom {', '.join(clean_cols)} tidak ditemukan."
+            labels = [_REQUIRED_COLUMN_LABELS.get(col, col.upper()) for col in sorted(missing)]
+            return [f"Header kolom berikut tidak ditemukan: {', '.join(labels)}."]
     except Exception as exc:
-        return f"Gagal membaca file: {exc}"
-    return "Struktur kolom tidak sesuai template. Hindari perubahan struktur kolom."
+        return [f"Gagal membaca file: {exc}"]
+    return ["Struktur kolom tidak sesuai template. Hindari perubahan struktur kolom."]
 
 
-def _get_required_filled_detail(uploaded) -> str:
+def _get_required_filled_detail(uploaded) -> list[str]:
+    """Untuk tiap kolom wajib yang punya data kosong: sebutkan nama kolomnya
+    dan nomor baris Excel-nya, sekaligus bedakan baris yang memang kosong di
+    file asli dari baris yang datanya ada tapi tidak terbaca oleh proses
+    pembersihan data (mis. teks di kolom angka, format tanggal yang tidak
+    dikenali) — supaya user tahu harus mengisi atau memperbaiki format."""
     try:
         uploaded.seek(0)
-        df = read_import_file(uploaded)
-        df_norm = normalize_imported_data(df)
-        missing_fields = []
-        for col in REQUIRED_DASHBOARD_COLUMNS:
-            if col in df_norm.columns:
-                series = df_norm[col]
-                if series.isna().any():
-                    missing_fields.append(col)
-                elif series.dtype == object:
-                    cleaned = series.astype(str).str.strip()
-                    if cleaned.eq("").any() or cleaned.str.lower().isin({"nan", "none", "nat"}).any():
-                        missing_fields.append(col)
-        if missing_fields:
-            clean_fields = [f"'{col}'" for col in missing_fields[:2]]
-            return f"Kolom wajib memiliki data kosong pada kolom {', '.join(clean_fields)}."
+        raw_df = read_import_file(uploaded)
+        df_norm = normalize_imported_data(raw_df)
+        mapping = get_column_mapping(df_norm)
+
+        lines = []
+        for col in sorted(REQUIRED_DASHBOARD_COLUMNS):
+            orig_col = mapping.get(col)
+            if not orig_col or orig_col not in df_norm.columns:
+                continue
+
+            series = df_norm[orig_col]
+            empty_mask = series.isna()
+            if series.dtype == object:
+                cleaned = series.astype(str).str.strip()
+                empty_mask = empty_mask | cleaned.eq("") | cleaned.str.lower().isin({"nan", "none", "nat"})
+            if not empty_mask.any():
+                continue
+
+            raw_series = raw_df[orig_col] if orig_col in raw_df.columns else None
+            blank_rows, invalid_rows = [], []
+            for idx in df_norm.index[empty_mask]:
+                excel_row = int(idx) + 2  # +1 untuk header, +1 karena index mulai dari 0
+                raw_val = raw_series.loc[idx] if raw_series is not None else None
+                raw_is_blank = pd.isna(raw_val) or str(raw_val).strip() == ""
+                (blank_rows if raw_is_blank else invalid_rows).append(excel_row)
+
+            label = _REQUIRED_COLUMN_LABELS.get(col, col.upper())
+            parts = []
+            if blank_rows:
+                parts.append(f"kosong (baris {_format_row_list(blank_rows)})")
+            if invalid_rows:
+                parts.append(f"format tidak terbaca (baris {_format_row_list(invalid_rows)})")
+            lines.append(f"{label}: {'; '.join(parts)}")
+
+        if lines:
+            return lines
     except Exception as exc:
-        return f"Gagal membaca file: {exc}"
-    return "Kolom wajib harus terisi penuh. Pastikan tidak ada data kosong."
+        return [f"Gagal membaca file: {exc}"]
+    return ["Kolom wajib harus terisi penuh. Pastikan tidak ada data kosong."]
 
 
 def _render_ketentuan_import(validation: dict[str, bool] | None = None, is_uploaded: bool = False):
@@ -2464,19 +2843,19 @@ def _render_ketentuan_import(validation: dict[str, bool] | None = None, is_uploa
                 icon_class = "im-ketentuan-fail"
                 item_class = "is-fail"
                 icon = "✗"
-                detail_msg = ""
+                detail_lines = []
                 if uploaded:
                     if key == "format":
-                        detail_msg = "Format file tidak didukung. Gunakan .xlsx atau .xls."
+                        detail_lines = ["Format file tidak didukung. Gunakan .xlsx atau .xls."]
                     elif key == "size":
-                        detail_msg = "Ukuran file melebihi batas maksimal 20 MB."
+                        detail_lines = ["Ukuran file melebihi batas maksimal 20 MB."]
                     elif key == "merge_cell":
-                        detail_msg = _get_merge_cell_detail(uploaded)
+                        detail_lines = [_get_merge_cell_detail(uploaded)]
                     elif key == "structure":
-                        detail_msg = _get_structure_detail(uploaded)
+                        detail_lines = _get_structure_detail(uploaded)
                     elif key == "required_filled":
-                        detail_msg = _get_required_filled_detail(uploaded)
-                if not detail_msg:
+                        detail_lines = _get_required_filled_detail(uploaded)
+                if not detail_lines:
                     fallback_msgs = {
                         "format": "Format file tidak didukung. Gunakan .xlsx atau .xls.",
                         "size": "Ukuran file melebihi batas maksimal 20 MB.",
@@ -2484,8 +2863,13 @@ def _render_ketentuan_import(validation: dict[str, bool] | None = None, is_uploa
                         "structure": "Struktur kolom tidak sesuai template.",
                         "required_filled": "Kolom wajib harus terisi penuh."
                     }
-                    detail_msg = fallback_msgs.get(key, "Validasi gagal.")
-                warning_html = f'<div class="im-ketentuan-warning-box">{escape(detail_msg)}</div>'
+                    detail_lines = [fallback_msgs.get(key, "Validasi gagal.")]
+
+                if len(detail_lines) > 1:
+                    items = "".join(f"<li>{escape(line)}</li>" for line in detail_lines)
+                    warning_html = f'<div class="im-ketentuan-warning-box"><ul class="im-ketentuan-warning-list">{items}</ul></div>'
+                else:
+                    warning_html = f'<div class="im-ketentuan-warning-box">{escape(detail_lines[0])}</div>'
 
         items_html += dedent(f"""
         <div class="im-ketentuan-item {item_class}">
@@ -2677,23 +3061,10 @@ def _render_new_workspace():
                     <div class="im-section-title">Upload Data File</div>
                     <div class="im-section-sub">Format yang didukung: .xlsx dan .xls (Excel).</div>
                 </div>
+                <button data-im-action="top_refresh" class="im-top-refresh-btn" title="Reset/Upload Another">↻</button>
             </div>
         </div>
         """, unsafe_allow_html=True)
-
-        if st.button("↻", key=f"im_top_refresh_{st.session_state.uploader_version}", help="Reset/Upload Another"):
-            st.session_state.uploader_version += 1
-            if SHARED_DATA_KEY in st.session_state:
-                del st.session_state[SHARED_DATA_KEY]
-            if SHARED_META_KEY in st.session_state:
-                del st.session_state[SHARED_META_KEY]
-            st.session_state.im_file = None
-            st.session_state.im_import_ready = False
-            st.session_state.im_validation = {key: False for key, _ in KETENTUAN_RULES}
-            st.session_state.pop("im_file_attempt_id", None)
-            st.session_state.pop("im_last_save_ok", None)
-            st.session_state.pop("im_last_save_msg", None)
-            st.rerun()
 
         # Let's get the uploaded file from st.file_uploader
         # If we use a key that depends on version to reset it
@@ -2778,20 +3149,19 @@ def _render_new_workspace():
                     # pengecekan duplikat ke database, bukan diam-diam dilewati.
                     current_file_id = getattr(uploaded, "file_id", uploaded.name)
                     if st.session_state.im_import_ready and st.session_state.get("im_file_attempt_id") != current_file_id:
-                        success, msg = _save_to_database()
+                        success, result = _save_to_database()
                         st.session_state.im_file_attempt_id = current_file_id
                         st.session_state.im_last_save_ok = success
-                        st.session_state.im_last_save_msg = msg
-                        if success:
-                            if "dilewati" in msg:
-                                st.warning(msg)
-                        else:
-                            st.error(f"Gagal otomatis menyimpan ke database: {msg}")
+                        st.session_state.im_last_save_result = result
+                        if result.get("severity") != "success":
+                            _render_save_result_notice(result)
                     elif st.session_state.get("im_last_save_ok") is False:
                         # File yang sama masih terpilih dan percobaan simpan
                         # sebelumnya gagal (duplikat) — tampilkan lagi errornya
                         # secara konsisten, bukannya diam saja seolah berhasil.
-                        st.error(f"Gagal otomatis menyimpan ke database: {st.session_state.get('im_last_save_msg', '')}")
+                        last_result = st.session_state.get("im_last_save_result")
+                        if last_result:
+                            _render_save_result_notice(last_result)
 
                     total_records = len(df_imported)
                     
@@ -2936,20 +3306,7 @@ def _patch_upload_limit_text():
                     }
                 }
 
-                function patchRefreshButton() {
-                    try {
-                        doc.querySelectorAll('button').forEach((btn) => {
-                            if (btn.textContent.trim() === '↻' && !btn.closest('[data-testid="stMarkdownContainer"]')) {
-                                const container = btn.closest('[data-testid="stElementContainer"]');
-                                if (container) {
-                                    container.classList.add('im-custom-refresh-btn-container');
-                                }
-                            }
-                        });
-                    } catch (err) {
-                        console.error("[ImportManager] Error in patchRefreshButton:", err);
-                    }
-                }
+
 
                 function triggerAction(actionName) {
                     try {
@@ -3060,12 +3417,10 @@ def _patch_upload_limit_text():
                 }
 
                 patchUploadLimit();
-                patchRefreshButton();
                 hideActionTriggerInput();
 
                 const observer = new MutationObserver(() => {
                     patchUploadLimit();
-                    patchRefreshButton();
                     hideActionTriggerInput();
                     checkModalClosure();
                 });
@@ -3106,6 +3461,19 @@ def render_import_manager():
     if action == "refresh":
         if "action" in st.query_params:
             del st.query_params["action"]
+        st.rerun()
+    elif action == "top_refresh":
+        st.session_state.uploader_version = st.session_state.get("uploader_version", 0) + 1
+        if SHARED_DATA_KEY in st.session_state:
+            del st.session_state[SHARED_DATA_KEY]
+        if SHARED_META_KEY in st.session_state:
+            del st.session_state[SHARED_META_KEY]
+        st.session_state.im_file = None
+        st.session_state.im_import_ready = False
+        st.session_state.im_validation = {key: False for key, _ in KETENTUAN_RULES}
+        st.session_state.pop("im_file_attempt_id", None)
+        st.session_state.pop("im_last_save_ok", None)
+        st.session_state.pop("im_last_save_result", None)
         st.rerun()
     elif action == "close_dialog":
         st.session_state["_im_open_dialog"] = None
