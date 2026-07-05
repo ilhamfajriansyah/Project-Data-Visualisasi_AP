@@ -135,16 +135,32 @@ COLUMN_ALIASES = {
     "spending_pax": "spending_per_pax",
 }
 
-NUMERIC_COLUMNS = [
+NUMERIC_STANDARD_COLUMNS = {
     "tahun",
     "min_omzet",
     "real_omzet",
     "pendapatan_sewa",
     "pendapatan_rs",
-    "kontribusi",
+    "total_kontribusi",
     "luas_sqm",
     "total_trafik",
-]
+    "rs_percent",
+    "mgrs_per_pax",
+    "real_pax",
+    "acv",
+    "rev_per_sqm",
+    "spending_per_pax",
+    "trafik_int_arr",
+    "trafik_int_dep",
+    "subtotal_trafik_int",
+    "trafik_dom_arr",
+    "trafik_dom_dep",
+    "subtotal_trafik_dom",
+}
+
+DATE_STANDARD_COLUMNS = {"document_date", "start_kontrak", "end_kontrak"}
+
+_NULL_PLACEHOLDERS = {"nan", "none", "nat", "-", "n/a", "na"}
 
 
 def _clean_column_name(column) -> str:
@@ -159,7 +175,42 @@ def _clean_column_name(column) -> str:
 
 
 def normalize_imported_data(df: pd.DataFrame) -> pd.DataFrame:
-    # Preserve original columns exactly as requested
+    """Bersihkan data mentah hasil upload sebelum disimpan: trim whitespace,
+    samakan placeholder kosong ("nan"/"-"/dst) jadi NaN yang konsisten, dan
+    koersi tipe kolom numerik/tanggal yang dikenal. `masa_jasa` dinormalisasi
+    ke tanggal awal bulan supaya key deduplikasi (kode_ruang + masa_jasa +
+    tahun) di import_manager.py bisa diandalkan meski format asal di Excel
+    berbeda-beda antar file.
+    """
+    df = df.copy()
+
+    for col in df.columns:
+        if df[col].dtype != object:
+            continue
+        stripped = df[col].apply(lambda v: v.strip() if isinstance(v, str) else v)
+        df[col] = stripped.apply(
+            lambda v: pd.NA if isinstance(v, str) and v.lower() in _NULL_PLACEHOLDERS else v
+        )
+
+    mapping = get_column_mapping(df)
+
+    for std_name in NUMERIC_STANDARD_COLUMNS:
+        orig_col = mapping.get(std_name)
+        if not orig_col or orig_col not in df.columns:
+            continue
+        cleaned = df[orig_col].astype(str).str.replace(r"[^\d.\-]", "", regex=True)
+        df[orig_col] = pd.to_numeric(cleaned, errors="coerce")
+
+    for std_name in DATE_STANDARD_COLUMNS:
+        orig_col = mapping.get(std_name)
+        if orig_col and orig_col in df.columns:
+            df[orig_col] = pd.to_datetime(df[orig_col], errors="coerce")
+
+    masa_jasa_col = mapping.get("masa_jasa")
+    if masa_jasa_col and masa_jasa_col in df.columns:
+        parsed = pd.to_datetime(df[masa_jasa_col], errors="coerce")
+        df[masa_jasa_col] = parsed.dt.to_period("M").dt.to_timestamp()
+
     return df
 
 
@@ -286,8 +337,8 @@ def read_import_file(uploaded) -> pd.DataFrame:
 
 def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str]]:
     raw_df = read_import_file(uploaded)
-    df = raw_df.copy()
-    
+    df = normalize_imported_data(raw_df)
+
     mapping = get_column_mapping(df)
     missing = get_missing_dashboard_columns(df)
     

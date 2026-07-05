@@ -11,7 +11,7 @@ def topnav_actions_html():
     """Bell + profile/logout menu — shared so any custom header layout can reuse it
     without duplicating (and risking breaking) the logout link."""
     user_name = escape(st.session_state.user_name or "User")
-    role_label = "Admin" if get_current_role() == Role.ADMIN else "Analyst"
+    role_label = "Admin" if get_current_role() == Role.ADMIN else "User"
     return f"""
     <div class="ap-top-actions">
         <details class="ap-profile-details">

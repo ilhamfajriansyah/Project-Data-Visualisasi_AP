@@ -156,22 +156,13 @@ def main() -> None:
     init_auth_state()
 
     # Handle ?ap_logout=1 unconditionally, before any other session logic.
-    # The Logout link is a real page navigation (target="_self"), which
-    # starts a brand-new Streamlit session — st.session_state has no token
-    # to invalidate yet, only the (async) cookie does. handle_logout_request
-    # waits for that cookie read to resolve before acting, so we don't risk
-    # invalidating nothing and having the old session quietly restore
-    # itself right back.
     if st.query_params.get("ap_logout") == "1":
         if not handle_logout_request():
             st.stop()
         st.query_params.clear()
         st.rerun()
 
-    # Same reasoning as logout above — this is a real page navigation
-    # (window.parent.location.search = '?ap_keepalive=1' from the session
-    # watchdog's JS), so handle it before any cookie/pending gate so an
-    # activity ping is never silently dropped behind that race.
+    # Same reasoning as logout above
     if st.query_params.get("ap_keepalive") == "1":
         st.query_params.clear()
         touch_session(st.session_state.get("session_token"))
@@ -186,10 +177,6 @@ def main() -> None:
         return
 
     if is_session_check_pending():
-        # We genuinely don't know yet whether a remember-me cookie exists
-        # (the cookie component hasn't reported back this run) — render
-        # nothing rather than flashing the login page; Streamlit reruns
-        # automatically the moment the component resolves.
         st.stop()
 
     app_shell(render_current_page)

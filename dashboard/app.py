@@ -2158,9 +2158,6 @@ ROLE_MENUS = {
         "Revenue Sharing",
         "Lease Contract",
         "Traffic Monitor",
-        "Room Database",
-        "Import Manager",
-        "Data Verification",
     ],
 }
 
@@ -4014,6 +4011,18 @@ def render_dashboard_app():
     show_sidebar()
 
     menu = st.session_state.active_menu
+
+    # Import Manager keeps action dialogs (view/download/reload/delete) open
+    # across reruns via session_state until JS detects the modal closing and
+    # signals it explicitly. If the user closes a dialog and switches menus
+    # before that signal arrives, the "open dialog" flag is left stale and
+    # would otherwise reappear the moment the user navigates back. Clear it
+    # whenever we're freshly entering Import Manager from a different menu.
+    prev_menu = st.session_state.get("_prev_active_menu")
+    if menu != prev_menu:
+        st.session_state["_prev_active_menu"] = menu
+        if menu == "Import Manager":
+            st.session_state["_im_open_dialog"] = None
 
     if df_raw is None and menu != "Import Manager":
         show_topnav(menu, show_search=False)

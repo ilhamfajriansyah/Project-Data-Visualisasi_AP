@@ -99,15 +99,6 @@ DEADLINE      = date(2026, 4, 30)
 
 SBU_LIST = ["Cikarang", "Bali", "Ginung", "Lombok", "Manado", "Kupang", "Jayapura", "Sorong"]
 
-def _get_pic_history() -> pd.DataFrame:
-    return pd.DataFrame(columns=["Periode", "Tanggal Upload", "Nama File", "Rows", "Status"])
-
-def _get_admin_history() -> pd.DataFrame:
-    return pd.DataFrame(columns=["PIC", "Periode", "File", "Rows", "Status", "Anomali"])
-
-UPLOAD_HISTORY_DATA = []
-
-
 def _load_import_history() -> pd.DataFrame:
     try:
         from .connection import get_engine
@@ -1536,22 +1527,55 @@ div:has(> .im-success-visual) ~ div [data-testid="stHorizontalBlock"] [data-test
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #f1f5f9;
+    border: 1px solid rgba(99,102,241,0.15);
     background: #fff;
-    color: #94a3b8;
+    color: #6366F1;
     cursor: pointer;
     transition: all 0.15s;
     font-size: 13px;
 }
+.im-action-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+}
 .im-action-btn:hover {
-    background: #f5f3ff;
-    color: #6366f1;
-    border-color: rgba(99,102,241,0.2);
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+    color: #fff;
+    border-color: transparent;
 }
 .im-action-btn.btn-delete:hover {
     background: #fef2f2;
     color: #ef4444;
     border-color: rgba(239,68,68,0.2);
+}
+/* Reset native <button> appearance for action + header buttons */
+button.im-action-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 0;
+    outline: none;
+    box-sizing: border-box;
+    line-height: 1;
+}
+button.im-btn-refresh,
+button.im-btn-export {
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    font-family: inherit;
+}
+/* JS-action bridge input — offscreen (not display:none) so React events fire normally */
+[data-testid="stElementContainer"]:has(input[placeholder="__im_action_trigger__"]) {
+    position: fixed !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
 }
 /* Pagination */
 .im-pagination-wrap {
@@ -2152,394 +2176,6 @@ def _init_state():
             st.session_state[k] = v
 
 
-# ─────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────
-def _status_badge(s):
-    s = str(s)
-    cls = {"Approve":"b-approve","Rejected":"b-rejected","Pending":"b-pending",
-           "Success":"b-success","Failed":"b-failed"}.get(s, "b-pending")
-    return f'<span class="{cls}">{s}</span>'
-
-def _stepper(current: int):
-    steps = [
-        ("1", "Template"),
-        ("2", "Upload"),
-        ("3", "Preview"),
-        ("4", "Submit"),
-    ]
-    html = '<div class="stepper-wrap">'
-    for i, (num, label) in enumerate(steps):
-        idx = i + 1
-        state = "done" if idx < current else ("active" if idx == current else "idle")
-        icon  = "✓" if state == "done" else num
-        html += f'<div class="step-item"><div class="step-circle {state}">{icon}</div><div class="step-label {state}">{label}</div></div>'
-        if i < len(steps) - 1:
-            line_state = "done" if idx < current else "idle"
-            html += f'<div class="step-line {line_state}"></div>'
-    html += '</div>'
-    st.markdown(html, unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────
-# PIC VIEW
-# ─────────────────────────────────────────────
-def _render_pic_view():
-    # Period Banner
-    sisa = (DEADLINE - date.today()).days
-    st.markdown(f"""
-    <div class="period-banner">
-        <div>
-            <div class="period-title">📅 Periode {PERIOD_ACTIVE} — Belum Ada Submission</div>
-            <div class="period-sub">Deadline upload: {DEADLINE.strftime("%d %B %Y")} · Hanya 1 kali submission per periode</div>
-        </div>
-        <span class="period-badge">⏳ {sisa} hari lagi</span>
-    </div>""", unsafe_allow_html=True)
-
-    # Stepper
-    _stepper(st.session_state.im_step)
-
-    col_up, col_scheme = st.columns([5, 4])
-
-    # ── LEFT: Upload Area ──
-    with col_up:
-        st.markdown('<div class="nad-card" style="padding:20px 22px;">', unsafe_allow_html=True)
-
-        step = st.session_state.im_step
-
-        # STEP 1 — Download Template
-        if step == 1:
-            st.markdown('<div class="nad-card-title">📥 Step 1 — Download Template</div>', unsafe_allow_html=True)
-            st.markdown('<div class="nad-card-sub">Unduh template Excel standar sebagai panduan pengisian data pendapatan.</div>', unsafe_allow_html=True)
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
-            template_df = pd.DataFrame([{
-                "Perusahaan": "PT Contoh Tenant",
-                "Brand": "Example Brand",
-                "Terminal": "Terminal 1",
-                "Kode Ruang": "FB-01-01",
-                "Bidang Usaha": "F&B",
-                "Periode": "April",
-                "Tahun": 2026,
-                "Min Omzet": 8000000,
-                "Real Omzet": 10000000,
-                "Pendapatan Sewa": 2000000,
-                "Pendapatan RS": 500000,
-                "Total Kontribusi": 2500000,
-                "Luas SQM": 20,
-                "Total Trafik": 1200,
-            }])
-            c1, c2 = st.columns(2)
-            with c1:
-                st.download_button("⬇️ Download Template Excel",
-                                   data=dataframe_to_excel_bytes(template_df, "Template Pendapatan"),
-                                   file_name="template_pendapatan.xlsx", mime=EXCEL_MIME,
-                                   use_container_width=True, key="im_dl_tmpl")
-            with c2:
-                if st.button("Lanjut ke Upload →", use_container_width=True, key="im_step1_next"):
-                    st.session_state.im_step = 2
-                    st.rerun()
-
-        # STEP 2 — Upload
-        elif step == 2:
-            st.markdown('<div class="nad-card-title">📤 Step 2 — Upload File</div>', unsafe_allow_html=True)
-            st.markdown('<div class="nad-card-sub">Unggah file Excel yang sudah diisi. Maks. 20MB.</div>', unsafe_allow_html=True)
-
-            st.markdown("""
-            <div class="lc-dropzone">
-                <div class="lc-drop-icon">☁️</div>
-                <div class="lc-drop-title">Drag & Drop Excel File</div>
-                <div class="lc-drop-sub">Maximum file size 20MB. Only .xlsx and .xls supported.</div>
-            </div>""", unsafe_allow_html=True)
-
-            uploaded = st.file_uploader("", type=["xlsx", "xls"],
-                                        label_visibility="collapsed", key="im_uploader")
-
-            if uploaded:
-                validation = validate_import_upload(uploaded)
-                st.session_state.im_validation = validation
-                st.session_state.im_import_ready = all(validation.values())
-                st.session_state.im_file = uploaded.name
-                size_kb = round(uploaded.size / 1024)
-
-                if not st.session_state.im_import_ready:
-                    st.error("File belum memenuhi semua ketentuan import.")
-                else:
-                    try:
-                        df_imported, missing_columns = store_shared_import(uploaded, st.session_state.im_sbu)
-                        st.session_state.im_preview_rows = len(df_imported)
-                        st.session_state.im_preview_total_omzet = float(df_imported["real_omzet"].sum()) if "real_omzet" in df_imported.columns else 0
-                        st.session_state.im_preview_errors = len(missing_columns)
-                        if missing_columns:
-                            st.warning("File terbaca, tetapi ada kolom yang belum lengkap: " + ", ".join(missing_columns))
-                        else:
-                            st.success("File berhasil terbaca dan siap diverifikasi.")
-                    except Exception as exc:
-                        st.session_state.im_import_ready = False
-                        st.error(f"Gagal membaca file: {exc}")
-
-                status_label = "ready" if st.session_state.im_import_ready else "invalid"
-                st.markdown(f"""
-                <div class="lc-file-item">
-                    <div class="lc-file-icon">📊</div>
-                    <div style="flex:1;">
-                        <div class="lc-file-name">{uploaded.name}</div>
-                        <div class="lc-file-sub">{size_kb} KB · {status_label}</div>
-                    </div>
-                    <span style="font-size:18px;color:#dc2626;cursor:pointer;">🗑️</span>
-                </div>""", unsafe_allow_html=True)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("← Kembali", use_container_width=True, key="im_step2_back"):
-                    st.session_state.im_step = 1; st.rerun()
-            with c2:
-                if st.button("Preview Data →", use_container_width=True, key="im_step2_next",
-                             disabled=((uploaded is None and st.session_state.im_file is None) or not st.session_state.get("im_import_ready", False))):
-                    st.session_state.im_step = 3; st.rerun()
-
-        # STEP 3 — Preview
-        elif step == 3:
-            st.markdown('<div class="nad-card-title">🔍 Step 3 — Preview Data</div>', unsafe_allow_html=True)
-            st.markdown('<div class="nad-card-sub">Periksa ringkasan data sebelum melanjutkan ke submit.</div>', unsafe_allow_html=True)
-            st.markdown("""
-            <div class="preview-kpi-row">
-                <div class="preview-kpi"><div class="preview-kpi-label">Total Rows</div><div class="preview-kpi-val">0</div></div>
-                <div class="preview-kpi"><div class="preview-kpi-label">Total Omzet</div><div class="preview-kpi-val">Rp 0</div></div>
-                <div class="preview-kpi"><div class="preview-kpi-label">Periode</div><div class="preview-kpi-val" style="font-size:15px;">Apr 2026</div></div>
-                <div class="preview-kpi"><div class="preview-kpi-label">Errors</div><div class="preview-kpi-val err">0</div></div>
-            </div>""", unsafe_allow_html=True)
-
-            confirmed = st.checkbox("✅ Saya menyatakan bahwa data yang diunggah adalah benar dan sesuai.", key="im_confirm_check")
-            st.session_state.im_preview_ok = confirmed
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("← Kembali", use_container_width=True, key="im_step3_back"):
-                    st.session_state.im_step = 2; st.rerun()
-            with c2:
-                if st.button("Lanjut Submit →", use_container_width=True, key="im_step3_next",
-                             disabled=not confirmed):
-                    st.session_state.im_step = 4; st.rerun()
-
-        # STEP 4 — Submit
-        elif step == 4:
-            st.markdown('<div class="nad-card-title">🚀 Step 4 — Submit Data</div>', unsafe_allow_html=True)
-            st.markdown('<div class="nad-card-sub">Konfirmasi final. Data akan dikunci dan dikirim ke Admin untuk ditinjau.</div>', unsafe_allow_html=True)
-            st.markdown(f"""
-            <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
-                <div style="font-size:12px;color:#475569;font-weight:600;">📁 File: <strong style="color:#1e293b;">{st.session_state.im_file or 'tenant_data.xlsx'}</strong></div>
-                <div style="font-size:12px;color:#475569;font-weight:600;margin-top:6px;">📅 Periode: <strong style="color:#1e293b;">{PERIOD_ACTIVE}</strong></div>
-                <div style="font-size:12px;color:#475569;font-weight:600;margin-top:6px;">🏢 SBU: <strong style="color:#1e293b;">{st.session_state.im_sbu}</strong></div>
-            </div>""", unsafe_allow_html=True)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("← Kembali", use_container_width=True, key="im_step4_back"):
-                    st.session_state.im_step = 3; st.rerun()
-            with c2:
-                if st.button("🚀 SUBMIT", use_container_width=True, key="im_step4_submit"):
-                    with st.spinner("Menyimpan data ke database..."):
-                        success, msg = _save_to_database()
-                    
-                    if success:
-                        st.session_state.im_submitted = True
-                        st.success("✅ " + msg)
-                        st.balloons()
-                    else:
-                        st.error(f"❌ Gagal menyimpan: {msg}")
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── RIGHT: Ketentuan Import ──
-    with col_scheme:
-        _render_ketentuan_import(st.session_state.get("im_validation"))
-
-    # ── Import History (PIC) ──
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="nad-card" style="padding:0;overflow:hidden;">', unsafe_allow_html=True)
-    st.markdown('<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;">'
-                '<div class="nad-card-title">Import History</div>'
-                '<span style="font-size:18px;color:#94a3b8;cursor:pointer;">🔄</span></div>', unsafe_allow_html=True)
-
-    df_h = _get_pic_history()
-    rows_html = ""
-    for _, r in df_h.iterrows():
-        rows_formatted = f"{r['Rows']:,}".replace(",", ".")
-        rows_html += f"""<tr>
-          <td>{r['Periode']}</td><td style="color:#64748b;">{r['Tanggal Upload']}</td>
-          <td style="font-weight:600;">{r['Nama File']}</td>
-          <td style="font-weight:700;">{rows_formatted}</td>
-          <td>{_status_badge(r['Status'])}</td>
-        </tr>"""
-
-    st.markdown(f"""
-    <div style="overflow-x:auto;">
-      <table class="im-table">
-        <thead><tr>
-          <th>Periode</th><th>Tanggal Upload</th><th>Nama File</th><th>Rows</th><th>Status</th>
-        </tr></thead>
-        <tbody>{rows_html}</tbody>
-      </table>
-    </div>""", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────
-# ADMIN VIEW
-# ─────────────────────────────────────────────
-def _render_admin_view():
-    df_all = _get_admin_history()
-    belum  = _get_belum_submit()
-
-    # KPI
-    total_pic  = len(SBU_LIST) if not df_all.empty else 0
-    sudah      = len(df_all[df_all["Status"].isin(["Success","Approve","Pending"])])
-    blm        = len(belum)
-    perlu_tl   = int((df_all["Anomali"] > 0).sum())
-
-    k1, k2, k3, k4 = st.columns(4)
-    kpi_cfg = [
-        (k1, "linear-gradient(135deg,#4f46e5,#6366f1)", "PIC Terdaftar",         str(total_pic), "Total PIC aktif"),
-        (k2, "linear-gradient(135deg,#059669,#10b981)", "Sudah Submit",           str(sudah),     "Periode ini"),
-        (k3, "linear-gradient(135deg,#d97706,#f59e0b)", "Belum Submit",           str(blm),       "Perlu reminder"),
-        (k4, "linear-gradient(135deg,#dc2626,#f43f5e)", "Perlu Tindak Lanjut",   str(perlu_tl),  "Anomali / konflik"),
-    ]
-    for col, accent, label, val, sub in kpi_cfg:
-        with col:
-            st.markdown(f"""
-            <div class="adm-kpi" style="--accent:{accent};">
-                <div class="adm-kpi-label">{label}</div>
-                <div class="adm-kpi-val">{val}</div>
-                <div class="adm-kpi-sub">{sub}</div>
-            </div>""", unsafe_allow_html=True)
-
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-
-    # Reminder Banner
-    if belum:
-        belum_str = ", ".join(belum)
-        st.markdown(f"""
-        <div class="reminder-banner">
-            <div class="reminder-txt">
-                ⚠️ <strong>{len(belum)} PIC belum submit</strong> untuk periode {PERIOD_ACTIVE}:
-                <span style="color:#92400e;font-weight:700;"> {belum_str}</span>
-            </div>
-        </div>""", unsafe_allow_html=True)
-        if st.button("📣 Kirim Reminder ke Semua PIC Belum Submit", key="im_remind"):
-            st.toast(f"Reminder dikirim ke: {belum_str}", icon="📣")
-
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-
-    # Filter Row
-    fc1, fc2, fsp = st.columns([2, 2, 6])
-    with fc1:
-        f_pic = st.selectbox("", ["Semua PIC"] + SBU_LIST, label_visibility="collapsed", key="adm_fpic")
-    with fc2:
-        f_status = st.selectbox("", ["Semua Status","Success","Approve","Pending","Rejected","Failed"],
-                                label_visibility="collapsed", key="adm_fstatus")
-    # Apply filter
-    df = df_all.copy()
-    if f_pic    != "Semua PIC":    df = df[df["PIC"] == f_pic]
-    if f_status != "Semua Status": df = df[df["Status"] == f_status]
-    df = df.reset_index(drop=True)
-
-    # Table
-    rows_html = ""
-    for _, r in df.iterrows():
-        anomali_val = f"{r['Anomali']:,}".replace(",", ".")
-        anomali_html = f'<span style="color:#dc2626;font-weight:700;">{anomali_val}</span>' if r["Anomali"] > 0 else '<span style="color:#94a3b8;">0</span>'
-        rows_formatted = f"{r['Rows']:,}".replace(",", ".")
-        rows_html += f"""<tr>
-          <td style="font-weight:700;color:#4f46e5;">{r['PIC']}</td>
-          <td>{r['Periode']}</td>
-          <td style="font-size:12px;">{r['File']}</td>
-          <td style="font-weight:700;">{rows_formatted}</td>
-          <td>{_status_badge(r['Status'])}</td>
-          <td>{anomali_html}</td>
-          <td>
-            <span title="Review"  style="cursor:pointer;font-size:14px;margin-right:4px;">🔍</span>
-            <span title="Approve" style="cursor:pointer;font-size:14px;margin-right:4px;">✅</span>
-            <span title="Reject"  style="cursor:pointer;font-size:14px;margin-right:4px;">❌</span>
-            <span title="Lock"    style="cursor:pointer;font-size:14px;margin-right:4px;">🔒</span>
-            <span title="Unlock"  style="cursor:pointer;font-size:14px;">🔓</span>
-          </td>
-        </tr>"""
-
-    st.markdown('<div class="nad-card" style="padding:0;overflow:hidden;">', unsafe_allow_html=True)
-    st.markdown('<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px;">'
-                '<div class="nad-card-title">Semua Import History</div>'
-                '<span style="font-size:18px;color:#94a3b8;cursor:pointer;">🔄</span></div>',
-                unsafe_allow_html=True)
-    st.markdown(f"""
-    <div style="overflow-x:auto;">
-      <table class="im-table">
-        <thead><tr>
-          <th>PIC</th><th>Periode</th><th>File</th><th>Rows</th><th>Status</th><th>Anomali</th><th>Aksi</th>
-        </tr></thead>
-        <tbody>{rows_html}</tbody>
-      </table>
-    </div>
-    <div class="im-footer"><span class="im-footer-info">Showing {len(df)} entries</span></div>
-    """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-
-    # ── Admin Controls ──
-    st.markdown('<div class="nad-card-title" style="margin-bottom:10px;">⚙️ Kontrol Admin</div>', unsafe_allow_html=True)
-    ac1, ac2 = st.columns(2)
-
-    with ac1:
-        # Buka Kunci
-        st.markdown('<div class="admin-ctrl">', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-title">🔓 Buka Kunci Upload PIC</div>', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-sub">Izinkan PIC upload ulang setelah periode dikunci.</div>', unsafe_allow_html=True)
-        unlock_pic    = st.selectbox("PIC", SBU_LIST, key="adm_unlock_pic", label_visibility="collapsed")
-        unlock_reason = st.text_input("Alasan pembukaan kunci", placeholder="Masukkan alasan...", key="adm_unlock_reason")
-        if st.button("🔓 Buka Kunci", use_container_width=True, key="adm_do_unlock"):
-            if unlock_reason:
-                st.success(f"✅ Upload PIC {unlock_pic} berhasil dibuka.")
-            else:
-                st.error("Wajib mengisi alasan.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Atur Deadline
-        st.markdown('<div class="admin-ctrl">', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-title">📅 Atur Batas Waktu Upload</div>', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-sub">Perpanjang atau persingkat deadline submission PIC.</div>', unsafe_allow_html=True)
-        new_deadline = st.date_input("Deadline baru", value=DEADLINE, key="adm_deadline")
-        if st.button("💾 Simpan Deadline", use_container_width=True, key="adm_save_deadline"):
-            st.success(f"✅ Deadline diperbarui ke {new_deadline.strftime('%d %b %Y')}.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with ac2:
-        # Hapus Import
-        st.markdown('<div class="admin-ctrl">', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-title">🗑️ Hapus Import</div>', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-sub">Hapus permanen data import bermasalah dari sistem.</div>', unsafe_allow_html=True)
-        del_pic    = st.selectbox("PIC", SBU_LIST, key="adm_del_pic", label_visibility="collapsed")
-        del_period = st.selectbox("Periode", ["Apr 2026","Mar 2026","Feb 2026"], key="adm_del_period", label_visibility="collapsed")
-        if st.button("🗑️ Hapus Data", use_container_width=True, key="adm_do_delete"):
-            st.warning(f"⚠️ Data import {del_pic} periode {del_period} telah dihapus.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Approve & Publish Massal
-        st.markdown('<div class="admin-ctrl">', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-title">✅ Approve & Publish Massal</div>', unsafe_allow_html=True)
-        st.markdown('<div class="admin-ctrl-sub">Publikasikan semua data valid ke dashboard produksi.</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Periode aktif: <strong style="color:#4f46e5;">{PERIOD_ACTIVE}</strong></div>', unsafe_allow_html=True)
-        if st.button("🚀 Approve & Publish Semua", use_container_width=True, key="adm_publish_all"):
-            with st.spinner("Mempublikasikan ke database..."):
-                success, msg = _save_to_database()
-            if success:
-                st.success("✅ Semua data valid berhasil dipublikasikan ke database!")
-                st.balloons()
-            else:
-                st.error(f"❌ Gagal mempublikasikan: {msg}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-
 def _save_to_database():
     from .shared_import import SHARED_DATA_KEY
     df = st.session_state.get(SHARED_DATA_KEY)
@@ -2560,32 +2196,99 @@ def _save_to_database():
 
     from .connection import get_engine
     from sqlalchemy import inspect, text
+    from sqlalchemy.exc import IntegrityError
     import time
-    
+
+    NATURAL_KEY = ["kode_ruang", "masa_jasa", "tahun"]
+
     try:
         engine = get_engine()
         import_id = int(time.time())
         inspector = inspect(engine)
         db_columns = [col['name'] for col in inspector.get_columns('transaction_revenue')]
-        
+
         if 'import_id' in db_columns:
             df_to_save['import_id'] = import_id
-            
+
         save_cols = [c for c in df_to_save.columns if c in db_columns]
         df_final = df_to_save[save_cols].copy()
         df_final = df_final.loc[:, ~df_final.columns.duplicated()]
-        
+
         if 'id' in df_final.columns:
             df_final = df_final.drop(columns=['id'])
-        
-        df_final.to_sql("transaction_revenue", con=engine, if_exists="append", index=False)
 
-        if 'import_history' in inspector.get_table_names():
-            meta = get_shared_import_meta()
-            rs_total = 0.0
-            if 'pendapatan_rs' in df_final.columns:
-                rs_total = float(pd.to_numeric(df_final['pendapatan_rs'], errors='coerce').fillna(0).sum())
-            with engine.begin() as conn:
+        skipped_count = 0
+        if all(c in df_final.columns for c in NATURAL_KEY):
+            # Safety net di level database: kombinasi kode_ruang + masa_jasa +
+            # tahun harus unik, supaya baris yang sama tidak pernah bisa dobel
+            # tersimpan walau ada bug di pengecekan aplikasi di bawah.
+            try:
+                with engine.begin() as ddl_conn:
+                    ddl_conn.execute(text(
+                        "ALTER TABLE transaction_revenue ADD CONSTRAINT "
+                        "uq_transaction_revenue_natural_key UNIQUE (kode_ruang, masa_jasa, tahun)"
+                    ))
+            except Exception:
+                pass
+
+            dup_mask = df_final.duplicated(subset=NATURAL_KEY, keep=False)
+            if dup_mask.any():
+                dup_rooms = sorted(df_final.loc[dup_mask, "kode_ruang"].dropna().astype(str).unique())
+                shown = ", ".join(dup_rooms[:10]) + (", ..." if len(dup_rooms) > 10 else "")
+                return False, (
+                    f"Ditemukan {int(dup_mask.sum())} baris duplikat di dalam file ini "
+                    f"(kode ruang: {shown}). Perbaiki file sebelum diunggah kembali."
+                )
+
+            tahun_values = [
+                int(t) for t in pd.to_numeric(df_final["tahun"], errors="coerce").dropna().unique()
+            ]
+            existing = pd.DataFrame(columns=["kode_ruang", "masa_jasa", "tahun"])
+            if tahun_values:
+                with engine.connect() as conn:
+                    existing = pd.read_sql(
+                        text(
+                            "SELECT kode_ruang, masa_jasa, tahun FROM transaction_revenue "
+                            "WHERE kode_ruang = ANY(:kode_ruang) AND tahun = ANY(:tahun)"
+                        ),
+                        conn,
+                        params={
+                            "kode_ruang": df_final["kode_ruang"].astype(str).tolist(),
+                            "tahun": tahun_values,
+                        },
+                    )
+
+            if not existing.empty:
+                existing_keys = set(
+                    zip(
+                        existing["kode_ruang"].astype(str),
+                        pd.to_datetime(existing["masa_jasa"], errors="coerce"),
+                        existing["tahun"],
+                    )
+                )
+                is_dup = df_final.apply(
+                    lambda r: (
+                        str(r["kode_ruang"]),
+                        pd.to_datetime(r["masa_jasa"], errors="coerce"),
+                        r["tahun"],
+                    ) in existing_keys,
+                    axis=1,
+                )
+                skipped_count = int(is_dup.sum())
+                df_final = df_final.loc[~is_dup].copy()
+
+            if df_final.empty:
+                return False, (
+                    f"Seluruh {skipped_count} baris pada file ini sudah pernah diimpor "
+                    "sebelumnya (kombinasi kode ruang + periode sama). Tidak ada data baru yang disimpan."
+                )
+
+        with engine.begin() as conn:
+            if 'import_history' in inspector.get_table_names():
+                meta = get_shared_import_meta()
+                rs_total = 0.0
+                if 'pendapatan_rs' in df_final.columns:
+                    rs_total = float(pd.to_numeric(df_final['pendapatan_rs'], errors='coerce').fillna(0).sum())
                 conn.execute(
                     text("""
                         INSERT INTO import_history
@@ -2600,178 +2303,27 @@ def _save_to_database():
                         'periode': meta.get('period') or meta.get('periode') or PERIOD_ACTIVE,
                         'filename': meta.get('file_name') or st.session_state.get('im_file') or '-',
                         'uploaded_by': st.session_state.get('user_name', 'Operational User'),
-                        'total_records': int(len(df_final)),
+                        'total_records': int(len(df_final)) + skipped_count,
                         'valid_records': int(len(df_final)),
                         'rs_total': rs_total,
                         'file_size': meta.get('file_size') or '-',
                     },
                 )
-        
+
+            df_final.to_sql("transaction_revenue", con=conn, if_exists="append", index=False)
+
         st.cache_data.clear()
+
+        if skipped_count:
+            return True, (
+                f"{len(df_final)} baris baru disimpan ke database. "
+                f"{skipped_count} baris dilewati karena sudah pernah diimpor sebelumnya."
+            )
         return True, "Data berhasil disimpan ke database."
+    except IntegrityError:
+        return False, "Sebagian/seluruh data pada file ini sudah ada di database (duplikat). Tidak ada data baru yang disimpan."
     except Exception as e:
         return False, f"Error DB: {str(e)}"
-
-# ─────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────
-def render_import_manager():
-    _init_state()
-    st.markdown(_PAGE_CSS, unsafe_allow_html=True)
-
-    # ── Header ──
-    h1, h2 = st.columns([5, 5])
-    with h1:
-        st.markdown("""
-        <div style="padding-top:0;">
-            <div style="font-size:19px;font-weight:800;color:#0f172a;line-height:1.2;">Data Import Manager</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
-                Kelola unggahan data pendapatan tenant dari seluruh PIC terminal/SBU.
-            </div>
-        </div>""", unsafe_allow_html=True)
-    with h2:
-        initial = st.session_state.get("user_name","Admin")[0].upper()
-        uname   = st.session_state.get("user_name","Admin")
-        uemail  = st.session_state.get("user_email","angkasapura@mail.com")
-        st.markdown(f"""
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:0;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.72);
-                border:1px solid rgba(255,255,255,0.95);backdrop-filter:blur(10px);
-                display:flex;align-items:center;justify-content:center;font-size:16px;">🔔</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div style="background:linear-gradient(135deg,#6366f1,#ec4899);border-radius:50%;
-                    width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-                    color:#fff;font-size:13px;font-weight:700;">{initial}</div>
-                <div>
-                    <div style="font-size:12px;font-weight:700;color:#1e293b;">{uname}</div>
-                    <div style="font-size:10px;color:#94a3b8;">{uemail}</div>
-                </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
-
-    # ── View Toggle ──
-    role = st.session_state.get("user_role","Admin")
-    t1, t2, _ = st.columns([1.2, 1.2, 7.6])
-    with t1:
-        if st.button("👤 Tampilan PIC", use_container_width=True, key="im_view_pic"):
-            st.session_state.im_view = "PIC"; st.rerun()
-    with t2:
-        if st.button("🛡️ Tampilan Admin", use_container_width=True, key="im_view_admin"):
-            st.session_state.im_view = "Admin"; st.rerun()
-
-    view_indicator = "👤 **PIC View**" if st.session_state.im_view == "PIC" else "🛡️ **Admin View**"
-    st.markdown(f'<div style="font-size:11px;color:#94a3b8;margin:-6px 0 14px 2px;">Mode aktif: {view_indicator}</div>',
-                unsafe_allow_html=True)
-
-    if st.session_state.im_view == "PIC":
-        _render_pic_view()
-    else:
-        _render_admin_view()
-
-
-# ── Standalone ──
-def _render_import_page_header():
-    initial = st.session_state.get("user_name", "Admin")[0].upper()
-    uname = st.session_state.get("user_name", "Admin")
-    uemail = st.session_state.get("user_email", "angkasapura@mail.com")
-
-    h_title, h_user = st.columns([7.6, 2.4])
-    with h_title:
-        st.markdown("""
-        <div>
-            <div class="im-page-title">Data Import Manager</div>
-            <div class="im-page-subtitle">Upload dan kelola file data dari tim integrasi.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with h_user:
-        st.markdown(f"""
-        <div class="im-userbar">
-            <div class="im-bell">!</div>
-            <div class="im-user">
-                <div class="im-avatar">{initial}</div>
-                <div style="min-width:0;">
-                    <div class="im-user-name">{uname}</div>
-                    <div class="im-user-mail">{uemail}</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
-
-
-def _render_selected_file(uploaded, validation: dict[str, bool] | None = None):
-    validation = validation or {key: False for key, _ in KETENTUAN_RULES}
-    all_valid = uploaded is not None and all(validation.values())
-
-    if uploaded:
-        size_kb = max(1, round(uploaded.size / 1024))
-        st.markdown(f"""
-        <div class="im-file-card">
-            <div class="im-file-icon">XLS</div>
-            <div style="min-width:0;">
-                <div class="im-file-name">{uploaded.name}</div>
-                <div class="im-file-meta">{size_kb:,} KB</div>
-            </div>
-            <div class="im-delete">x</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if not all_valid:
-            failed = [label for key, label in KETENTUAN_RULES if not validation.get(key, False)]
-            st.error(
-                "File belum memenuhi ketentuan import. Perbaiki item yang ditandai ✗ di panel kanan."
-                + (f" ({failed[0]})" if failed else "")
-            )
-            return
-
-        current_sbu = st.session_state.get("im_sbu", SBU_LIST[0])
-        try:
-            df_imported, missing_columns = store_shared_import(uploaded, current_sbu)
-            st.session_state.im_file = uploaded.name
-            st.session_state.im_import_ready = len(missing_columns) == 0
-        except Exception as exc:
-            st.session_state.im_import_ready = False
-            st.error(f"Gagal membaca file: {exc}")
-            return
-
-        if missing_columns:
-            st.warning(
-                "File sudah tersimpan sebagai sumber import, tetapi belum bisa dipakai penuh di Overview. "
-                f"Kolom yang kurang: {', '.join(missing_columns)}"
-            )
-        else:
-            st.success("File berhasil dijadikan sumber data pusat untuk semua dashboard.")
-            st.dataframe(df_imported.head(10), use_container_width=True, hide_index=True)
-        return
-
-    last_file = st.session_state.get("im_file")
-    if last_file:
-        meta = get_shared_import_meta()
-        rows = meta.get("rows", 0)
-        uploaded_at = meta.get("uploaded_at", "sesi ini")
-        st.markdown(f"""
-        <div class="im-file-card">
-            <div class="im-file-icon">XLS</div>
-            <div style="min-width:0;">
-                <div class="im-file-name">{last_file}</div>
-                <div class="im-file-meta">{rows:,} rows - tersimpan pada {uploaded_at}</div>
-            </div>
-            <div class="im-delete">x</div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="im-file-card is-empty">
-            <div class="im-file-icon">XLS</div>
-            <div style="min-width:0;">
-                <div class="im-file-name">Belum ada file dipilih</div>
-                <div class="im-file-meta">Gunakan tombol Browse Files untuk memilih file Excel (.xlsx / .xls).</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
 
 def _get_merge_cell_detail(uploaded) -> str:
@@ -2953,11 +2505,15 @@ def _render_import_history_refined():
         if r["status"].lower() == "deleted":
             action_content = '<span style="color:#94a3b8;font-size:11.5px;font-weight:500;padding-left:8px;">—</span>'
         else:
+            icon_view = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>'
+            icon_reload = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>'
+            icon_download = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'
+            icon_delete = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>'
             action_content = (
-                f'<a href="?menu=Import+Manager&action=view_import&import_id={r["import_id"]}" target="_self" class="im-action-btn" title="View">👁</a>'
-                f'<a href="?menu=Import+Manager&action=download_import&import_id={r["import_id"]}" target="_self" class="im-action-btn" title="Download">⬇</a>'
-                f'<a href="?menu=Import+Manager&action=reload_import&import_id={r["import_id"]}" target="_self" class="im-action-btn" title="Reload">↻</a>'
-                f'<a href="?menu=Import+Manager&action=delete_import&import_id={r["import_id"]}" target="_self" class="im-action-btn btn-delete" title="Delete">🗑</a>'
+                f'<button data-im-action="view_import" data-im-id="{r["import_id"]}" class="im-action-btn" title="View">{icon_view}</button>'
+                f'<button data-im-action="download_import" data-im-id="{r["import_id"]}" class="im-action-btn" title="Download">{icon_download}</button>'
+                f'<button data-im-action="reload_import" data-im-id="{r["import_id"]}" class="im-action-btn" title="Reload">{icon_reload}</button>'
+                f'<button data-im-action="delete_import" data-im-id="{r["import_id"]}" class="im-action-btn btn-delete" title="Delete">{icon_delete}</button>'
             )
 
         uploader_role_html = f'<div class="im-uploader-role">{r["role"]}</div>'
@@ -3012,8 +2568,8 @@ def _render_import_history_refined():
         '<div class="im-section-sub">All import sessions — most recent first</div>'
         '</div>'
         '<div class="im-history-actions">'
-        '<a href="?menu=Import+Manager" target="_self" class="im-btn-refresh" style="text-decoration:none;">Refresh</a>'
-        '<a href="?menu=Import+Manager&action=clear_trash" target="_self" class="im-btn-export btn-clear-trash" style="text-decoration:none;">Clear Trash</a>'
+        '<button data-im-action="refresh" class="im-btn-refresh">Refresh</button>'
+        '<button data-im-action="clear_trash" class="im-btn-export btn-clear-trash">Clear Trash</button>'
         '</div>'
         '</div>'
         '<div style="overflow-x:auto; margin-bottom: 0px !important;">'
@@ -3086,6 +2642,9 @@ def _render_new_workspace():
             st.session_state.im_file = None
             st.session_state.im_import_ready = False
             st.session_state.im_validation = {key: False for key, _ in KETENTUAN_RULES}
+            st.session_state.pop("im_file_attempt_id", None)
+            st.session_state.pop("im_last_save_ok", None)
+            st.session_state.pop("im_last_save_msg", None)
             st.rerun()
 
         # Let's get the uploaded file from st.file_uploader
@@ -3161,13 +2720,30 @@ def _render_new_workspace():
                     df_imported, missing_columns = store_shared_import(uploaded, current_sbu)
                     st.session_state.im_file = uploaded.name
                     st.session_state.im_import_ready = len(missing_columns) == 0
-                    
-                    if st.session_state.im_import_ready and st.session_state.get("im_file_saved_name") != uploaded.name:
+
+                    # Setiap file yang benar-benar baru dipilih di browser (bahkan
+                    # kalau nama & isinya identik dengan upload sebelumnya) dapat
+                    # `file_id` baru dari Streamlit — beda dengan rerun biasa saat
+                    # file yang sama masih "duduk" di uploader, yang mengembalikan
+                    # objek UploadedFile yang sama persis. Memakai file_id (bukan
+                    # nama file) supaya re-upload file yang identik tetap memicu
+                    # pengecekan duplikat ke database, bukan diam-diam dilewati.
+                    current_file_id = getattr(uploaded, "file_id", uploaded.name)
+                    if st.session_state.im_import_ready and st.session_state.get("im_file_attempt_id") != current_file_id:
                         success, msg = _save_to_database()
+                        st.session_state.im_file_attempt_id = current_file_id
+                        st.session_state.im_last_save_ok = success
+                        st.session_state.im_last_save_msg = msg
                         if success:
-                            st.session_state.im_file_saved_name = uploaded.name
+                            if "dilewati" in msg:
+                                st.warning(msg)
                         else:
                             st.error(f"Gagal otomatis menyimpan ke database: {msg}")
+                    elif st.session_state.get("im_last_save_ok") is False:
+                        # File yang sama masih terpilih dan percobaan simpan
+                        # sebelumnya gagal (duplikat) — tampilkan lagi errornya
+                        # secara konsisten, bukannya diam saja seolah berhasil.
+                        st.error(f"Gagal otomatis menyimpan ke database: {st.session_state.get('im_last_save_msg', '')}")
 
                     total_records = len(df_imported)
                     
@@ -3206,10 +2782,13 @@ def _render_new_workspace():
                         '</div>'
                     )
 
-                    st.markdown(success_html, unsafe_allow_html=True)
-
-                    # Buttons removed as requested. Action buttons are replaced by the refresh icon in the card heading.
-                    pass
+                    # Jangan tampilkan kartu "Upload Successful" kalau file ini
+                    # justru gagal/tidak tersimpan ke database (mis. duplikat) —
+                    # kartu hijau ini dulu selalu muncul terlepas dari hasil
+                    # simpan yang sebenarnya, jadi tampak seolah upload berhasil
+                    # padahal datanya tidak masuk.
+                    if st.session_state.get("im_last_save_ok") is not False:
+                        st.markdown(success_html, unsafe_allow_html=True)
 
                 except Exception as exc:
                     st.error(f"Gagal memproses file: {exc}")
@@ -3274,68 +2853,183 @@ def _patch_upload_limit_text():
         """
         <script>
         (function () {
-            const doc = window.parent.document;
-            const win = window.parent;
+            try {
+                const doc = window.parent.document;
+                const win = window.parent;
 
-            // Without this, the moment a real OS file drag crosses any
-            // element outside Streamlit's own dropzone (sidebar, header,
-            // the decorative drop-zone artwork, etc.) the browser's default
-            // behavior kicks in on drop — it navigates the tab to open the
-            // dragged file instead of letting the drop reach the uploader.
-            // That's why clicking to upload works but dragging a file in
-            // from Explorer silently does nothing (or blanks the page).
-            // Globally suppressing the default keeps the drag "live" all
-            // the way to the dropzone, where Streamlit's own handler runs.
-            if (!win.__imDragGuardInstalled) {
-                win.__imDragGuardInstalled = true;
-                ["dragover", "drop"].forEach((evtName) => {
-                    win.addEventListener(evtName, (e) => {
-                        if (!e.target.closest('[data-testid="stFileUploaderDropzone"]')) {
-                            e.preventDefault();
-                        }
-                    }, false);
-                });
-            }
+                // Suppress browser default navigation on real OS file drag-and-drop
+                if (!win.__imDragGuardInstalled) {
+                    win.__imDragGuardInstalled = true;
+                    ["dragover", "drop"].forEach((evtName) => {
+                        win.addEventListener(evtName, (e) => {
+                            if (!e.target.closest('[data-testid="stFileUploaderDropzone"]')) {
+                                e.preventDefault();
+                            }
+                        }, false);
+                    });
+                }
 
-            function patchUploadLimit() {
-                doc.querySelectorAll('[data-testid="stFileUploader"]').forEach((uploader) => {
-                    uploader.classList.add('im-refined-uploader');
+                function patchUploadLimit() {
+                    try {
+                        doc.querySelectorAll('[data-testid="stFileUploader"]').forEach((uploader) => {
+                            uploader.classList.add('im-refined-uploader');
 
-                    const walker = doc.createTreeWalker(uploader, NodeFilter.SHOW_TEXT);
-                    let node = walker.nextNode();
-                    while (node) {
-                        if (/200\\s*MB/i.test(node.nodeValue || '')) {
-                            node.nodeValue = (node.nodeValue || '').replace(/200\\s*MB/gi, '20MB');
-                        }
-                        node = walker.nextNode();
+                            const walker = doc.createTreeWalker(uploader, NodeFilter.SHOW_TEXT);
+                            let node = walker.nextNode();
+                            while (node) {
+                                if (/200\\s*MB/i.test(node.nodeValue || '')) {
+                                    node.nodeValue = (node.nodeValue || '').replace(/200\\s*MB/gi, '20MB');
+                                }
+                                node = walker.nextNode();
+                            }
+                        });
+                    } catch (err) {
+                        console.error("[ImportManager] Error in patchUploadLimit:", err);
                     }
-                });
-            }
+                }
 
-            function patchRefreshButton() {
-                doc.querySelectorAll('button').forEach((btn) => {
-                    if (btn.textContent.trim() === '↻') {
-                        const container = btn.closest('[data-testid="stElementContainer"]');
-                        if (container) {
-                            container.classList.add('im-custom-refresh-btn-container');
-                        }
+                function patchRefreshButton() {
+                    try {
+                        doc.querySelectorAll('button').forEach((btn) => {
+                            if (btn.textContent.trim() === '↻' && !btn.closest('[data-testid="stMarkdownContainer"]')) {
+                                const container = btn.closest('[data-testid="stElementContainer"]');
+                                if (container) {
+                                    container.classList.add('im-custom-refresh-btn-container');
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.error("[ImportManager] Error in patchRefreshButton:", err);
                     }
-                });
-            }
+                }
 
-            patchUploadLimit();
-            patchRefreshButton();
+                function triggerAction(actionName) {
+                    try {
+                        const input = doc.querySelector('input[placeholder="__im_action_trigger__"]');
+                        if (!input) return;
 
-            const observer = new MutationObserver(() => {
+                        input.focus();
+
+                        let prototype = Object.getPrototypeOf(input);
+                        let nativeSetter = null;
+                        while (prototype) {
+                            const desc = Object.getOwnPropertyDescriptor(prototype, 'value');
+                            if (desc && desc.set) {
+                                nativeSetter = desc.set;
+                                break;
+                            }
+                            prototype = Object.getPrototypeOf(prototype);
+                        }
+
+                        if (nativeSetter) {
+                            nativeSetter.call(input, actionName);
+                        } else {
+                            input.value = actionName;
+                        }
+
+                        const tracker = input._valueTracker;
+                        if (tracker) {
+                            tracker.setValue('');
+                        }
+
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+                        input.dispatchEvent(new KeyboardEvent('keydown', {
+                            key: 'Enter',
+                            code: 'Enter',
+                            keyCode: 13,
+                            which: 13,
+                            bubbles: true
+                        }));
+
+                        input.blur();
+                    } catch (err) {
+                        console.error("[ImportManager] Error sending action to Python:", err);
+                    }
+                }
+
+                function handleActionClick(e) {
+                    try {
+                        const btn = e.target.closest('[data-im-action]');
+                        if (!btn) return;
+
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const action = btn.getAttribute('data-im-action');
+                        const id = btn.getAttribute('data-im-id') || '';
+                        const triggerValue = id ? (action + ':' + id) : action;
+
+                        console.log("[ImportManager] Action intercepted:", triggerValue);
+                        triggerAction(triggerValue);
+                    } catch (err) {
+                        console.error("[ImportManager] Error during action click interception:", err);
+                    }
+                }
+
+                // Safely install/re-install the click listener to prevent duplicate / stale handlers
+                if (win.__imActionHandler) {
+                    doc.removeEventListener('click', win.__imActionHandler, true);
+                }
+                win.__imActionHandler = handleActionClick;
+                doc.addEventListener('click', win.__imActionHandler, true);
+
+                function hideActionTriggerInput() {
+                    try {
+                        const input = doc.querySelector('input[placeholder="__im_action_trigger__"]');
+                        if (input) {
+                            const container = input.closest('[data-testid="stElementContainer"]');
+                            if (container) {
+                                container.style.position = 'fixed';
+                                container.style.top = '-9999px';
+                                container.style.left = '-9999px';
+                                container.style.width = '1px';
+                                container.style.height = '1px';
+                                container.style.overflow = 'hidden';
+                                container.style.opacity = '0';
+                                container.style.pointerEvents = 'none';
+                            }
+                        }
+                    } catch (err) {
+                        console.error("[ImportManager] Error in hideActionTriggerInput:", err);
+                    }
+                }
+
+                function checkModalClosure() {
+                    try {
+                        const modal = doc.querySelector('[data-testid="stModal"]');
+                        if (modal) {
+                            win.__imModalWasOpen = true;
+                        } else if (win.__imModalWasOpen) {
+                            win.__imModalWasOpen = false;
+                            console.log("[ImportManager] Modal closure detected.");
+                            triggerAction("close_dialog");
+                        }
+                    } catch (err) {
+                        console.error("[ImportManager] Error checking modal closure:", err);
+                    }
+                }
+
                 patchUploadLimit();
                 patchRefreshButton();
-            });
+                hideActionTriggerInput();
 
-            observer.observe(doc.body, {
-                childList: true,
-                subtree: true,
-                characterData: true,
-            });
+                const observer = new MutationObserver(() => {
+                    patchUploadLimit();
+                    patchRefreshButton();
+                    hideActionTriggerInput();
+                    checkModalClosure();
+                });
+
+                observer.observe(doc.body, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                });
+            } catch (globalErr) {
+                console.error("[ImportManager] Global initialization error:", globalErr);
+            }
         })();
         </script>
         """,
@@ -3344,32 +3038,67 @@ def _patch_upload_limit_text():
     )
 
 
+_DIALOG_ACTIONS = {"view_import", "download_import", "delete_import", "clear_trash"}
+
+
 def render_import_manager():
     _init_state()
-    
-    # Handle query param actions to open dialogs
-    action = st.query_params.get("action")
-    import_id = st.query_params.get("import_id")
-    if action == "clear_trash":
-        show_clear_trash_dialog()
-        del st.query_params["action"]
-    elif action and import_id:
+
+    # ── Route actions ──────────────────────────────────────────────────────────
+    # Prefer JS-triggered pending action (no page reload); fall back to query params
+    # (kept for backward compatibility with direct URL navigation).
+    _pending = st.session_state.get("_im_action_pending", "")
+    if _pending:
+        del st.session_state["_im_action_pending"]
+        action, _, import_id = _pending.partition(":")
+    else:
+        action = st.query_params.get("action", "")
+        import_id = st.query_params.get("import_id", "")
+
+    if action == "refresh":
+        if "action" in st.query_params:
+            del st.query_params["action"]
+        st.rerun()
+    elif action == "close_dialog":
+        st.session_state["_im_open_dialog"] = None
+        st.rerun()
+    elif action == "reload_import" and import_id:
         try:
-            import_id = int(import_id)
-            if action == "view_import":
-                show_import_details_dialog(import_id)
-            elif action == "download_import":
-                show_download_dialog(import_id)
-            elif action == "reload_import":
-                execute_reload_import(import_id)
-            elif action == "delete_import":
-                show_delete_confirm_dialog(import_id)
+            execute_reload_import(int(import_id))
         except Exception:
             pass
-        # Clear action and import_id params so subsequent runs don't trigger again
-        del st.query_params["action"]
+        if "action" in st.query_params:
+            del st.query_params["action"]
         if "import_id" in st.query_params:
             del st.query_params["import_id"]
+    elif action in _DIALOG_ACTIONS:
+        # Dialogs must be re-invoked on every rerun to stay open (Streamlit
+        # closes a dialog the moment its opening call is skipped on a rerun,
+        # which is exactly what happened when this was a one-shot trigger:
+        # the very next rerun — e.g. clicking a button inside the dialog —
+        # didn't call the dialog function again, so it vanished instantly).
+        st.session_state["_im_open_dialog"] = (action, import_id)
+        if "action" in st.query_params:
+            del st.query_params["action"]
+        if "import_id" in st.query_params:
+            del st.query_params["import_id"]
+
+    # Re-open whichever dialog is currently active on every rerun, until a
+    # dialog handler explicitly clears "_im_open_dialog".
+    _open = st.session_state.get("_im_open_dialog")
+    if _open:
+        d_action, d_id = _open
+        try:
+            if d_action == "view_import":
+                show_import_details_dialog(int(d_id))
+            elif d_action == "download_import":
+                show_download_dialog(int(d_id))
+            elif d_action == "delete_import":
+                show_delete_confirm_dialog(int(d_id))
+            elif d_action == "clear_trash":
+                show_clear_trash_dialog()
+        except Exception:
+            st.session_state["_im_open_dialog"] = None
 
     st.markdown('<div class="overview-page-marker im-page-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
@@ -3388,6 +3117,28 @@ def render_import_manager():
     _render_new_workspace()
     st.markdown('</div>', unsafe_allow_html=True)
     _patch_upload_limit_text()
+
+    # ── JS-action bridge ──────────────────────────────────────────────────────
+    # Hidden text input placed LAST so it renders after all CSS (no flash).
+    # The CSS rule in _REFINED_IMPORT_CSS and the JS in _patch_upload_limit_text
+    # both hide it. The callback is called inline when st.text_input runs and
+    # the widget value changed; it then calls st.rerun() so the NEXT run routes
+    # the action (via _im_action_pending) without any extra elements at the top
+    # of the page that would disturb the layout.
+    def _on_action_trigger_change():
+        val = st.session_state.get("im_js_action_trigger", "")
+        if val:
+            st.session_state["_im_action_pending"] = val
+            st.session_state["im_js_action_trigger"] = ""
+            st.rerun()
+
+    st.text_input(
+        "im_action",
+        key="im_js_action_trigger",
+        label_visibility="collapsed",
+        placeholder="__im_action_trigger__",
+        on_change=_on_action_trigger_change,
+    )
 
 
 @st.dialog("Detail Data Import", width="large")
@@ -3510,7 +3261,7 @@ def show_import_details_dialog(import_id):
             ]
             df = df[[col for col in template_order if col in df.columns]]
             st.dataframe(df, use_container_width=True)
-            
+
     except Exception as e:
         st.error(f"Gagal mengambil detail data: {e}")
 
@@ -3637,9 +3388,83 @@ def show_download_dialog(import_id):
             df.to_excel(writer, index=False, sheet_name="Data Revenue")
         towrite.seek(0)
         
-        st.success("File Excel berhasil dibuat!")
+        st.markdown(f"""
+        <div class="im-dl-success">
+            <div class="im-dl-success-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div class="im-dl-success-text">
+                <div class="im-dl-success-title">File Excel berhasil dibuat!</div>
+                <div class="im-dl-success-sub">{filename} &middot; {len(df)} baris data</div>
+            </div>
+        </div>
+        <style>
+        .im-dl-success {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%);
+            border: 1px solid rgba(99,102,241,0.18);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin: 4px 0 18px 0;
+        }}
+        .im-dl-success-icon {{
+            flex: 0 0 auto;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(99,102,241,0.35);
+        }}
+        .im-dl-success-icon svg {{ width: 18px; height: 18px; }}
+        .im-dl-success-title {{
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e1b4b;
+        }}
+        .im-dl-success-sub {{
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }}
+        div[data-testid="stDialog"] div[data-testid="stDownloadButton"] > button {{
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 10px !important;
+            height: 42px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 14px rgba(99,102,241,0.30) !important;
+            transition: all 0.15s ease-in-out !important;
+        }}
+        div[data-testid="stDialog"] div[data-testid="stDownloadButton"] > button:hover {{
+            box-shadow: 0 6px 18px rgba(99,102,241,0.42) !important;
+            transform: translateY(-1px) !important;
+        }}
+        div[data-testid="stDialog"] div[data-testid="stDownloadButton"] > button::before {{
+            content: "" !important;
+            display: inline-block !important;
+            width: 16px !important;
+            height: 16px !important;
+            background-color: #ffffff !important;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath d='M0 64C0 28.7 28.7 0 64 0H224V128c0 17.7 14.3 32 32 32H384V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V64zM384 128H256V0L384 128zM216 232c0-13.3-10.7-24-24-24s-24 10.7-24 24v99.9l-31-31c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l72 72c9.4 9.4 24.6 9.4 33.9 0l72-72c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-31 31V232z'/%3E%3C/svg%3E") no-repeat center / contain !important;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath d='M0 64C0 28.7 28.7 0 64 0H224V128c0 17.7 14.3 32 32 32H384V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V64zM384 128H256V0L384 128zM216 232c0-13.3-10.7-24-24-24s-24 10.7-24 24v99.9l-31-31c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l72 72c9.4 9.4 24.6 9.4 33.9 0l72-72c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-31 31V232z'/%3E%3C/svg%3E") no-repeat center / contain !important;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
         st.download_button(
-            label="📥 Klik di sini untuk mengunduh",
+            label="Download File Excel",
             data=towrite,
             file_name=filename,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -3692,11 +3517,13 @@ def show_delete_confirm_dialog(import_id):
                 st.session_state.pop("shared_import_df", None)
                 st.session_state.pop("shared_import_meta", None)
                 st.session_state.pop("shared_import_mapping", None)
+                st.session_state["_im_open_dialog"] = None
                 st.success("Data berhasil dihapus!")
                 time.sleep(1)
                 st.rerun()
         with col2:
             if st.button("Batal", use_container_width=True):
+                st.session_state["_im_open_dialog"] = None
                 st.rerun()
     except Exception as e:
         st.error(f"Gagal menghapus data: {e}")
@@ -3742,6 +3569,7 @@ def show_clear_trash_dialog():
                         text("DELETE FROM import_history WHERE status = 'Deleted' OR COALESCE(is_active, true) = false")
                     )
                 st.cache_data.clear()
+                st.session_state["_im_open_dialog"] = None
                 st.success("Riwayat berhasil dibersihkan!")
                 time.sleep(1)
                 st.rerun()
@@ -3749,6 +3577,7 @@ def show_clear_trash_dialog():
                 st.error(f"Gagal membersihkan: {e}")
     with col2:
         if st.button("Batal", use_container_width=True):
+            st.session_state["_im_open_dialog"] = None
             st.rerun()
 
 

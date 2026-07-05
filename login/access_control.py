@@ -350,7 +350,10 @@ def logout_user() -> None:
     st.session_state.user_name = ""
     st.session_state.user_email = ""
     st.session_state.user_role = ""
-    st.session_state.login_role = Role.USER.value
+    # login_role sengaja tidak direset di sini: ini adalah UI state form login
+    # yang harus dipertahankan agar pilihan role yang sedang diketik ulang
+    # tidak hilang saat logout_user() dipanggil berulang oleh
+    # validate_active_session (stale cookie belum terhapus secara async).
     st.session_state.session_token = None
     _clear_session_cookie()
 
@@ -501,8 +504,14 @@ def validate_active_session() -> bool:
 
     user, remember, reason = validate_token(token)
     if not user:
-        st.session_state.session_expired_reason = reason
-        logout_user()
+        # Hanya panggil logout_user() jika sesi sebelumnya aktif. Stale cookie
+        # (dari sesi sebelumnya yang sudah di-logout) bisa menyebabkan token
+        # invalid di sini meskipun pengguna tidak pernah login di tab ini —
+        # memanggil logout_user() berulang setiap render hanya akan men-reset
+        # state UI login (login_role, dll) secara tidak sengaja.
+        if st.session_state.is_authenticated:
+            st.session_state.session_expired_reason = reason
+            logout_user()
         return False
 
     if not st.session_state.is_authenticated or st.session_state.get("session_token") != token:
