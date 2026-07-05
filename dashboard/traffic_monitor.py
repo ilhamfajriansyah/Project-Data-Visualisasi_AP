@@ -25,8 +25,8 @@ TM_FONT = ED_FONT
 TM_YEAR_OPTIONS = ["All Year", "2030", "2029", "2028", "2027", "2026", "2025", "2024", "2023"]
 TM_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-TM_TERMINAL_OPTIONS = ["All Terminal", "Terminal 1", "Terminal 2"]
-TM_DONUT_COLORS = ["#7C3AED", "#06B6D4"]
+TM_TERMINAL_OPTIONS = ["All Terminal", "Terminal 1", "Terminal 2", "Terminal 3"]
+TM_DONUT_COLORS = ["#7C3AED", "#06B6D4", "#2563EB"]
 TM_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 TERMINAL_STYLES = {
@@ -39,6 +39,11 @@ TERMINAL_STYLES = {
         "code": "T2",
         "color": "#06B6D4",
         "soft_bg": "#ECFEFF",
+    },
+    "Terminal 3": {
+        "code": "T3",
+        "color": "#2563EB",
+        "soft_bg": "#EFF6FF",
     },
 }
 DEFAULT_TERMINAL_COLORS = ["#7C3AED", "#06B6D4", "#2563EB", "#059669", "#EA580C", "#D97706"]
@@ -98,57 +103,47 @@ def _load_traffic_database_data():
     try:
         engine = get_engine()
         with engine.connect() as conn:
-            traffic_df = pd.read_sql(
-                text("""
-                    SELECT
-                        tahun,
-                        bulan AS masa_jasa,
-                        terminal,
-                        SUM(COALESCE(pax_domestik, 0)) AS pax_domestik,
-                        SUM(COALESCE(pax_internasional, 0)) AS pax_internasional,
-                        SUM(COALESCE(total_pax, 0)) AS total_pax
-                    FROM traffic t
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM import_history ih
-                        WHERE ih.import_id = t.import_id
-                          AND COALESCE(ih.is_active, true) = true
-                    )
-                    GROUP BY tahun, bulan, terminal
-                """),
-                conn,
-            )
-            revenue_df = pd.read_sql(
-                text("""
-                    SELECT
-                        tahun,
-                        masa_jasa,
-                        terminal,
-                        SUM(COALESCE(real_omzet, 0)) AS real_omzet,
-                        AVG(NULLIF(spending_per_pax, 0)) AS spending_per_pax
-                    FROM transaction_revenue tr
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM import_history ih
-                        WHERE ih.import_id = tr.import_id
-                          AND COALESCE(ih.is_active, true) = true
-                    )
-                    GROUP BY tahun, masa_jasa, terminal
-                """),
-                conn,
-            )
+            # Baca data traffic dari transaction_revenue
+            # masa_jasa bisa berupa: 'Jun', 'June', 'June 2026', '2026-06-01', '2026-06-01 00:00:00'
+            # Parsing dilakukan di Python agar lebih fleksibel
+            query = text("""
+                SELECT
+                    tahun,
+                    masa_jasa,
+                    terminal,
+                    SUM(COALESCE(subtotal_trafik_dom, 0))  AS pax_domestik,
+                    SUM(COALESCE(subtotal_trafik_int, 0))  AS pax_internasional,
+                    SUM(COALESCE(total_trafik, 0))         AS total_pax,
+                    SUM(COALESCE(real_omzet, 0))           AS real_omzet,
+                    SUM(COALESCE(total_kontribusi, 0))     AS total_kontribusi,
+                    SUM(COALESCE(spending_per_pax, 0))     AS spending_per_pax
+                FROM transaction_revenue tr
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM import_history ih
+                    WHERE ih.import_id = tr.import_id
+                      AND COALESCE(ih.is_active, true) = true
+                )
+                GROUP BY tahun, masa_jasa, terminal
+            """)
+            df = pd.read_sql(query, conn)
+        if df.empty:
+            return pd.DataFrame()
+        # Normalise masa_jasa: convert datetime strings to month name
+        def _parse_masa_jasa_str(val):
+            if pd.isna(val):
+                return None
+            s = str(val).strip()
+            try:
+                dt = pd.to_datetime(s, errors="raise")
+                return dt.strftime("%B")   # → 'June', 'May', etc.
+            except Exception:
+                pass
+            return s  # leave as-is; _canonical_month will handle
+        df["masa_jasa"] = df["masa_jasa"].apply(_parse_masa_jasa_str)
+        return _normalize_traffic_dataframe(df)
     except Exception:
         return pd.DataFrame()
-
-    if traffic_df.empty:
-        return pd.DataFrame()
-
-    merged = traffic_df.merge(
-        revenue_df,
-        how="left",
-        on=["tahun", "masa_jasa", "terminal"],
-    )
-    return _normalize_traffic_dataframe(merged)
 
 
 def _traffic_from_dashboard_data(df):
@@ -168,6 +163,7 @@ def _traffic_from_dashboard_data(df):
     else:
         mapped["total_pax"] = mapped["pax_domestik"] + mapped["pax_internasional"]
     mapped["real_omzet"] = df["real_omzet"] if "real_omzet" in df.columns else 0
+    mapped["total_kontribusi"] = df["total_kontribusi"] if "total_kontribusi" in df.columns else 0
     mapped["spending_per_pax"] = df["spending_per_pax"] if "spending_per_pax" in df.columns else pd.NA
     return _normalize_traffic_dataframe(mapped)
 
@@ -176,11 +172,11 @@ def _normalize_traffic_dataframe(df):
     if df is None or df.empty:
         return pd.DataFrame(columns=[
             "tahun", "masa_jasa", "terminal", "pax_domestik",
-            "pax_internasional", "total_pax", "real_omzet", "spending_per_pax",
+            "pax_internasional", "total_pax", "real_omzet", "total_kontribusi", "spending_per_pax",
         ])
 
     normalized = df.copy()
-    for col in ["tahun", "pax_domestik", "pax_internasional", "total_pax", "real_omzet", "spending_per_pax"]:
+    for col in ["tahun", "pax_domestik", "pax_internasional", "total_pax", "real_omzet", "total_kontribusi", "spending_per_pax"]:
         if col in normalized.columns:
             normalized[col] = pd.to_numeric(normalized[col], errors="coerce")
         else:
@@ -198,8 +194,8 @@ def _normalize_traffic_dataframe(df):
     )
     missing_split = normalized["pax_domestik"].fillna(0).eq(0) & normalized["pax_internasional"].fillna(0).eq(0)
     normalized.loc[missing_split, "pax_domestik"] = normalized.loc[missing_split, "total_pax"].fillna(0)
-    normalized[["pax_domestik", "pax_internasional", "total_pax", "real_omzet"]] = (
-        normalized[["pax_domestik", "pax_internasional", "total_pax", "real_omzet"]].fillna(0)
+    normalized[["pax_domestik", "pax_internasional", "total_pax", "real_omzet", "total_kontribusi"]] = (
+        normalized[["pax_domestik", "pax_internasional", "total_pax", "real_omzet", "total_kontribusi"]].fillna(0)
     )
     return normalized.dropna(subset=["tahun", "masa_jasa"])
 
@@ -211,25 +207,41 @@ def get_traffic_monitor_data(df_raw=None):
     return _traffic_from_dashboard_data(df_raw)
 
 
-def _apply_filters(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal"):
+def _apply_filters(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal",
+                   sub_terminal_filter="All Sub Terminal", bidang_usaha_filter="All Bidang Usaha", kerja_sama_filter="All Kerja Sama"):
     filtered = df.copy()
     if year_filter != "All Year":
         filtered = filtered[filtered["tahun"] == int(year_filter)]
     if month_filter != "All Month":
-        filtered = filtered[filtered["masa_jasa"] == month_filter]
+        full_month = _canonical_month(month_filter)  # 'Jun' → 'June'
+        filtered = filtered[filtered["masa_jasa"] == full_month]
     if terminal_filter != "All Terminal":
         filtered = filtered[filtered["terminal"] == terminal_filter]
+    if sub_terminal_filter != "All Sub Terminal":
+        filtered = filtered[filtered["sub_terminal"] == sub_terminal_filter]
+    if bidang_usaha_filter != "All Bidang Usaha":
+        filtered = filtered[filtered["bidang_usaha"] == bidang_usaha_filter]
+    if kerja_sama_filter != "All Kerja Sama":
+        filtered = filtered[filtered["kerja_sama"] == kerja_sama_filter]
     return filtered
 
 
-def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal"):
-    current_df = _apply_filters(df, year_filter, month_filter, terminal_filter)
+def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", terminal_filter="All Terminal",
+                       sub_terminal_filter="All Sub Terminal", bidang_usaha_filter="All Bidang Usaha", kerja_sama_filter="All Kerja Sama"):
+    current_df = _apply_filters(df, year_filter, month_filter, terminal_filter, sub_terminal_filter, bidang_usaha_filter, kerja_sama_filter)
     current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
     prior_df = df[df["tahun"] == current_year - 1] if current_year is not None else df.iloc[0:0]
     if month_filter != "All Month":
-        prior_df = prior_df[prior_df["masa_jasa"] == month_filter]
+        full_month = _canonical_month(month_filter)
+        prior_df = prior_df[prior_df["masa_jasa"] == full_month]
     if terminal_filter != "All Terminal":
         prior_df = prior_df[prior_df["terminal"] == terminal_filter]
+    if sub_terminal_filter != "All Sub Terminal":
+        prior_df = prior_df[prior_df["sub_terminal"] == sub_terminal_filter]
+    if bidang_usaha_filter != "All Bidang Usaha":
+        prior_df = prior_df[prior_df["bidang_usaha"] == bidang_usaha_filter]
+    if kerja_sama_filter != "All Kerja Sama":
+        prior_df = prior_df[prior_df["kerja_sama"] == kerja_sama_filter]
 
     def build_rows(source):
         rows = []
@@ -239,19 +251,19 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
             domestic=("pax_domestik", "sum"),
             international=("pax_internasional", "sum"),
             total=("total_pax", "sum"),
+            kontribusi=("total_kontribusi", "sum"),
             revenue=("real_omzet", "sum"),
             spp_avg=("spending_per_pax", "mean"),
         ).reset_index()
         for idx, record in grouped.iterrows():
             total = float(record["total"] or 0)
-            revenue = float(record["revenue"] or 0)
-            spp = float(record["spp_avg"]) if pd.notna(record["spp_avg"]) else (revenue / total if total else 0)
+            spp = float(record["spp_avg"] or 0)
             rows.append({
                 **_terminal_style(record["terminal"], idx),
                 "name": record["terminal"],
-                "domestic": float(record["domestic"] or 0) / 1_000_000,
-                "international": float(record["international"] or 0) / 1_000_000,
-                "total": total / 1_000_000,
+                "domestic": float(record["domestic"] or 0),
+                "international": float(record["international"] or 0),
+                "total": total,
                 "spp": spp,
             })
         return rows
@@ -260,18 +272,15 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
     total = sum(r["total"] for r in rows)
     domestic = sum(r["domestic"] for r in rows)
     international = sum(r["international"] for r in rows)
-    revenue = float(current_df["real_omzet"].sum()) if not current_df.empty else 0
-    spp = revenue / (total * 1_000_000) if total else 0
-    if not spp and rows and total:
-        spp = sum(r["spp"] * r["total"] for r in rows) / total
+    spp = sum(r["spp"] for r in rows)
 
-    prior_total = float(prior_df["total_pax"].sum()) / 1_000_000 if not prior_df.empty else 0
+    prior_total = float(prior_df["total_pax"].sum()) if not prior_df.empty else 0
     yoy = ((total - prior_total) / prior_total * 100) if prior_total else 0
     shares = {r["name"]: (r["total"] / total * 100 if total else 0) for r in rows}
 
     for row in rows:
         prior_terminal = prior_df[prior_df["terminal"] == row["name"]]
-        prior_terminal_total = float(prior_terminal["total_pax"].sum()) / 1_000_000 if not prior_terminal.empty else 0
+        prior_terminal_total = float(prior_terminal["total_pax"].sum()) if not prior_terminal.empty else 0
         row["yoy"] = ((row["total"] - prior_terminal_total) / prior_terminal_total * 100) if prior_terminal_total else 0
 
     return {
@@ -290,13 +299,23 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
         "terminal_label": terminal_filter if terminal_filter != "All Terminal" else "All Terminals",
     }
 
+def _fmt_pax_short(value):
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}".replace(".", ",") + " Jt"
+    else:
+        return f"{int(value):,}".replace(",", ".")
+
 def _fmt_millions(value):
-    return f"{value:.1f}".replace(".", ",") + " Jt pax"
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}".replace(".", ",") + " Jt pax"
+    else:
+        return f"{int(value):,}".replace(",", ".") + " pax"
 
 def _fmt_rp_k(value):
     return f"Rp {value / 1_000:.1f}".replace(".", ",") + " K"
 
-def get_monthly_traffic_trend(df, year_filter="All Year", terminal_filter="All Terminal"):
+def get_monthly_traffic_trend(df, year_filter="All Year", terminal_filter="All Terminal",
+                              sub_terminal_filter="All Sub Terminal", bidang_usaha_filter="All Bidang Usaha", kerja_sama_filter="All Kerja Sama"):
     current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
     prior_year = current_year - 1 if current_year is not None else None
 
@@ -306,8 +325,15 @@ def get_monthly_traffic_trend(df, year_filter="All Year", terminal_filter="All T
         source = df[df["tahun"] == year]
         if terminal_filter != "All Terminal":
             source = source[source["terminal"] == terminal_filter]
+        if sub_terminal_filter != "All Sub Terminal":
+            source = source[source["sub_terminal"] == sub_terminal_filter]
+        if bidang_usaha_filter != "All Bidang Usaha":
+            source = source[source["bidang_usaha"] == bidang_usaha_filter]
+        if kerja_sama_filter != "All Kerja Sama":
+            source = source[source["kerja_sama"] == kerja_sama_filter]
         monthly = source.groupby("masa_jasa")["total_pax"].sum()
-        return [float(monthly.get(month, 0)) / 1_000_000 for month in TM_MONTH_OPTIONS[1:]]
+        # masa_jasa stored as full names ('January'); TM_MONTH_OPTIONS has short ('Jan')
+        return [float(monthly.get(_canonical_month(m), 0)) / 1_000_000 for m in TM_MONTH_OPTIONS[1:]]
 
     return pd.DataFrame({
         "Month": TM_MONTHS,
@@ -315,37 +341,52 @@ def get_monthly_traffic_trend(df, year_filter="All Year", terminal_filter="All T
         "Prior": series_for(prior_year),
     })
 
-def get_domestic_intl_monthly(df, year_filter="All Year", terminal_filter="All Terminal"):
+def get_domestic_intl_monthly(df, year_filter="All Year", terminal_filter="All Terminal",
+                              sub_terminal_filter="All Sub Terminal", bidang_usaha_filter="All Bidang Usaha", kerja_sama_filter="All Kerja Sama"):
     current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
     source = df[df["tahun"] == current_year] if current_year is not None else df.iloc[0:0]
     if terminal_filter != "All Terminal":
         source = source[source["terminal"] == terminal_filter]
+    if sub_terminal_filter != "All Sub Terminal":
+        source = source[source["sub_terminal"] == sub_terminal_filter]
+    if bidang_usaha_filter != "All Bidang Usaha":
+        source = source[source["bidang_usaha"] == bidang_usaha_filter]
+    if kerja_sama_filter != "All Kerja Sama":
+        source = source[source["kerja_sama"] == kerja_sama_filter]
     grouped = source.groupby("masa_jasa").agg(
         Domestic=("pax_domestik", "sum"),
         International=("pax_internasional", "sum"),
     )
     return pd.DataFrame({
         "Month": TM_MONTHS,
-        "Domestic": [float(grouped["Domestic"].get(month, 0)) / 1_000_000 if not grouped.empty else 0 for month in TM_MONTH_OPTIONS[1:]],
-        "International": [float(grouped["International"].get(month, 0)) / 1_000_000 if not grouped.empty else 0 for month in TM_MONTH_OPTIONS[1:]],
+        "Domestic": [float(grouped["Domestic"].get(_canonical_month(m), 0)) / 1_000_000 if not grouped.empty else 0 for m in TM_MONTH_OPTIONS[1:]],
+        "International": [float(grouped["International"].get(_canonical_month(m), 0)) / 1_000_000 if not grouped.empty else 0 for m in TM_MONTH_OPTIONS[1:]],
     })
 
-def get_spp_monthly(df, year_filter="All Year", terminal_filter="All Terminal"):
+def get_spp_monthly(df, year_filter="All Year", terminal_filter="All Terminal",
+                    sub_terminal_filter="All Sub Terminal", bidang_usaha_filter="All Bidang Usaha", kerja_sama_filter="All Kerja Sama"):
     current_year = int(year_filter) if year_filter != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
     source = df[df["tahun"] == current_year] if current_year is not None else df.iloc[0:0]
     if terminal_filter != "All Terminal":
         source = source[source["terminal"] == terminal_filter]
+    if sub_terminal_filter != "All Sub Terminal":
+        source = source[source["sub_terminal"] == sub_terminal_filter]
+    if bidang_usaha_filter != "All Bidang Usaha":
+        source = source[source["bidang_usaha"] == bidang_usaha_filter]
+    if kerja_sama_filter != "All Kerja Sama":
+        source = source[source["kerja_sama"] == kerja_sama_filter]
     grouped = source.groupby("masa_jasa").agg(
         total_pax=("total_pax", "sum"),
         real_omzet=("real_omzet", "sum"),
-        spp=("spending_per_pax", "mean"),
+        spp=("spending_per_pax", "sum"),
     )
     values = []
-    for month in TM_MONTH_OPTIONS[1:]:
-        if grouped.empty or month not in grouped.index:
+    for short_month in TM_MONTH_OPTIONS[1:]:
+        full_month = _canonical_month(short_month)  # 'Jun' -> 'June'
+        if grouped.empty or full_month not in grouped.index:
             values.append(0)
             continue
-        row = grouped.loc[month]
+        row = grouped.loc[full_month]
         spp = row["spp"] if pd.notna(row["spp"]) else (row["real_omzet"] / row["total_pax"] if row["total_pax"] else 0)
         values.append(float(spp or 0) / 1_000)
     return pd.DataFrame({"Month": TM_MONTHS, "SPP": values})
@@ -359,9 +400,9 @@ def get_terminal_table_df(metrics):
         share = metrics["shares"][row["name"]]
         rows.append({
             "Terminal": f'{row["code"]} {row["name"]}',
-            "Domestic Traffic": f'<div class="tm-cell-stack">{f"{row["domestic"]:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{dom_pct:.0f}% dari terminal</span></div>',
-            "International Traffic": f'<div class="tm-cell-stack">{f"{row["international"]:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{intl_pct:.0f}% dari terminal</span></div>',
-            "Total Traffic": f'{f"{total:.1f}".replace(".", ",")} Jt',
+            "Domestic Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(row["domestic"])}<span class="tm-subcell">{dom_pct:.0f}% dari terminal</span></div>',
+            "International Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(row["international"])}<span class="tm-subcell">{intl_pct:.0f}% dari terminal</span></div>',
+            "Total Traffic": f'{_fmt_pax_short(total)}',
             "Traffic Share": f"{f"{share:.1f}".replace(".", ",")}%",
             "Spending Per Pax": _fmt_rp_k(row["spp"]),
             "YoY Growth": f'<span class="tm-positive">↑ +{f"{row["yoy"]:.1f}".replace(".", ",")}%</span>',
@@ -376,9 +417,9 @@ def get_terminal_table_df(metrics):
     intl_pct_total = total_intl / total_all * 100 if total_all else 0
     rows.append({
         "Terminal": '<div class="tm-cell-stack">TOTAL — Terminal 1 & 2<span class="tm-subcell">Ringkasan Terminal 1 &amp; 2</span></div>',
-        "Domestic Traffic": f'<div class="tm-cell-stack">{f"{total_dom:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{dom_pct_total:.0f}% dari total</span></div>',
-        "International Traffic": f'<div class="tm-cell-stack">{f"{total_intl:.1f}".replace(".", ",")} Jt<span class="tm-subcell">{intl_pct_total:.0f}% dari total</span></div>',
-        "Total Traffic": f'<div class="tm-cell-stack">{f"{total_all:.1f}".replace(".", ",")} Jt<span class="tm-subcell">Total FY2024</span></div>',
+        "Domestic Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_dom)}<span class="tm-subcell">{dom_pct_total:.0f}% dari total</span></div>',
+        "International Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_intl)}<span class="tm-subcell">{intl_pct_total:.0f}% dari total</span></div>',
+        "Total Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_all)}<span class="tm-subcell">Total FY2024</span></div>',
         "Traffic Share": '<div class="tm-cell-stack">100%<span class="tm-subcell">Seluruh terminal</span></div>',
         "Spending Per Pax": f'<div class="tm-cell-stack">{_fmt_rp_k(metrics["spp"])}<span class="tm-subcell">Rata-rata tertimbang</span></div>',
         "YoY Growth": f'<div class="tm-cell-stack"><span class="tm-positive">↑ +{f"{metrics["yoy"]:.1f}".replace(".", ",")}%</span><span class="tm-subcell">vs FY2023</span></div>',
@@ -507,7 +548,9 @@ def _tm_page_header():
 
 
 _TM_FILTER_DEFAULTS = {
-    "tm_terminal": "All Terminal", "tm_year": "All Year", "tm_month": "All Month",
+    "tm_terminal": "All Terminal",
+    "tm_year": "All Year",
+    "tm_month": "All Month",
 }
 
 
@@ -540,7 +583,10 @@ def _tm_filter_icon_svg(icon_key: str, size: int = 14) -> str:
     )
 
 
-def _render_tm_filter_card(active_count: int = 0) -> None:
+def _render_tm_filter_card(active_count: int = 0,
+                           terminal_opts=None,
+                           year_opts=None,
+                           month_opts=None) -> None:
     """"Filter Data" card matching the Lease Contract page — filters are
     staged in tm_pend_* widget keys and only take effect once the user
     clicks "Terapkan Filter" / "Bersihkan Semua" / the header "Reset Filter"."""
@@ -572,9 +618,9 @@ def _render_tm_filter_card(active_count: int = 0) -> None:
     st.markdown('<div class="tm-filterrow-marker"></div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3, gap="small")
     field_defs = [
-        (c1, "monitor", "Terminal", TM_TERMINAL_OPTIONS, "tm_pend_terminal"),
-        (c2, "calendar", "Tahun", TM_YEAR_OPTIONS, "tm_pend_year"),
-        (c3, "calendar", "Bulan", TM_MONTH_OPTIONS, "tm_pend_month"),
+        (c1, "monitor", "Terminal", terminal_opts or TM_TERMINAL_OPTIONS, "tm_pend_terminal"),
+        (c2, "calendar", "Tahun", year_opts or TM_YEAR_OPTIONS, "tm_pend_year"),
+        (c3, "calendar", "Bulan", month_opts or TM_MONTH_OPTIONS, "tm_pend_month"),
     ]
     for col, icon_key, label, options, widget_key in field_defs:
         with col:
@@ -666,10 +712,10 @@ def _terminal_card_html(row, share):
             <div class="tm-terminal-id" style="background:{row['soft_bg']};color:{row['color']};">{row['code']}</div>
             <div class="tm-terminal-copy">
                 <p class="tm-terminal-name">{escape(row['name'])}</p>
-                <p class="tm-terminal-meta">Dom {f"{row['domestic']:.1f}".replace(".", ",")} Jt · Intl {f"{row['international']:.1f}".replace(".", ",")} Jt</p>
+                <p class="tm-terminal-meta">Dom {_fmt_pax_short(row['domestic'])} · Intl {_fmt_pax_short(row['international'])}</p>
             </div>
             <div class="tm-terminal-stats">
-                <p class="tm-terminal-total">{f"{row['total']:.1f}".replace(".", ",")} Jt</p>
+                <p class="tm-terminal-total">{_fmt_pax_short(row['total'])}</p>
                 <p class="tm-terminal-share">{f"{share:.1f}".replace(".", ",")}% share</p>
             </div>
         </div>
@@ -1575,25 +1621,11 @@ def page_traffic_monitor(df_raw=None):
         if pend_key not in st.session_state:
             st.session_state[pend_key] = st.session_state[applied_key]
 
-    year_options = ["All Year"] + (
-        [str(int(year)) for year in sorted(data_df["tahun"].dropna().unique(), reverse=True)]
-        if not data_df.empty else []
-    )
-    month_options = ["All Month"] + [
-        month for month in TM_MONTH_OPTIONS[1:]
-        if not data_df.empty and month in set(data_df["masa_jasa"].dropna())
-    ]
-    if len(month_options) == 1:
-        month_options = TM_MONTH_OPTIONS
-    terminal_options = ["All Terminal"] + (
-        sorted(data_df["terminal"].dropna().unique().tolist()) if not data_df.empty else []
-    )
-
-    if st.session_state.tm_year not in year_options:
+    if st.session_state.tm_year not in TM_YEAR_OPTIONS:
         st.session_state.tm_year = "All Year"
-    if st.session_state.tm_month not in month_options:
+    if st.session_state.tm_month not in TM_MONTH_OPTIONS:
         st.session_state.tm_month = "All Month"
-    if st.session_state.tm_terminal not in terminal_options:
+    if st.session_state.tm_terminal not in TM_TERMINAL_OPTIONS:
         st.session_state.tm_terminal = "All Terminal"
 
     metrics = _aggregate_metrics(
@@ -1626,7 +1658,12 @@ def page_traffic_monitor(df_raw=None):
     st.markdown('<div class="tm-fixed-header-spacer" aria-hidden="true"></div>', unsafe_allow_html=True)
 
     with st.container(border=True):
-        _render_tm_filter_card(active_count)
+        _render_tm_filter_card(
+            active_count,
+            TM_TERMINAL_OPTIONS,
+            TM_YEAR_OPTIONS,
+            TM_MONTH_OPTIONS,
+        )
 
     _mount_tm_fixed_header()
 
@@ -1675,7 +1712,7 @@ def page_traffic_monitor(df_raw=None):
             '<div class="tm-mini-metrics">'
             + _mini_metric_box(current_year_label, _fmt_millions(metrics["total"]), accent="#7C3AED")
             + _mini_metric_box(prior_year_label, _fmt_millions(metrics["prior_total"]), accent="#94A3B8")
-            + _mini_metric_box("Peak Month", f"{peak_month} · {f'{peak_value:.1f}'.replace('.', ',')} Jt", accent="#2563EB")
+            + _mini_metric_box("Peak Month", f"{peak_month} · {_fmt_pax_short(peak_value * 1_000_000)}", accent="#2563EB")
             + _mini_metric_box("Growth", f"+{yoy_val_str}%", accent="#059669")
             + "</div>",
             unsafe_allow_html=True,

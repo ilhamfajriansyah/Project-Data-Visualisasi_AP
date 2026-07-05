@@ -132,7 +132,11 @@ COLUMN_ALIASES = {
     "subtotal_trafik_dom": "subtotal_trafik_dom",
     "perimeter_spending_pax": "perimeter_spending_pax",
     "rev_sqm": "rev_per_sqm",
+    "spending": "spending_per_pax",
+    "spending_per_pax": "spending_per_pax",
     "spending_pax": "spending_per_pax",
+    "spp": "spending_per_pax",
+    "spending_per_passenger": "spending_per_pax",
 }
 
 NUMERIC_STANDARD_COLUMNS = {
