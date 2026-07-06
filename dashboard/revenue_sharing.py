@@ -86,7 +86,6 @@ RS_MONTH_ORDER = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
 ]
-RS_DONUT_COLORS = ["#6366F1", "#06B6D4", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#64748B"]
 
 # Fixed icon + color per service, so the donut slice, table row icon, and
 # contribution pill always match regardless of row/sort order.
@@ -247,31 +246,6 @@ def _resolve_col(df: pd.DataFrame, canonical: str) -> str:
 # ─────────────────────────────────────────────
 # DATA TRANSFORMATION FROM REAL EXCEL
 # ─────────────────────────────────────────────
-def get_services_data(df: pd.DataFrame):
-    if df is None or df.empty:
-        return pd.DataFrame()
-        
-    col_bidang = _resolve_col(df, "bidang_usaha")
-    col_rs = _resolve_col(df, "pendapatan_rs")
-    col_kontribusi = _resolve_col(df, "total_kontribusi")
-
-    # Ensure columns exist
-    for col in [col_bidang, col_rs, col_kontribusi]:
-        if col not in df.columns:
-            df[col] = 0 if col != col_bidang else "Unknown"
-
-    grouped = df.groupby(col_bidang, as_index=False).agg({
-        col_rs: "sum",
-        col_kontribusi: "sum"
-    })
-    
-    grouped["Gross Revenue"] = grouped[col_rs].apply(lambda x: f"Rp {x:,.0f}")
-    grouped["Management Share"] = grouped[col_kontribusi].apply(lambda x: f"Rp {x:,.0f}")
-    grouped["SBU Share Rule %"] = "N/A"
-    grouped["Status"] = "SUCCESS"
-    grouped.rename(columns={col_bidang: "Service/SBU"}, inplace=True)
-    
-    return grouped
 
 def get_trend_data_from_df(df: pd.DataFrame):
     """Pivot pendapatan_rs by month x bidang_usaha for the Revenue Trend chart.
@@ -446,7 +420,6 @@ def _compute_pendapatan_rs_and_omzet(df: pd.DataFrame, col_rs: str) -> tuple[pd.
     return final_rs, omzet_basis
 
 
-
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
@@ -506,13 +479,6 @@ def _fmt_rp_full(value):
     return f"Rp {val_str.replace(',', '.')}"
 
 
-def _format_mom(value):
-    cls = "ed-positive" if value >= 0 else "ed-negative"
-    arrow = "↑" if value >= 0 else "↓"
-    val_str = f"{abs(value):.1f}%"
-    return f'<span class="{cls}">{arrow} {val_str.replace(".", ",")}</span>'
-
-
 def _table_col_class(col_name, col_align, prefix="ed-th"):
     align = (col_align or {}).get(str(col_name), "left")
     return f"{prefix}-{align}"
@@ -543,41 +509,6 @@ def _enterprise_table_inner_html(df, col_align=None):
         </table>
     </div>
     """).strip()
-
-
-def _enterprise_table_html(df, title=None, subtitle=None, col_align=None):
-    col_align = col_align or {}
-    head_html = ""
-    if title:
-        if subtitle:
-            head_html = dedent(f"""
-            <div class="ed-table-head-stack">
-                <div class="ed-table-head-copy">
-                    <p class="ed-table-title">{escape(title)}</p>
-                    <p class="ed-table-subtitle">{escape(subtitle)}</p>
-                </div>
-            </div>
-            """).strip()
-        else:
-            head_html = dedent(f"""
-            <div class="ed-table-head">
-                <p class="ed-table-title">{escape(title)}</p>
-            </div>
-            """).strip()
-    return dedent(f"""
-    <div class="ed-table-card">
-        {head_html}
-        {_enterprise_table_inner_html(df, col_align=col_align)}
-    </div>
-    """).strip()
-
-
-def _overview_filter_label(label):
-    return f'<p class="overview-filter-label">{escape(label)}</p>'
-
-
-def _filter_select_label(value):
-    return "Filter" if value == "All" else value
 
 
 def _kpi_card(label, value, delta_pct, accent, icon, tooltip_val=None):
@@ -640,25 +571,6 @@ def _kpi_card(label, value, delta_pct, accent, icon, tooltip_val=None):
         f'</div>'
     )
     return html
-
-
-def _kpi_ring_card(label, value, delta, accent):
-    pct = int(value.replace("%", "")) if isinstance(value, str) else int(value)
-    return dedent(f"""
-    <div class="overview-kpi-card rs-kpi-card rs-kpi-ring-card">
-        <div class="rs-progress-ring" style="background:conic-gradient({accent} 0 {pct}%, #E2E8F0 {pct}% 100%);">
-            <span>{escape(value)}</span>
-        </div>
-        <div class="overview-kpi-copy">
-            <div class="overview-kpi-label">{escape(label)}</div>
-            <div class="overview-kpi-value rs-kpi-value-spacer" aria-hidden="true">00%</div>
-            <div class="overview-kpi-delta">
-                <strong style="background:#DCFCE7;color:#059669;">↑ {escape(delta)}</strong>
-                vs periode sebelumnya
-            </div>
-        </div>
-    </div>
-    """).strip()
 
 
 def _kpi_grid_html(*cards):

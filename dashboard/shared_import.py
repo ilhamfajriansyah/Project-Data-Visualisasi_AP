@@ -7,7 +7,6 @@ import streamlit as st
 
 SHARED_DATA_KEY = "shared_import_df"
 SHARED_META_KEY = "shared_import_meta"
-MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024
 
 # KETENTUAN_RULES is defined below with correct keys (format, size, merge_cell, required_filled, structure)
 
@@ -166,6 +165,38 @@ DATE_STANDARD_COLUMNS = {"document_date", "start_kontrak", "end_kontrak"}
 
 _NULL_PLACEHOLDERS = {"nan", "none", "nat", "-", "n/a", "na"}
 
+# Nama bulan Bahasa Indonesia -> Inggris, supaya "1 Januari 2026" bisa
+# dibaca sama seperti "1 January 2026" (pandas hanya kenal nama bulan
+# Inggris secara native).
+_INDO_MONTH_MAP = {
+    "januari": "January", "februari": "February", "maret": "March", "april": "April",
+    "mei": "May", "juni": "June", "juli": "July", "agustus": "August",
+    "september": "September", "oktober": "October", "november": "November", "desember": "December",
+}
+
+# Tanggal yang sudah dalam format ISO (YYYY-MM-DD, tak ambigu) tidak boleh
+# ikut diperlakukan dengan dayfirst=True — kalau tidak, "2026-03-05" bisa
+# salah dibaca jadi 5 Maret alih-alih tetap 5 Maret... err, jadi tanggal 3
+# Mei. Dicek dulu di sini supaya jalur ISO memakai parsing default pandas.
+_ISO_DATE_RE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}")
+
+
+def normalize_identity_key(value) -> str:
+    """Kunci pembanding untuk identitas tenant (perusahaan/brand/terminal) yang
+    tak peduli huruf besar/kecil, spasi ganda, atau titik/koma singkatan badan
+    usaha — dipakai HANYA untuk mencocokkan apakah dua tulisan merujuk ke
+    tenant yang sama (mis. "PT ABC" vs "pt  abc" vs "PT. ABC" vs "P.T. ABC").
+    Titik/koma dibuang total dari kunci ini karena dalam nama perusahaan
+    Indonesia perannya cuma tanda baca singkatan ("PT.", "CV.") yang
+    penulisannya sering tidak konsisten antar end user, bukan karakter
+    pembeda identitas. Nilai aslinya tidak diubah/disimpan lewat fungsi ini,
+    jadi tidak berisiko merusak nama brand yang penulisannya sengaja unik
+    (mis. "eSHOP", "iZone")."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    text = re.sub(r"[.,]", "", str(value).strip())
+    return re.sub(r"\s+", " ", text).strip().casefold()
+
 
 def _clean_column_name(column) -> str:
     name = str(column).strip().lower()
@@ -178,20 +209,109 @@ def _clean_column_name(column) -> str:
     return name.strip("_")
 
 
+def _translate_indo_months(text: str) -> str:
+    result = text
+    for indo, eng in _INDO_MONTH_MAP.items():
+        result = re.sub(rf"\b{indo}\b", eng, result, flags=re.IGNORECASE)
+    return result
+
+
+def _parse_one_date(value):
+    """Parse satu nilai tanggal apa adanya dari Excel — menerima nama bulan
+    Indonesia atau Inggris, dan menyimpulkan urutan hari/bulan dengan benar
+    untuk format numerik seperti "05/03/2026" (yang dimaksud end user
+    hampir pasti 5 Maret, bukan 3 Mei — pandas defaultnya menerka gaya
+    Amerika MM/DD kalau tidak diberitahu). Format ISO (YYYY-MM-DD) yang
+    sudah tak ambigu dikecualikan dari aturan ini."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return pd.NaT
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return pd.Timestamp(value)
+
+    text = str(value).strip()
+    if not text or text.lower() in _NULL_PLACEHOLDERS:
+        return pd.NaT
+
+    text = _translate_indo_months(text)
+    use_dayfirst = not _ISO_DATE_RE.match(text)
+    try:
+        return pd.to_datetime(text, errors="raise", dayfirst=use_dayfirst)
+    except (ValueError, TypeError):
+        return pd.NaT
+
+
+def _parse_flexible_date(series: pd.Series) -> pd.Series:
+    return series.apply(_parse_one_date)
+
+
+def _parse_one_number(value):
+    """Parse satu nilai angka yang mungkin ditulis gaya Indonesia (titik =
+    pemisah ribuan, koma = desimal — mis. "9.000.000,50") atau gaya
+    Amerika/Excel default (koma = ribuan, titik = desimal — "9,000,000.50"),
+    termasuk kalau ada awalan simbol mata uang ("Rp"). Angka yang sudah
+    numerik asli (bukan teks) dilewati apa adanya."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+
+    text = str(value).strip()
+    if not text or text.lower() in _NULL_PLACEHOLDERS:
+        return None
+
+    cleaned = re.sub(r"[^\d.,\-]", "", text)
+    if not cleaned or cleaned == "-":
+        return None
+
+    has_comma, has_dot = "," in cleaned, "." in cleaned
+    if has_comma and has_dot:
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")  # gaya Indonesia
+        else:
+            cleaned = cleaned.replace(",", "")  # gaya Amerika
+    elif has_comma:
+        parts = cleaned.split(",")
+        if len(parts) == 2 and len(parts[1]) <= 2:
+            cleaned = cleaned.replace(",", ".")  # koma sebagai desimal
+        else:
+            cleaned = cleaned.replace(",", "")  # koma sebagai pemisah ribuan
+    elif has_dot:
+        parts = cleaned.split(".")
+        if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) == 3):
+            cleaned = cleaned.replace(".", "")  # titik sebagai pemisah ribuan
+
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def _parse_flexible_number(series: pd.Series) -> pd.Series:
+    return series.apply(_parse_one_number)
+
+
 def normalize_imported_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Bersihkan data mentah hasil upload sebelum disimpan: trim whitespace,
-    samakan placeholder kosong ("nan"/"-"/dst) jadi NaN yang konsisten, dan
-    koersi tipe kolom numerik/tanggal yang dikenal. `masa_jasa` dinormalisasi
-    ke tanggal awal bulan supaya key deduplikasi (kode_ruang + masa_jasa +
-    tahun) di import_manager.py bisa diandalkan meski format asal di Excel
-    berbeda-beda antar file.
+    """Bersihkan data mentah hasil upload sebelum disimpan:
+    - Trim whitespace, rapikan spasi ganda jadi satu, & samakan placeholder
+      kosong ("nan"/"-"/dst) jadi NaN.
+    - Kolom numerik: terima format Indonesia (titik ribuan, koma desimal)
+      maupun Amerika (koma ribuan, titik desimal), dengan atau tanpa
+      simbol mata uang.
+    - Kolom tanggal: terima nama bulan Indonesia atau Inggris, dan
+      menyimpulkan urutan hari/bulan dengan benar (format ISO yang tak
+      ambigu dikecualikan dari koreksi ini).
+    - `masa_jasa` dinormalisasi ke tanggal awal bulan supaya key
+      deduplikasi (kode_ruang + masa_jasa + tahun) di import_manager.py
+      bisa diandalkan meski format asal di Excel berbeda-beda antar file.
     """
     df = df.copy()
 
     for col in df.columns:
         if df[col].dtype != object:
             continue
-        stripped = df[col].apply(lambda v: v.strip() if isinstance(v, str) else v)
+        stripped = df[col].apply(
+            lambda v: re.sub(r"\s+", " ", v.strip()) if isinstance(v, str) else v
+        )
         df[col] = stripped.apply(
             lambda v: pd.NA if isinstance(v, str) and v.lower() in _NULL_PLACEHOLDERS else v
         )
@@ -202,17 +322,16 @@ def normalize_imported_data(df: pd.DataFrame) -> pd.DataFrame:
         orig_col = mapping.get(std_name)
         if not orig_col or orig_col not in df.columns:
             continue
-        cleaned = df[orig_col].astype(str).str.replace(r"[^\d.\-]", "", regex=True)
-        df[orig_col] = pd.to_numeric(cleaned, errors="coerce")
+        df[orig_col] = _parse_flexible_number(df[orig_col])
 
     for std_name in DATE_STANDARD_COLUMNS:
         orig_col = mapping.get(std_name)
         if orig_col and orig_col in df.columns:
-            df[orig_col] = pd.to_datetime(df[orig_col], errors="coerce")
+            df[orig_col] = _parse_flexible_date(df[orig_col])
 
     masa_jasa_col = mapping.get("masa_jasa")
     if masa_jasa_col and masa_jasa_col in df.columns:
-        parsed = pd.to_datetime(df[masa_jasa_col], errors="coerce")
+        parsed = _parse_flexible_date(df[masa_jasa_col])
         df[masa_jasa_col] = parsed.dt.to_period("M").dt.to_timestamp()
 
     return df
@@ -396,33 +515,3 @@ def get_missing_dashboard_columns(df: pd.DataFrame) -> list[str]:
     return sorted(REQUIRED_DASHBOARD_COLUMNS.difference(mapping.keys()))
 
 
-def has_dashboard_ready_import() -> bool:
-    df = get_shared_import_data()
-    return df is not None and not get_missing_dashboard_columns(df)
-
-
-def import_status_html(card_class: str, title_class: str, sub_class: str) -> str:
-    meta = get_shared_import_meta()
-    if not meta:
-        return f"""
-        <div class="{card_class}">
-            <p class="{title_class}">Central Import Source</p>
-            <p class="{sub_class}">Belum ada file dari Import Manager. Data halaman masih memakai database atau dummy data.</p>
-        </div>
-        """
-
-    status = "Ready for dashboard" if meta.get("ready_for_dashboard") else "Uploaded, but schema incomplete"
-    detail = f"{meta.get('file_name', '-')} - {meta.get('rows', 0):,} rows - {meta.get('uploaded_at', '-')}"
-    missing = meta.get("missing_columns") or []
-    warning = ""
-    if missing:
-        warning = f'<p class="{sub_class}">Kolom kurang: {", ".join(missing[:6])}</p>'
-
-    return f"""
-    <div class="{card_class}">
-        <p class="{title_class}">Central Import Source</p>
-        <p class="{sub_class}">{status}</p>
-        <p class="{sub_class}">{detail}</p>
-        {warning}
-    </div>
-    """

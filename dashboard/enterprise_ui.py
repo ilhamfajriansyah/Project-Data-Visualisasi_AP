@@ -183,7 +183,7 @@ def table_card_html(df, title=None, subtitle=None, col_align=None, link_label=No
     """).strip()
 
 
-def donut_legend_html(labels, values, colors, total_value, fmt_value=fmt_rp_compact):
+def donut_legend_html(labels, values, colors, fmt_value=fmt_rp_compact):
     rows = []
     total = sum(values) or 1
     for idx, (label, val) in enumerate(zip(labels, values)):

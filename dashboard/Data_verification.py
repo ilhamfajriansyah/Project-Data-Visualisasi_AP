@@ -97,6 +97,59 @@ def _empty_verification_data() -> pd.DataFrame:
     ])
 
 
+def _publish_validation_results(df_all: pd.DataFrame, import_id: int | None) -> tuple[bool, str]:
+    """Tulis hasil review (anomali/conflict) ke tabel validation_result.
+    Sebelumnya tombol "Approve & Publish" cuma menampilkan st.toast tanpa
+    menyimpan apapun. Setiap klik menggantikan snapshot lama untuk
+    import_id ini dengan yang baru (bukan log yang terus menumpuk) — hasil
+    review terkini, bukan riwayat setiap klik."""
+    if import_id is None:
+        return False, "Tidak ada data import aktif untuk dipublikasikan."
+
+    anomalies = int(df_all["Anomali"].sum()) if "Anomali" in df_all.columns else 0
+    conflicts = int(df_all["Conflict"].sum()) if "Conflict" in df_all.columns else 0
+
+    try:
+        from .connection import get_engine
+        from sqlalchemy import text
+
+        with get_engine().begin() as conn:
+            conn.execute(
+                text("DELETE FROM validation_result WHERE import_id = :import_id"),
+                {"import_id": import_id},
+            )
+            if anomalies:
+                conn.execute(
+                    text("""
+                        INSERT INTO validation_result (import_id, validation_type, issue_description, affected_rows)
+                        VALUES (:import_id, 'anomali', :desc, :n)
+                    """),
+                    {
+                        "import_id": import_id,
+                        "desc": f"{anomalies} baris dengan data kosong (omzet, kode ruang, atau brand).",
+                        "n": anomalies,
+                    },
+                )
+            if conflicts:
+                conn.execute(
+                    text("""
+                        INSERT INTO validation_result (import_id, validation_type, issue_description, affected_rows)
+                        VALUES (:import_id, 'conflict', :desc, :n)
+                    """),
+                    {
+                        "import_id": import_id,
+                        "desc": f"{conflicts} baris kode ruang bentrok pada periode yang sama.",
+                        "n": conflicts,
+                    },
+                )
+    except Exception as exc:
+        return False, f"Gagal menyimpan hasil validasi: {exc}"
+
+    if anomalies or conflicts:
+        return True, f"Data dipublikasikan dengan catatan: {anomalies} anomali, {conflicts} conflict."
+    return True, "Data dipublikasikan — tidak ada anomali maupun conflict."
+
+
 def _filter_active_import_rows(df: pd.DataFrame | None) -> pd.DataFrame | None:
     if df is None or df.empty or "import_id" not in df.columns:
         return df
@@ -1013,7 +1066,13 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
     _, ab2 = st.columns([7.6, 1.8])
     with ab2:
         if st.button("✅ Approve & Publish", use_container_width=True, key="dv_approve"):
-            st.toast("✅ Data berhasil dipublikasikan!", icon="✅")
+            success, msg = _publish_validation_results(
+                st.session_state.dv_df, st.session_state.get("dv_source_import_id")
+            )
+            if success:
+                st.toast(f"✅ {msg}", icon="✅")
+            else:
+                st.toast(f"❌ {msg}", icon="❌")
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 

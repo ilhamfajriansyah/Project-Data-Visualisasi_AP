@@ -46,38 +46,20 @@ class Role(str, Enum):
     ADMIN = "Admin"
 
 
-class Permission(str, Enum):
-    VIEW_DATA = "view_data"
-    EDIT_DATA = "edit_data"
-    IMPORT_DATA = "import_data"
+def _lookup_user_record(email: str) -> dict[str, str] | None:
+    """DB-backed account lookup — replaces the old hardcoded DEMO_ACCOUNTS
+    dict. Lazy-imports dashboard.connection since this module is loaded
+    before the project root is guaranteed to be on sys.path (see login/app.py)."""
+    from dashboard.connection import get_engine
+    from sqlalchemy import text
 
-
-ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
-    Role.USER: {
-        Permission.VIEW_DATA,
-        Permission.EDIT_DATA,
-        Permission.IMPORT_DATA,
-    },
-    Role.ADMIN: {
-        Permission.VIEW_DATA,
-    },
-}
-
-
-DEMO_ACCOUNTS: dict[str, dict[str, str]] = {
-    "user@airport.com": {
-        "name": "Operational User",
-        "password": "user12345",
-        "role": Role.USER.value,
-    },
-    "admin@airport.com": {
-        "name": "Administrator",
-        "password": "admin12345",
-        "role": Role.ADMIN.value,
-    },
-}
-
-KNOWN_DOMAINS = ("@airport.com", "@example.com", "@injourney.com")
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT username, password, role, pic_name FROM users WHERE username = :username"),
+            {"username": email},
+        ).mappings().first()
+    return dict(row) if row else None
 
 
 @dataclass(frozen=True)
@@ -273,11 +255,6 @@ def validate_email(email: str) -> bool:
     return re.match(pattern, email) is not None
 
 
-def account_exists(email: str) -> bool:
-    normalized_email = email.strip().lower()
-    return normalized_email in DEMO_ACCOUNTS or normalized_email.endswith(KNOWN_DOMAINS)
-
-
 def make_display_name(email: str) -> str:
     username = email.split("@", 1)[0].replace(".", " ").replace("_", " ")
     return username.title() or "User"
@@ -298,30 +275,24 @@ def authenticate_user(
         return None, "Password wajib diisi."
     if not validate_email(normalized_email):
         return None, "Format email tidak valid."
-    if not account_exists(normalized_email):
+
+    user_record = _lookup_user_record(normalized_email)
+    if not user_record:
         return None, "Akun tidak ditemukan."
 
-    demo_account = DEMO_ACCOUNTS.get(normalized_email)
+    import bcrypt
+    if not bcrypt.checkpw(password.encode("utf-8"), user_record["password"].encode("utf-8")):
+        return None, "Password tidak sesuai."
 
-    if demo_account:
-        if password != demo_account["password"]:
-            return None, "Password tidak sesuai."
+    role = normalize_role(user_record["role"])
+    requested_role = normalize_role(selected_role)
+    if role != requested_role:
+        return None, (
+            f"Akun ini terdaftar sebagai {role.value}, bukan {requested_role.value}. "
+            f"Silakan pilih role {role.value}."
+        )
 
-        role = normalize_role(demo_account["role"])
-        requested_role = normalize_role(selected_role)
-        if role != requested_role:
-            return None, (
-                f"Akun ini terdaftar sebagai {role.value}, bukan {requested_role.value}. "
-                f"Silakan pilih role {role.value}."
-            )
-
-        name = demo_account["name"]
-    else:
-        # Prototype fallback. For production, replace this with a database lookup
-        # and never trust role data submitted from the UI.
-        role = normalize_role(selected_role)
-        name = make_display_name(normalized_email)
-
+    name = user_record.get("pic_name") or make_display_name(normalized_email)
     return AuthUser(email=normalized_email, name=name, role=role), ""
 
 
@@ -556,86 +527,3 @@ def get_current_user() -> AuthUser | None:
 def get_current_role() -> Role | None:
     user = get_current_user()
     return user.role if user else None
-
-
-def has_permission(permission: Permission, role: Role | None = None) -> bool:
-    current_role = role or get_current_role()
-    if current_role is None:
-        return False
-
-    return permission in ROLE_PERMISSIONS.get(current_role, set())
-
-
-def can_view(role: Role | None = None) -> bool:
-    return has_permission(Permission.VIEW_DATA, role)
-
-
-def can_edit(role: Role | None = None) -> bool:
-    return has_permission(Permission.EDIT_DATA, role)
-
-
-def get_access_mode_label(role: Role | None = None) -> str:
-    current_role = role or get_current_role()
-    if current_role == Role.USER:
-        return "Edit mode"
-    if current_role == Role.ADMIN:
-        return "Read-only mode"
-    return "Guest"
-
-
-def require_login() -> None:
-    if is_authenticated():
-        return
-
-    st.markdown(
-        """
-        <div style="
-            max-width: 560px;
-            margin: 80px auto;
-            padding: 28px;
-            border: 1px solid #e5e7eb;
-            border-radius: 18px;
-            background: #ffffff;
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-        ">
-            <div style="font-size:18px;font-weight:700;color:#111827;margin-bottom:8px;">
-                Login diperlukan
-            </div>
-            <div style="font-size:14px;line-height:1.7;color:#64748b;">
-                Silakan masuk melalui halaman login sebelum membuka dashboard.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.stop()
-
-
-def require_permission(permission: Permission, feature_name: str = "fitur ini") -> bool:
-    if has_permission(permission):
-        return True
-
-    render_read_only_notice(feature_name)
-    return False
-
-
-def render_read_only_notice(feature_name: str = "fitur ini") -> None:
-    safe_feature_name = escape(feature_name)
-    st.markdown(
-        f"""
-        <div style="
-            margin: 10px 0 18px;
-            padding: 14px 16px;
-            border: 1px solid #d7e7e5;
-            border-left: 4px solid #068585;
-            border-radius: 14px;
-            background: linear-gradient(180deg, #ffffff 0%, #f5fbfa 100%);
-            color: #334155;
-            font-size: 13px;
-            line-height: 1.6;
-        ">
-            Anda masuk sebagai <b>Admin</b>. {safe_feature_name} tersedia dalam mode lihat saja.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )

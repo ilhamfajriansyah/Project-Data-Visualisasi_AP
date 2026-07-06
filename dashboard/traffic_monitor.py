@@ -28,6 +28,14 @@ TM_MONTH_OPTIONS = ["All Month", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 TM_TERMINAL_OPTIONS = ["All Terminal", "Terminal 1", "Terminal 2", "Terminal 3"]
 TM_DONUT_COLORS = ["#7C3AED", "#06B6D4", "#2563EB"]
 TM_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+# masa_jasa disimpan sebagai nama bulan penuh ("April", bukan "Apr") setelah
+# dinormalisasi oleh _canonical_month — dipakai untuk urutan/pergantian bulan
+# (mis. perhitungan Month-over-Month), berbeda dari TM_MONTHS yang cuma untuk
+# label singkat di UI.
+TM_FULL_MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
 
 TERMINAL_STYLES = {
     "Terminal 1": {
@@ -73,19 +81,37 @@ def _canonical_month(value):
     return MONTH_ALIASES.get(raw.lower(), MONTH_ALIASES.get(key, raw))
 
 
-def _month_sort_value(value):
-    month = _canonical_month(value)
-    try:
-        return TM_MONTH_OPTIONS.index(month)
-    except ValueError:
-        return 99
-
-
 def _month_short(value):
     month = _canonical_month(value)
     if month in TM_MONTH_OPTIONS:
         return month[:3]
     return str(value)[:3] if value is not None else "-"
+
+
+def _prior_month_key(month_name: str, year: int) -> tuple[str, int]:
+    """Bulan+tahun sebelumnya secara kalender, menangani pergantian tahun
+    (Januari -> Desember tahun sebelumnya)."""
+    idx = TM_FULL_MONTHS.index(month_name)
+    if idx == 0:
+        return TM_FULL_MONTHS[-1], year - 1
+    return TM_FULL_MONTHS[idx - 1], year
+
+
+def _apply_non_period_filters(source_df, terminal_filter="All Terminal", sub_terminal_filter="All Sub Terminal",
+                              bidang_usaha_filter="All Bidang Usaha", kerja_sama_filter="All Kerja Sama"):
+    """Terapkan filter selain tahun/bulan (dipakai bersama oleh perhitungan
+    YoY dan MoM supaya keduanya konsisten dengan filter terminal/dst yang
+    sedang aktif)."""
+    filtered = source_df
+    if terminal_filter != "All Terminal":
+        filtered = filtered[filtered["terminal"] == terminal_filter]
+    if sub_terminal_filter != "All Sub Terminal":
+        filtered = filtered[filtered["sub_terminal"] == sub_terminal_filter]
+    if bidang_usaha_filter != "All Bidang Usaha":
+        filtered = filtered[filtered["bidang_usaha"] == bidang_usaha_filter]
+    if kerja_sama_filter != "All Kerja Sama":
+        filtered = filtered[filtered["kerja_sama"] == kerja_sama_filter]
+    return filtered
 
 
 def _terminal_style(name, index=0):
@@ -300,13 +326,13 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
     total = sum(r["total"] for r in rows)
     domestic = sum(r["domestic"] for r in rows)
     international = sum(r["international"] for r in rows)
-    spp = sum(r["spp"] for r in rows)
+    spp = sum(r["spp"] * r["total"] for r in rows) / total if total else 0
 
     prior_rows = build_rows(prior_df)
     prior_total = float(prior_df["total_pax"].sum()) if not prior_df.empty else 0
     prior_domestic = float(prior_df["pax_domestik"].sum()) if not prior_df.empty else 0
     prior_international = float(prior_df["pax_internasional"].sum()) if not prior_df.empty else 0
-    prior_spp = sum(r["spp"] for r in prior_rows)
+    prior_spp = sum(r["spp"] * r["total"] for r in prior_rows) / prior_total if prior_total else 0
 
     def _pct_change(curr, prior):
         return ((curr - prior) / prior * 100) if prior else 0
@@ -316,11 +342,55 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
     international_yoy = _pct_change(international, prior_international)
     spp_yoy = _pct_change(spp, prior_spp)
     shares = {r["name"]: (r["total"] / total * 100 if total else 0) for r in rows}
-
     for row in rows:
         prior_terminal = prior_df[prior_df["terminal"] == row["name"]]
         prior_terminal_total = float(prior_terminal["total_pax"].sum()) if not prior_terminal.empty else 0
-        row["yoy"] = ((row["total"] - prior_terminal_total) / prior_terminal_total * 100) if prior_terminal_total else 0
+        row["yoy"] = ((row["total"] - prior_terminal_total) / prior_terminal_total * 100) if prior_terminal_total else None
+
+    # "Traffic Growth" headline: pakai YoY kalau data tahun sebelumnya
+    # benar-benar ada. Realitanya user mengunggah data per bulan sepanjang
+    # tahun berjalan tanpa pernah mengisi tahun sebelumnya, jadi YoY akan
+    # kosong untuk waktu yang lama — jatuh ke Month-over-Month (vs bulan
+    # kalender sebelumnya) supaya kartu ini tetap bermakna, dan otomatis
+    # kembali ke YoY begitu data tahun sebelumnya tersedia.
+    growth_pct = yoy
+    growth_label = f"YoY vs FY{current_year - 1}" if current_year is not None else "YoY"
+    growth_available = bool(prior_total)
+
+    if not growth_available:
+        ref_df = current_df.dropna(subset=["tahun", "masa_jasa"]).copy()
+        if not ref_df.empty:
+            ref_df["_month_idx"] = ref_df["masa_jasa"].map(lambda m: TM_FULL_MONTHS.index(m) if m in TM_FULL_MONTHS else -1)
+            ref_df = ref_df[ref_df["_month_idx"] >= 0]
+
+        if ref_df.empty:
+            growth_pct = 0
+            growth_label = "Data pembanding belum tersedia"
+        else:
+            latest = ref_df.sort_values(["tahun", "_month_idx"]).iloc[-1]
+            cur_month_name, cur_month_year = latest["masa_jasa"], int(latest["tahun"])
+            cur_month_total = float(
+                ref_df.loc[
+                    (ref_df["tahun"] == cur_month_year) & (ref_df["masa_jasa"] == cur_month_name),
+                    "total_pax",
+                ].sum()
+            )
+            prior_month_name, prior_month_year = _prior_month_key(cur_month_name, cur_month_year)
+            non_period_df = _apply_non_period_filters(
+                df, terminal_filter, sub_terminal_filter, bidang_usaha_filter, kerja_sama_filter
+            )
+            prior_month_df = non_period_df[
+                (non_period_df["tahun"] == prior_month_year) & (non_period_df["masa_jasa"] == prior_month_name)
+            ]
+            prior_month_total = float(prior_month_df["total_pax"].sum()) if not prior_month_df.empty else 0
+
+            if prior_month_total:
+                growth_pct = _pct_change(cur_month_total, prior_month_total)
+                growth_label = f"MoM vs {_month_short(prior_month_name)} {prior_month_year}"
+                growth_available = True
+            else:
+                growth_pct = 0
+                growth_label = "Data pembanding belum tersedia"
 
     return {
         "total": total,
@@ -333,6 +403,9 @@ def _aggregate_metrics(df, year_filter="All Year", month_filter="All Month", ter
         "domestic_yoy": domestic_yoy,
         "international_yoy": international_yoy,
         "spp_yoy": spp_yoy,
+        "growth_pct": growth_pct,
+        "growth_label": growth_label,
+        "growth_available": growth_available,
         "prior_total": prior_total,
         "rows": rows,
         "shares": shares,
@@ -420,7 +493,6 @@ def get_spp_monthly(df, year_filter="All Year", terminal_filter="All Terminal",
     grouped = source.groupby("masa_jasa").agg(
         total_pax=("total_pax", "sum"),
         real_omzet=("real_omzet", "sum"),
-        spp=("spending_per_pax", "sum"),
     )
     values = []
     for short_month in TM_MONTH_OPTIONS[1:]:
@@ -429,12 +501,24 @@ def get_spp_monthly(df, year_filter="All Year", terminal_filter="All Terminal",
             values.append(0)
             continue
         row = grouped.loc[full_month]
-        spp = row["spp"] if pd.notna(row["spp"]) else (row["real_omzet"] / row["total_pax"] if row["total_pax"] else 0)
-        values.append(float(spp or 0) / 1_000)
+        spp = row["real_omzet"] / row["total_pax"] if row["total_pax"] else 0
+        values.append(float(spp or 0) / 1000.0)
     return pd.DataFrame({"Month": TM_MONTHS, "SPP": values})
+
+def _format_yoy_html(val, has_prior_data=True):
+    if not has_prior_data:
+        return '<span class="tm-neutral">N/A</span>'
+    if val > 0.005:
+        return f'<span class="tm-positive">↑ +{f"{val:.1f}".replace(".", ",")}%</span>'
+    elif val < -0.005:
+        return f'<span class="tm-negative">↓ {f"{val:.1f}".replace(".", ",")}%</span>'
+    else:
+        return f'<span class="tm-neutral">→ {f"{val:.1f}".replace(".", ",")}%</span>'
+
 
 def get_terminal_table_df(metrics):
     rows = []
+    has_prior = bool(metrics.get("prior_total", 0))
     for row in metrics["rows"]:
         total = row["total"]
         dom_pct = row["domestic"] / total * 100 if total else 0
@@ -447,7 +531,7 @@ def get_terminal_table_df(metrics):
             "Total Traffic": f'{_fmt_pax_short(total)}',
             "Traffic Share": f"{f"{share:.1f}".replace(".", ",")}%",
             "Spending Per Pax": _fmt_rp_k(row["spp"]),
-            "YoY Growth": f'<span class="tm-positive">↑ +{f"{row["yoy"]:.1f}".replace(".", ",")}%</span>',
+            "YoY Growth": _format_yoy_html(row["yoy"], has_prior),
             "_share": share,
             "_total": total,
         })
@@ -457,14 +541,25 @@ def get_terminal_table_df(metrics):
     total_all = metrics["total"]
     dom_pct_total = total_dom / total_all * 100 if total_all else 0
     intl_pct_total = total_intl / total_all * 100 if total_all else 0
+    
+    current_year_val = f"FY {metrics['current_year']}" if metrics.get('current_year') else "Tahun Ini"
+    prior_year_val = f"FY {metrics['prior_year']}" if metrics.get('prior_year') else "Tahun Lalu"
+    terminal_val = metrics.get('terminal_label', 'All Terminals')
+
+    yoy_html = (
+        f'<div class="tm-cell-stack">{_format_yoy_html(metrics["yoy"], has_prior)}<span class="tm-subcell">vs {prior_year_val}</span></div>'
+        if has_prior else
+        '<div class="tm-cell-stack"><span class="tm-neutral">N/A</span><span class="tm-subcell">Data pembanding N/A</span></div>'
+    )
+
     rows.append({
-        "Terminal": '<div class="tm-cell-stack">TOTAL — Terminal 1 & 2<span class="tm-subcell">Ringkasan Terminal 1 &amp; 2</span></div>',
+        "Terminal": f'<div class="tm-cell-stack">TOTAL — {terminal_val}<span class="tm-subcell">Ringkasan {terminal_val}</span></div>',
         "Domestic Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_dom)}<span class="tm-subcell">{dom_pct_total:.0f}% dari total</span></div>',
         "International Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_intl)}<span class="tm-subcell">{intl_pct_total:.0f}% dari total</span></div>',
-        "Total Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_all)}<span class="tm-subcell">Total FY2024</span></div>',
+        "Total Traffic": f'<div class="tm-cell-stack">{_fmt_pax_short(total_all)}<span class="tm-subcell">Total {current_year_val}</span></div>',
         "Traffic Share": '<div class="tm-cell-stack">100%<span class="tm-subcell">Seluruh terminal</span></div>',
         "Spending Per Pax": f'<div class="tm-cell-stack">{_fmt_rp_k(metrics["spp"])}<span class="tm-subcell">Rata-rata tertimbang</span></div>',
-        "YoY Growth": f'<div class="tm-cell-stack"><span class="tm-positive">↑ +{f"{metrics["yoy"]:.1f}".replace(".", ",")}%</span><span class="tm-subcell">vs FY2023</span></div>',
+        "YoY Growth": yoy_html,
         "_share": 100,
         "_total": total_all,
     })
@@ -683,11 +778,6 @@ def _render_tm_filter_card(active_count: int = 0,
         )
 
 
-def _filter_state_marker(kind, is_active):
-    state = "active" if is_active else "empty"
-    return f'<span class="tm-filter-marker tm-filter-kind-{kind} tm-filter-state-{state}" aria-hidden="true"></span>'
-
-
 def _mount_tm_fixed_header():
     components.html(
         """
@@ -748,6 +838,16 @@ def _mini_metric_box(label, value, sub="", accent="#7C3AED"):
 def _terminal_card_html(row, share):
     dom_pct = row["domestic"] / row["total"] * 100 if row["total"] else 0
     intl_pct = row["international"] / row["total"] * 100 if row["total"] else 0
+    
+    yoy_val = row.get("yoy")
+    if yoy_val is None or pd.isna(yoy_val):
+        yoy_str = "N/A"
+        yoy_style = "color:#64748B;"
+    else:
+        sign = "+" if yoy_val >= 0 else ""
+        yoy_str = f"{sign}{yoy_val:.1f}%".replace(".", ",")
+        yoy_style = "color:#059669;" if yoy_val >= 0 else "color:#DC2626;"
+        
     return dedent(f"""
     <div class="tm-terminal-card" style="border-color:{row['color']}22;">
         <div class="tm-terminal-head">
@@ -764,7 +864,7 @@ def _terminal_card_html(row, share):
         {progress_bar_html(share, row['color'])}
         <div class="tm-terminal-foot">
             <span>SPP: {_fmt_rp_k(row['spp'])}</span>
-            <span>YoY Growth: <strong style="color:#059669;">+{f"{row['yoy']:.1f}".replace(".", ",")}%</strong></span>
+            <span>YoY Growth: <strong style="{yoy_style}">{yoy_str}</strong></span>
         </div>
     </div>
     """).strip()
@@ -782,15 +882,25 @@ def _insight_card_html(title, body, badge, accent, soft_bg):
 
 def _traffic_trend_figure(df, current_label="Current", prior_label="Prior"):
     fig = go.Figure()
+    y_curr = df["Current"] * 1_000_000
+    y_prior = df["Prior"] * 1_000_000
+    
+    hover_curr = [f"{int(round(val)):,}".replace(",", ".") for val in y_curr]
+    hover_prior = [f"{int(round(val)):,}".replace(",", ".") for val in y_prior]
+
     fig.add_trace(go.Scatter(
-        x=df["Month"], y=df["Current"], mode="lines+markers", name=current_label,
+        x=df["Month"], y=y_curr, mode="lines+markers", name=current_label,
         line=dict(color="#7C3AED", width=2.8),
         marker=dict(size=5, color="#ffffff", line=dict(color="#7C3AED", width=2)),
+        customdata=hover_curr,
+        hovertemplate=f"{current_label}: %{{customdata}} pax<extra></extra>"
     ))
     fig.add_trace(go.Scatter(
-        x=df["Month"], y=df["Prior"], mode="lines+markers", name=prior_label,
+        x=df["Month"], y=y_prior, mode="lines+markers", name=prior_label,
         line=dict(color="#C4B5FD", width=2, dash="dash"),
         marker=dict(size=4, color="#ffffff", line=dict(color="#C4B5FD", width=1.5)),
+        customdata=hover_prior,
+        hovertemplate=f"{prior_label}: %{{customdata}} pax<extra></extra>"
     ))
     fig.update_layout(
         autosize=True, height=300, margin=dict(t=8, b=8, l=8, r=8),
@@ -806,13 +916,23 @@ def _traffic_trend_figure(df, current_label="Current", prior_label="Prior"):
 
 def _dom_intl_figure(df):
     fig = go.Figure()
+    y_dom = df["Domestic"] * 1_000_000
+    y_intl = df["International"] * 1_000_000
+    
+    hover_dom = [f"{int(round(val)):,}".replace(",", ".") for val in y_dom]
+    hover_intl = [f"{int(round(val)):,}".replace(",", ".") for val in y_intl]
+
     fig.add_trace(go.Bar(
-        x=df["Month"], y=df["Domestic"], name="Domestic",
+        x=df["Month"], y=y_dom, name="Domestic",
         marker_color="#2563EB", marker_line_width=0,
+        customdata=hover_dom,
+        hovertemplate="Domestic: %{customdata} pax<extra></extra>"
     ))
     fig.add_trace(go.Bar(
-        x=df["Month"], y=df["International"], name="International",
+        x=df["Month"], y=y_intl, name="International",
         marker_color="#06B6D4", marker_line_width=0,
+        customdata=hover_intl,
+        hovertemplate="International: %{customdata} pax<extra></extra>"
     ))
     fig.update_layout(
         barmode="stack", autosize=True, height=300, margin=dict(t=8, b=8, l=8, r=8),
@@ -849,11 +969,13 @@ def _spp_trend_figure(df, target=90.0):
 
 
 def _donut_figure(labels, values, total_label):
+    hover_labels = [f"{int(round(val)):,}".replace(",", ".") + " pax" for val in values]
     fig = go.Figure(data=[go.Pie(
         labels=labels, values=values, hole=0.62, sort=False,
         marker=dict(colors=TM_DONUT_COLORS[: len(labels)], line=dict(color="#ffffff", width=2)),
         textinfo="none",
-        hovertemplate="%{label}<br>%{value:.1f}M<extra></extra>",
+        customdata=hover_labels,
+        hovertemplate="%{label}<br>%{customdata}<extra></extra>",
     )])
     fig.update_layout(
         height=260, margin=dict(t=10, b=10, l=10, r=10),
@@ -868,12 +990,22 @@ def _donut_figure(labels, values, total_label):
 
 def _yoy_bar_figure(rows):
     names = [r["code"] for r in rows]
-    values = [r["yoy"] for r in rows]
+    values = [r["yoy"] if r["yoy"] is not None else 0.0 for r in rows]
     colors = [r["color"] for r in rows]
+    
+    texts = []
+    for r in rows:
+        v = r["yoy"]
+        if v is None or pd.isna(v):
+            texts.append("N/A")
+        else:
+            sign = "+" if v >= 0 else ""
+            texts.append(f"{sign}{v:.1f}%".replace(".", ",").replace("++", "+"))
+            
     fig = go.Figure(go.Bar(
         x=values, y=names, orientation="h",
         marker=dict(color=colors, line=dict(width=0)),
-        text=[f"+{v:.1f}%" for v in values], textposition="outside",
+        text=texts, textposition="outside",
         textfont=dict(size=11, color="#475569", family=TM_FONT),
     ))
     fig.update_layout(
@@ -1210,7 +1342,7 @@ def _inject_tm_css():
         color: #64748B !important;
     }}
     body:has(.tm-page-marker) .tm-kpi-grid {{
-        display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; width: 100%;
+        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; width: 100%;
         margin-top: -12px !important;
     }}
     body:has(.tm-page-marker) div[data-testid="stElementContainer"]:has(.tm-kpi-grid),
@@ -1340,6 +1472,8 @@ def _inject_tm_css():
         font-size: 10px; font-weight: 700; font-family: {TM_FONT} !important;
     }}
     body:has(.tm-page-marker) .tm-positive {{ color: #059669; font-weight: 700; }}
+    body:has(.tm-page-marker) .tm-negative {{ color: #DC2626; font-weight: 700; }}
+    body:has(.tm-page-marker) .tm-neutral {{ color: #64748B; font-weight: 700; }}
     body:has(.tm-page-marker) .tm-subcell {{
         display: block; font-size: 10px; color: #94A3B8; font-weight: 500; margin-top: 2px;
         font-family: {TM_FONT} !important;
@@ -1351,6 +1485,62 @@ def _inject_tm_css():
     }}
     body:has(.tm-page-marker) .tm-table-wrap {{
         margin-top: 3px;
+    }}
+    div[data-testid="stElementContainer"]:has(.tm-btn-export-marker) {{
+        position: absolute !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.tm-btn-export-marker) + div[data-testid="stElementContainer"] {{
+        display: flex !important;
+        justify-content: flex-end !important;
+        width: 100% !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.tm-btn-export-marker) + div[data-testid="stElementContainer"] button {{
+        background: rgba(255, 255, 255, 0.72) !important;
+        border: 1px solid rgba(99, 102, 241, 0.25) !important;
+        color: #4F46E5 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 0 16px !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        width: max-content !important;
+        margin-left: auto !important;
+        margin-right: 11px !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.tm-btn-export-marker) + div[data-testid="stElementContainer"] button:hover {{
+        background: #f5f3ff !important;
+        border-color: rgba(99, 102, 241, 0.45) !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.tm-btn-export-marker) + div[data-testid="stElementContainer"] button p {{
+        color: #4F46E5 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        font-family: 'Inter', sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    div[data-testid="stElementContainer"]:has(.tm-btn-export-marker) + div[data-testid="stElementContainer"] button::before {{
+        content: "" !important;
+        display: inline-block !important;
+        width: 14px !important;
+        height: 14px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%234F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>') !important;
+        background-size: contain !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        flex-shrink: 0 !important;
     }}
     body:has(.tm-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] .tm-export-btn) {{
         display: flex !important;
@@ -1710,6 +1900,9 @@ def page_traffic_monitor(df_raw=None):
     _mount_tm_fixed_header()
 
     yoy_val_str = f"{metrics['yoy']:.1f}".replace(".", ",")
+    growth_val_str = f"{abs(metrics['growth_pct']):.1f}".replace(".", ",")
+    growth_sign = "+" if metrics["growth_pct"] >= 0 else "-"
+    growth_display = f"{growth_sign}{growth_val_str}%" if metrics["growth_available"] else "N/A"
     domestic_pct_str = f"{metrics['domestic_pct']:.1f}".replace(".", ",")
     intl_pct_str = f"{metrics['intl_pct']:.1f}".replace(".", ",")
 
@@ -1728,11 +1921,9 @@ def page_traffic_monitor(df_raw=None):
                      f"{intl_pct_str}% of total traffic", metrics["international_yoy"],
                      "#06B6D4", "globe", spark_intl),
         _tm_kpi_card("Spending Per Pax", _fmt_rp_k(metrics["spp"]),
-                     "Average across selected terminals", metrics["spp_yoy"], "#D97706", "credit-card", spark_spp),
-        _tm_kpi_card("Traffic Growth", f"+{yoy_val_str}%",
-                     f"YoY vs {prior_year_label}", metrics["yoy"], "#059669", "trending-up", spark_total),
-        _tm_kpi_card("Avg Spending Per Pax", _fmt_rp_k(metrics["spp"]),
-                     "Weighted terminal average", metrics["spp_yoy"], "#EA580C", "shopping-bag", spark_spp),
+                     "Weighted terminal average", metrics["spp_yoy"], "#D97706", "credit-card", spark_spp),
+        _tm_kpi_card("Traffic Growth", growth_display,
+                     metrics["growth_label"], metrics["growth_pct"], "#059669", "trending-up", spark_total),
     ])
     st.markdown(f'<div class="tm-kpi-grid">{kpi_html}</div>', unsafe_allow_html=True)
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
@@ -1747,15 +1938,21 @@ def page_traffic_monitor(df_raw=None):
         with h1:
             st.markdown(section_title_html(
                 "Total Traffic Trend",
-                f"Monthly passengers — {current_year_label} vs {prior_year_label} (Millions) · {scope_label}",
+                f"Monthly passengers — {current_year_label} vs {prior_year_label} · {scope_label}",
             ), unsafe_allow_html=True)
-        st.markdown(f'<span class="tm-yoy-pill">YoY +{yoy_val_str} %</span>', unsafe_allow_html=True)
+        # Bagian ini secara eksplisit membandingkan current_year_label vs
+        # prior_year_label (chart 2 garis: tahun ini vs tahun lalu), jadi
+        # tetap ditampilkan sebagai YoY murni (bukan di-fallback ke MoM
+        # seperti kartu "Traffic Growth" di atas) — kalau datanya belum ada,
+        # tampilkan "N/A" yang jujur, bukan "+0,0%" yang menyesatkan.
+        yoy_display = f"+{yoy_val_str}%" if metrics["prior_total"] else "N/A"
+        st.markdown(f'<span class="tm-yoy-pill">YoY {yoy_display}</span>', unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics">'
             + _mini_metric_box(current_year_label, _fmt_millions(metrics["total"]), accent="#7C3AED")
             + _mini_metric_box(prior_year_label, _fmt_millions(metrics["prior_total"]), accent="#94A3B8")
             + _mini_metric_box("Peak Month", f"{peak_month} · {_fmt_pax_short(peak_value * 1_000_000)}", accent="#2563EB")
-            + _mini_metric_box("Growth", f"+{yoy_val_str}%", accent="#059669")
+            + _mini_metric_box("Growth", yoy_display, accent="#059669")
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -1766,7 +1963,7 @@ def page_traffic_monitor(df_raw=None):
         st.markdown('<div class="ed-card-marker tm-split-card"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Domestic vs International",
-            f"Monthly split — {current_year_label} (Juta) · {scope_label}",
+            f"Monthly split — {current_year_label} · {scope_label}",
         ), unsafe_allow_html=True)
         st.markdown(
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(2,minmax(0,1fr));">'
@@ -1793,10 +1990,15 @@ def page_traffic_monitor(df_raw=None):
     st.markdown("<div style='height:11px'></div>", unsafe_allow_html=True)
 
     row2_a, row2_b, row2_c = st.columns([1.15, 1.05, 0.95], gap="small")
-    spp_avg = spp_df["SPP"].mean()
     spp_peak = spp_df["SPP"].max()
-    spp_peak_month = spp_df.loc[spp_df["SPP"].idxmax(), "Month"]
-    achievement = (spp_avg / 90 - 1) * 100
+    if pd.isna(spp_peak) or spp_peak == 0:
+        spp_peak_month = ""
+    else:
+        spp_peak_month = spp_df.loc[spp_df["SPP"].idxmax(), "Month"]
+
+    # Calculate achievement using the same aggregate SPP (metrics["spp"])
+    spp_value_k = metrics["spp"] / 1000.0 if metrics["spp"] else 0.0
+    achievement = (spp_value_k / 90.0 - 1) * 100 if spp_value_k else 0.0
 
     with row2_a:
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
@@ -1804,12 +2006,18 @@ def page_traffic_monitor(df_raw=None):
             "Spending per Pax Trend",
             f"Monthly Rp '000 per passenger vs Rp 90K target · {scope_label}",
         ), unsafe_allow_html=True)
+        
+        ach_sign = "+" if achievement >= 0 else ""
+        ach_color = "#059669" if achievement >= 0 else "#DC2626"
+        ach_str = f"{ach_sign}{achievement:.1f}%".replace(".", ",")
+        peak_month_label = f"{_month_short(spp_peak_month)} Peak" if spp_peak_month else "Peak SPP"
+        
         st.markdown(
             '<div class="tm-mini-metrics" style="grid-template-columns:repeat(4,minmax(0,1fr));">'
             + _mini_metric_box(f"{current_year_label} Avg", _fmt_rp_k(metrics["spp"]), accent="#D97706")
-            + _mini_metric_box("Dec Peak", _fmt_rp_k(spp_peak * 1000), spp_peak_month, "#EA580C")
+            + _mini_metric_box(peak_month_label, _fmt_rp_k(spp_peak * 1000), spp_peak_month, "#EA580C")
             + _mini_metric_box("Target", "Rp 90,0 K", accent="#64748B")
-            + _mini_metric_box("Achievement", f"+{f'{achievement:.1f}'.replace('.', ',')}%", accent="#059669")
+            + _mini_metric_box("Achievement", ach_str, accent=ach_color)
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -1819,7 +2027,7 @@ def page_traffic_monitor(df_raw=None):
         st.markdown('<div class="ed-card-marker"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
             "Traffic by Terminal",
-            f"Annual passengers (Juta) — {current_year_label}",
+            f"Annual passengers — {current_year_label}",
         ), unsafe_allow_html=True)
         cards = []
         all_metrics = _aggregate_metrics(data_df, st.session_state.tm_year, st.session_state.tm_month, "All Terminal")
@@ -1844,7 +2052,7 @@ def page_traffic_monitor(df_raw=None):
             )
         with legend_slot:
             st.markdown(
-                donut_legend_html(labels, values, TM_DONUT_COLORS, sum(values), _fmt_millions),
+                donut_legend_html(labels, values, TM_DONUT_COLORS, _fmt_millions),
                 unsafe_allow_html=True,
             )
         st.markdown(section_title_html("YoY Growth by Terminal", ""), unsafe_allow_html=True)
@@ -1860,6 +2068,12 @@ def page_traffic_monitor(df_raw=None):
     top_spp = top_row["spp"] if top_row else 0
     intl_mix = (metrics["international"] / metrics["total"] * 100) if metrics["total"] else 0
 
+    top_share_str = f"{top_share:.1f}".replace(".", ",")
+    intl_mix_str = f"{intl_mix:.1f}".replace(".", ",")
+    target_diff = (metrics['spp'] / 90_000 - 1) * 100
+    target_diff_str = f"{target_diff:+.1f}".replace(".", ",")
+    yoy_str = f"{metrics['yoy']:+.1f}".replace(".", ",")
+
     with st.container():
         st.markdown('<div class="ed-card-marker tm-insights-card"></div>', unsafe_allow_html=True)
         st.markdown(section_title_html(
@@ -1869,27 +2083,36 @@ def page_traffic_monitor(df_raw=None):
         st.markdown(
             '<div class="tm-insight-grid">'
             + _insight_card_html(
-                f"{top_name} leads at {top_total:.1f}M pax ({top_share:.1f}%)",
-                "Traffic leader is calculated directly from the latest Import Manager traffic table.",
-                f"{top_share:.1f}% share",
+                f"{top_name} memimpin dengan {_fmt_millions(top_total)} ({top_share_str}%)",
+                "Terminal dengan volume pergerakan penumpang tertinggi berdasarkan data saat ini.",
+                f"Porsi {top_share_str}%",
                 "#0891B2", "#ECFEFF",
             )
-            + _insight_card_html(
-                f"Traffic growth {metrics['yoy']:+.1f}% YoY",
-                f"{scope_label} traffic reached {_fmt_millions(metrics['total'])} vs {_fmt_millions(metrics['prior_total'])} in {prior_year_label}.",
-                f"{metrics['yoy']:+.1f}% YoY",
-                "#059669", "#F0FDF4",
+            + (
+                _insight_card_html(
+                    f"Pertumbuhan penumpang {yoy_str}% YoY",
+                    f"Total pergerakan penumpang mencapai {_fmt_millions(metrics['total'])} dibandingkan {_fmt_millions(metrics['prior_total'])} pada tahun {metrics['prior_year']}.",
+                    f"{yoy_str}% YoY",
+                    "#059669", "#F0FDF4",
+                )
+                if metrics["prior_total"] else
+                _insight_card_html(
+                    "Data Tahun Lalu Belum Ada",
+                    f"Saat ini total pergerakan penumpang adalah {_fmt_millions(metrics['total'])}. Angka pertumbuhan tahunan (YoY) akan muncul setelah file data tahun {prior_year_label} diunggah.",
+                    "N/A",
+                    "#94A3B8", "#F8FAFC",
+                )
             )
             + _insight_card_html(
-                f"SPP at {_fmt_rp_k(metrics['spp'])}",
-                "Spending per passenger is calculated from imported revenue and traffic values.",
-                f"{(metrics['spp'] / 90_000 - 1) * 100:+.1f}% vs target",
+                f"Rata-rata SPP {_fmt_rp_k(metrics['spp'])}",
+                "Rata-rata nilai belanja per penumpang di bandara, dihitung dari total kontribusi dibagi volume penumpang.",
+                f"{target_diff_str}% vs target",
                 "#D97706", "#FFF7ED",
             )
             + _insight_card_html(
-                f"International mix {intl_mix:.1f}%",
-                f"Top terminal SPP is {_fmt_rp_k(top_spp)}, based on the current imported period.",
-                f"{_fmt_rp_k(top_spp)} top SPP",
+                f"Porsi Penerbangan Internasional {intl_mix_str}%",
+                f"Persentase penumpang rute luar negeri. Nilai belanja (SPP) tertinggi di antara seluruh terminal saat ini adalah {_fmt_rp_k(top_spp)}.",
+                f"SPP Tertinggi {_fmt_rp_k(top_spp)}",
                 "#7C3AED", "#F5F3FF",
             )
             + "</div>",
@@ -1915,9 +2138,10 @@ def page_traffic_monitor(df_raw=None):
         with th1:
             st.markdown(section_title_html(
                 "Traffic Performance by Terminal",
-                "Annual traffic and spending summary — FY 2024 · Terminal 1 & Terminal 2",
+                f"Annual traffic and spending summary — {current_year_label} · {scope_label}",
             ), unsafe_allow_html=True)
         with th2:
+            st.markdown('<div class="tm-btn-export-marker"></div>', unsafe_allow_html=True)
             st.download_button(
                 "Export",
                 data=dataframe_to_excel_bytes(display_df, "Traffic Performance"),

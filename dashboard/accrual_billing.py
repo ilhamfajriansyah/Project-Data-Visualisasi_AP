@@ -345,7 +345,7 @@ def page_accrual_billing():
             st.plotly_chart(_donut_figure(dist_df, total_invoice), width="stretch", config={"displayModeBar": False})
         with legend_slot:
             st.markdown(
-                donut_legend_html(dist_df["Status"].tolist(), dist_df["Amount"].tolist(), AB_DONUT_COLORS, total_invoice),
+                donut_legend_html(dist_df["Status"].tolist(), dist_df["Amount"].tolist(), AB_DONUT_COLORS),
                 unsafe_allow_html=True,
             )
 
