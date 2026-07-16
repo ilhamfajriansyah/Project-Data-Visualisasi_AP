@@ -76,9 +76,7 @@ def _mount_dv_fixed_header():
         height=0,
     )
 
-# ─────────────────────────────────────────────
-# DATA PROCESSING
-# ─────────────────────────────────────────────
+# PENGOLAHAN DATA
 def _empty_verification_data() -> pd.DataFrame:
     return pd.DataFrame(columns=[
         "Kode Ruang",
@@ -98,11 +96,7 @@ def _empty_verification_data() -> pd.DataFrame:
 
 
 def _publish_validation_results(df_all: pd.DataFrame, import_id: int | None) -> tuple[bool, str]:
-    """Tulis hasil review (anomali/conflict) ke tabel validation_result.
-    Sebelumnya tombol "Approve & Publish" cuma menampilkan st.toast tanpa
-    menyimpan apapun. Setiap klik menggantikan snapshot lama untuk
-    import_id ini dengan yang baru (bukan log yang terus menumpuk) — hasil
-    review terkini, bukan riwayat setiap klik."""
+    """Menyimpan hasil pemeriksaan saat ini (anomali/konflik) ke tabel validation_result, menggantikan snapshot lama."""
     if import_id is None:
         return False, "Tidak ada data import aktif untuk dipublikasikan."
 
@@ -179,12 +173,7 @@ def _filter_active_import_rows(df: pd.DataFrame | None) -> pd.DataFrame | None:
 
 
 def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
-    """
-    DATA SOURCE:
-    Uses real dashboard data from PostgreSQL first, then an uploaded file that
-    still lives in Import Manager session state. If both are empty, return an
-    empty shaped dataframe so the page keeps its design with all counters at 0.
-    """
+    """Mengambil data verifikasi dari PostgreSQL atau menggunakan cadangan file yang diunggah pada sesi ini jika database kosong."""
     db_df = _filter_active_import_rows(df_raw)
     imported_df = db_df if (db_df is not None and not db_df.empty) else get_shared_import_data()
     if imported_df is None or imported_df.empty:
@@ -220,10 +209,7 @@ def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
         })
     result = pd.DataFrame(rows)
 
-    # Conflict = data bentrok/duplikat: dua baris atau lebih mengklaim Kode
-    # Ruang yang sama di Tahun + Periode (masa_jasa) yang sama. Kode Ruang
-    # placeholder "-" (tidak diketahui) dikecualikan supaya tidak terhitung
-    # bentrok satu sama lain.
+    # Konflik: terdeteksi jika ada Kode Ruang yang sama pada Tahun dan Periode yang sama.
     dup_key = result[["Kode Ruang", "_tahun", "Real Onset"]]
     has_known_kode = result["Kode Ruang"] != "-"
     result["Conflict"] = has_known_kode & dup_key.duplicated(keep=False)
@@ -246,9 +232,7 @@ def _get_verification_data(df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
 
     return result
 
-# ─────────────────────────────────────────────
-# CSS
-# ─────────────────────────────────────────────
+# CSS UTAMA
 _PAGE_CSS = """
 <style>
 /* ── Main Container Restrictor & Spacing (Matches Overview) ── */
@@ -876,9 +860,7 @@ body:has(.dv-page-marker) div[data-testid="stVerticalBlock"]:has(> div[data-test
 """
 
 
-# ─────────────────────────────────────────────
-# INIT STATE
-# ─────────────────────────────────────────────
+# INISIALISASI STATE
 def _init_state(df_raw: pd.DataFrame | None = None):
     if "dv_page" not in st.session_state: st.session_state.dv_page = 1
     current_data = _get_verification_data(df_raw)
@@ -896,9 +878,7 @@ def _init_state(df_raw: pd.DataFrame | None = None):
         st.session_state.dv_source_import_id = current_import_id
 
 
-# ─────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────
+# FUNGSI BANTU
 def _status_badge(s):
     if s == "Active":
         return '<span class="b-active">Active</span>'
@@ -912,7 +892,7 @@ def _status_badge(s):
 def _get_brand_icon(brand_name: str) -> str:
     brand_lower = brand_name.lower()
 
-    # SVG definition for coffee cup (Starbucks, Cafe)
+    # Definisi SVG untuk ikon cangkir kopi (misal Starbucks, Cafe)
     coffee_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
         '<path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>'
@@ -923,7 +903,7 @@ def _get_brand_icon(brand_name: str) -> str:
         '</svg>'
     )
 
-    # SVG definition for food/burger (Burger King, Rod Boy, KFC, Wingman, Pizza, Bakso, Solaria)
+    # Definisi SVG untuk ikon makanan/burger (misal Burger King, Solaria, KFC)
     food_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
         '<path d="M12 21a9 9 0 0 0 9-9c0-1.66-2-3-4.35-3h-9.3C5 9 3 10.34 3 12a9 9 0 0 0 9 9z"></path>'
@@ -932,7 +912,7 @@ def _get_brand_icon(brand_name: str) -> str:
         '</svg>'
     )
 
-    # SVG definition for shopping bag (Gramedia, Hypermart, Indomaret, Alfamart)
+    # Definisi SVG untuk ikon kantong belanja (misal Hypermart, Indomaret)
     store_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
         '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>'
@@ -941,7 +921,7 @@ def _get_brand_icon(brand_name: str) -> str:
         '</svg>'
     )
 
-    # SVG definition for general business/store
+    # Definisi SVG untuk ikon toko atau bisnis umum
     default_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
         '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>'
@@ -960,9 +940,7 @@ def _get_brand_icon(brand_name: str) -> str:
         return f'<div class="brand-logo-wrapper brand-default">{default_svg}</div>'
 
 
-# ─────────────────────────────────────────────
-# TABLE RENDERER
-# ─────────────────────────────────────────────
+# PENYAJIAN TABEL
 def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
     total   = len(df)
     n_pages = max(1, -(-total // page_size))
@@ -978,10 +956,10 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
         conflict_class = "conflict-row" if r["Conflict"] else ""
         conflict_dot   = '<span class="conflict-dot" title="Kode Ruang bentrok/duplikat pada periode yang sama"></span>' if r["Conflict"] else ""
 
-        # Get custom brand icon
+        # Mengambil ikon sesuai brand
         brand_icon_html = _get_brand_icon(r['Brand/Tenant'])
 
-        # Action column buttons
+        # Tombol aksi pada kolom
         action_html = """
         <div class="dv-action-btns">
           <button class="dv-btn-icon dv-btn-edit" title="Edit Record">
@@ -1045,9 +1023,7 @@ def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
     return page, n_pages
 
 
-# ─────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────
+# Halaman Utama (Main)
 def render_data_verification(df_raw: pd.DataFrame | None = None):
     """Call this from dashboard.py router."""
     _init_state(df_raw)
@@ -1086,7 +1062,7 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
     anomalies     = int(df_all["Anomali"].sum())
     conflicts     = int(df_all["Conflict"].sum())
 
-    # Define clean, professional SVG icons
+    # Menyusun ikon-ikon SVG yang bersih dan profesional
     total_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
         '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>'
@@ -1192,7 +1168,7 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
                 key="dv_rows_per_page",
                 label_visibility="collapsed",
             )
-        # Define callback to reset filter values safely before next render run
+        # Fungsi callback untuk mengembalikan filter ke kondisi awal sebelum render berikutnya
         def handle_reset():
             st.session_state.dv_search = ""
             st.session_state.dv_fstatus = "All Status"
@@ -1208,19 +1184,19 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
         # ── Apply Filters ──
         df = st.session_state.dv_df.copy()
 
-        # Search Filter
+        # Filter Pencarian
         if search_q:
             df = df[
                 df["Brand/Tenant"].str.contains(search_q, case=False, na=False) |
                 df["Kode Ruang"].str.contains(search_q, case=False, na=False)
             ]
 
-        # Status Filter
+        # Filter Status
         if status_f not in ["All Status", "Status ▾", ""]:
-            # Handle user display "Expired Soon" mapping to data status
+            # Menyesuaikan status tampilan dengan data asli
             df = df[df["Status"] == status_f]
 
-        # Anomalies Filter
+        # Filter Anomali
         if anom_f == "Dengan Anomali":
             df = df[df["Anomali"] == True]
         elif anom_f == "Tanpa Anomali":
@@ -1228,7 +1204,7 @@ def render_data_verification(df_raw: pd.DataFrame | None = None):
 
         df = df.reset_index(drop=True)
 
-        # Reset page on filter change
+        # Reset halaman jika filter berubah agar tidak out-of-bounds
         dv_rows = st.session_state.get("dv_rows_per_page", 10)
         fkey = f"{search_q}|{status_f}|{anom_f}|{dv_rows}"
         if st.session_state.get("_dv_last_filter") != fkey:

@@ -105,7 +105,7 @@ def _status_html(status: str) -> str:
 # ── Table renderer ─────────────────────────────────────────────────────────────
 def _render_table(df: pd.DataFrame, page: int, page_size: int = 5):
     total   = len(df)
-    n_pages = max(1, -(-total // page_size))           # ceiling div
+    n_pages = max(1, -(-total // page_size))           # Pembagian pembulatan ke atas (ceiling division)
     page    = max(0, min(page, n_pages - 1))
     start   = page * page_size
     end     = min(start + page_size, total)
@@ -313,7 +313,7 @@ _PAGE_CSS = """
 
 # ── Main entrypoint ────────────────────────────────────────────────────────────
 def render_room_database(df_raw: pd.DataFrame | None = None):
-    """Call this function from your dashboard.py page router."""
+    """Panggil fungsi ini dari router halaman dashboard.py Anda."""
 
     _init_state(df_raw)
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
@@ -355,7 +355,7 @@ def render_room_database(df_raw: pd.DataFrame | None = None):
                                      label_visibility="collapsed", key="rd_filter_status")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Apply Filters
+    # Terapkan filter
     df = st.session_state.room_df.copy()
     if terminal_filter != "All Terminals":
         df = df[df["Terminal"] == terminal_filter]
@@ -388,7 +388,7 @@ def render_room_database(df_raw: pd.DataFrame | None = None):
     st.markdown('<div class="nad-top-divider"></div>', unsafe_allow_html=True)
 
 
-    # Reset page when filters change
+    # Reset halaman jika filter berubah
     filter_key = f"{terminal_filter}|{cat_filter}|{status_filter}"
     if st.session_state.get("_rd_last_filter") != filter_key:
         st.session_state.room_page = 0

@@ -1595,7 +1595,6 @@ def app_shell(render_right_panel, col_ratio=(1.4, 0.8)) -> None:
         render_left_panel()
 
     with right_col:
-        # border=True membuat Streamlit membungkus konten dalam
-        # [data-testid="stVerticalBlockBorderWrapper"] yang bisa kita style via CSS
+        # border=True membungkus konten dalam stVerticalBlockBorderWrapper untuk kustomisasi gaya CSS.
         with st.container(border=True):
             render_right_panel()

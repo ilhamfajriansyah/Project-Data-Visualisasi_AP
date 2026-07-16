@@ -59,11 +59,7 @@ def render_login_panel() -> None:
         "Sign in to access your dashboard",
     )
 
-    # "invalid" (token unrecognized — e.g. right after a normal logout, or
-    # a first-ever visit with a stale/foreign cookie) is intentionally NOT
-    # shown here: it isn't an unexpected expiry, just "not logged in", and
-    # alarming the user about it on every fresh visit/logout would be
-    # noise. Only genuine idle/absolute timeouts warrant the notice.
+    # Tampilkan pesan error hanya jika sesi benar-benar kedaluwarsa.
     expired_reason = st.session_state.pop("session_expired_reason", None)
     expired_message = SESSION_EXPIRED_MESSAGES.get(expired_reason)
     if expired_message:
@@ -155,14 +151,14 @@ def main() -> None:
 
     init_auth_state()
 
-    # Handle ?ap_logout=1 unconditionally, before any other session logic.
+    # Tangani proses logout secara langsung.
     if st.query_params.get("ap_logout") == "1":
         if not handle_logout_request():
             st.stop()
         st.query_params.clear()
         st.rerun()
 
-    # Same reasoning as logout above
+    # Tangani proses keepalive untuk mempertahankan sesi.
     if st.query_params.get("ap_keepalive") == "1":
         st.query_params.clear()
         touch_session(st.session_state.get("session_token"))

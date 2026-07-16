@@ -78,7 +78,7 @@ def _mount_lc_fixed_header():
     )
 
 # ──────────────────────────────────────────────────────────────────────────────
-# DATA FROM EXCEL
+# DATA DARI EXCEL
 # ──────────────────────────────────────────────────────────────────────────────
 from .connection import get_engine
 from sqlalchemy import text
@@ -230,9 +230,7 @@ def _get_contract_types(df):
     if df is None or df.empty:
         return {"Revenue Sharing": 0, "Rental": 0, "MGRS": 0}
 
-    # df di sini adalah lc_df (level kontrak: No/Name/Tenant/.../Skema/...),
-    # bukan transaction_revenue mentah — jadi field skemanya ada di kolom
-    # "Skema", bukan "bidang_usaha".
+    # Gunakan kolom 'Skema' daripada 'bidang_usaha' untuk jenis skema sewa.
     if "Skema" in df.columns:
         counts = df[df["Skema"] != "-"]["Skema"].value_counts().to_dict()
         return counts if counts else {}
@@ -240,12 +238,12 @@ def _get_contract_types(df):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CSS STYLE DEFINITIONS
+# DEFINISI GAYA CSS
 # ──────────────────────────────────────────────────────────────────────────────
 from .lease_contract_styles import _PAGE_CSS, _LC_EXTRA_CSS
 
 # ──────────────────────────────────────────────────────────────────────────────
-# INIT STATE
+# INISIALISASI STATE
 # ──────────────────────────────────────────────────────────────────────────────
 def _init_state(contract_df=None, data_source="unknown"):
     if contract_df is None:
@@ -259,9 +257,7 @@ def _init_state(contract_df=None, data_source="unknown"):
     if "lc_selected"    not in st.session_state: st.session_state.lc_selected    = set()
     if "lc_alert_toast" not in st.session_state: st.session_state.lc_alert_toast = False
 
-    # Filter states initialization — "applied" values, used to actually
-    # filter the data. The filter card's widgets write to separate
-    # "lc_pend_*" keys and only copy into these on "Terapkan Filter".
+    # Inisialisasi filter terapan dan filter sementara (lc_pend_*).
     if "f_terminal"     not in st.session_state: st.session_state.f_terminal     = "All Terminal"
     if "f_tahun"        not in st.session_state: st.session_state.f_tahun        = "All Year"
     if "f_masa"         not in st.session_state: st.session_state.f_masa         = "All Month"
@@ -283,7 +279,7 @@ def _init_state(contract_df=None, data_source="unknown"):
             st.session_state[_key] = False
 
 # ──────────────────────────────────────────────────────────────────────────────
-# SPARKLINE & CHART GENERATION
+# PEMBUATAN SPARKLINE & GRAFIK
 # ──────────────────────────────────────────────────────────────────────────────
 def _generate_svg_sparkline(values, color, fill_color_grad_start, fill_color_grad_stop):
     if not values:
@@ -323,7 +319,7 @@ def _generate_svg_sparkline(values, color, fill_color_grad_start, fill_color_gra
     return svg.replace("\n", "").replace("  ", "")
 
 def _render_kpi_card_html(icon_svg, icon_class, badge_text, badge_class, title, value, unit, subtitle, progress_items, progress_color, comparison, sparkline_svg):
-    # Swap dots and commas for Indonesian formatting
+    # Tukar tanda titik dan koma untuk format Indonesia
     badge_text = str(badge_text).translate(str.maketrans({',': '.', '.': ','}))
     subtitle = str(subtitle).translate(str.maketrans({',': '.', '.': ','}))
     value = str(value).translate(str.maketrans({',': '.', '.': ','}))
@@ -400,7 +396,7 @@ def _build_timeline_chart(df):
     year_suffix = str(date.today().year)[-2:]
     months_labels = [f"{m} {year_suffix}" for m in months]
 
-    # Calculate expiring count per month from the filtered dataframe
+    # Hitung jumlah kontrak yang akan berakhir per bulan dari dataframe terfilter
     expiring_counts = {m: 0 for m in months}
     for _, r in df[df["Status"] == "Anomaly"].iterrows():
         try:
@@ -469,14 +465,14 @@ def _build_donut_chart(data_dict, colors, size=145):
     )
     return fig
 
-# Sparkline dummy datasets
+# Dataset bayangan untuk Sparkline
 SPARK_TOTAL = [0] * 12
 SPARK_ACTIVE = [0] * 12
 SPARK_EXPIRING = [0] * 12
 SPARK_EXPIRED = [0] * 12
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ADD CONTRACT FORM (PRESERVES EXISTING DESIGN SYSTEM & FUNCTIONALITY)
+# FORMULIR TAMBAH KONTRAK
 # ──────────────────────────────────────────────────────────────────────────────
 def _render_add_form():
     st.markdown('<div class="premium-card">', unsafe_allow_html=True)
@@ -508,7 +504,7 @@ def _render_add_form():
                 sisa = (berakhir - date.today()).days
                 new_no = int(st.session_state.lc_df["No"].max()) + 1
                 
-                # Determine terminal from unit name
+                # Tentukan terminal berdasarkan nama unit ruang
                 terminal = "T1"
                 for t in ["T1", "T2", "T3", "T3U"]:
                     if t in unit.upper():
@@ -539,7 +535,7 @@ def _render_add_form():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# MAIN RENDER FUNCTION
+# FUNGSI UTAMA RENDER
 # ──────────────────────────────────────────────────────────────────────────────
 _LC_FILTER_DEFAULTS = {
     "f_terminal": "All Terminal", "f_tahun": "All Year", "f_masa": "All Month",
@@ -548,7 +544,7 @@ _LC_FILTER_DEFAULTS = {
 
 
 def clear_lc_filters():
-    """Reset both the applied filters and the pending (draft) widget values."""
+    """Mereset filter yang diterapkan dan nilai widget sementara (draf)."""
     for applied_key, default in _LC_FILTER_DEFAULTS.items():
         st.session_state[applied_key] = default
         st.session_state[f"lc_pend_{applied_key[2:]}"] = default
@@ -556,7 +552,7 @@ def clear_lc_filters():
 
 
 def _apply_lc_filters():
-    """Copy the pending (draft) widget values into the applied filter keys."""
+    """Menyalin nilai widget sementara (draf) ke filter yang diterapkan."""
     for applied_key in _LC_FILTER_DEFAULTS:
         st.session_state[applied_key] = st.session_state[f"lc_pend_{applied_key[2:]}"]
 
@@ -581,18 +577,15 @@ def _lc_filter_icon_svg(icon_key: str, size: int = 14) -> str:
 
 
 def _render_lc_filter_card(df_full: pd.DataFrame, active_count: int = 0) -> None:
-    """The redesigned "Filter Data" card — filters are staged in lc_pend_*
-    widget keys and only take effect (filter the data) once the user
-    clicks "Terapkan Filter" / "Bersihkan Semua" / the header "Reset Filter"."""
+    """Tampilan kartu "Filter Data" yang didesain ulang — filter disimpan sementara di lc_pend_*
+    dan baru diterapkan setelah pengguna mengklik "Terapkan Filter", "Bersihkan Semua", atau header "Reset Filter"."""
     perusahaan_options = ["All Perusahaan"] + sorted(df_full["Name/Tenant"].dropna().unique().tolist())
     kode_options = ["All Kode Ruang"] + sorted(df_full["Kode"].dropna().unique().tolist())
     terminal_options = ["All Terminal"] + sorted(
         v for v in df_full["Terminal"].dropna().unique().tolist() if v not in ("-", "Unknown", "")
     )
 
-    # Tahun & Bulan diambil dari tanggal akhir kontrak ("Valid Period",
-    # format "dd Mon yyyy" hasil _format_contract_date) yang benar-benar
-    # ada di data — bukan daftar statis.
+    # Ambil tahun dan bulan secara dinamis dari tanggal akhir kontrak.
     def _end_date_parts(valid_period):
         if " - " not in str(valid_period):
             return None, None
@@ -618,9 +611,7 @@ def _render_lc_filter_card(df_full: pd.DataFrame, active_count: int = 0) -> None
         _MONTH_FULL_NAME[m] for m in _MONTH_ABBR_ORDER if m in months_present
     ]
 
-    # Opsi dropdown berubah mengikuti data (bukan daftar tetap), jadi nilai
-    # yang sudah dipilih sebelumnya bisa jadi tidak valid lagi setelah data
-    # berubah — reset ke default supaya tidak error/nyangkut.
+    # Reset nilai terpilih jika tidak ada lagi dalam daftar opsi yang diperbarui.
     for applied_key, pend_key, options in (
         ("f_terminal", "lc_pend_terminal", terminal_options),
         ("f_tahun", "lc_pend_tahun", tahun_options),
@@ -692,7 +683,7 @@ def render_lease_contract(df_raw=None):
     contract_df, data_source = _get_contract_source_data(df_raw)
     _init_state(contract_df, data_source)
 
-    # Apply global filters dynamically on every rerun (auto-apply)
+    # Terapkan filter global secara dinamis pada setiap rerun (auto-apply)
     df_filt = st.session_state.lc_df.copy()
     
     sel_term = st.session_state.get("f_terminal", "All Terminal")
@@ -756,14 +747,11 @@ def render_lease_contract(df_raw=None):
 
 
     # ─────────────────────────────────────────────
-    # TOP KPI CARDS
+    # KARTU KPI UTAMA
     # ─────────────────────────────────────────────
     total_val = len(df_all)
 
-    # Label Terminal & Skema ikut nilai yang benar-benar ada di data
-    # (mis. "Terminal 1"/"Terminal 2"/"Terminal 3"), bukan kode tetap
-    # "T1"/"T2"/"T3"/"T3U" atau "Revenue Sharing"/"RS+MO"/"MGRS" yang
-    # tidak pernah cocok dengan data riil.
+    # Gunakan nilai asli dari data untuk terminal dan skema.
     terminal_labels = sorted(
         v for v in df_all["Terminal"].dropna().unique().tolist() if v not in ("-", "Unknown", "")
     )
@@ -867,7 +855,7 @@ def render_lease_contract(df_raw=None):
     st.markdown('<div class="lc-row1-row2-gap"></div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
-    # CONTRACT EXPIRY TIMELINE & DONUT CHARTS (3-COLUMN REDESIGN)
+    # TIMELINE KONTRAK EXPIRED & DIAGRAM DONAT (DESAIN 3 KOLOM)
     # ─────────────────────────────────────────────
     col_left, col_mid, col_right = st.columns([1.7, 1.0, 1.0])
     
@@ -881,7 +869,7 @@ def render_lease_contract(df_raw=None):
                 unsafe_allow_html=True,
             )
             
-            # Dynamic calculations for timeline stats
+            # Perhitungan dinamis untuk statistik lini masa
             months_list = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             exp_month_counts = {m: 0 for m in months_list}
             for _, r in df_all[df_all["Status"] == "Anomaly"].iterrows():
@@ -897,9 +885,7 @@ def render_lease_contract(df_raw=None):
             tot_exp_val = sum(exp_month_counts.values())
             risk_months_count = sum(1 for v in exp_month_counts.values() if v >= 8)
 
-            # "Renewed"/"Renewal Rate" dihapus — tidak ada data riwayat
-            # perpanjangan kontrak yang bisa dilacak; sebelumnya ini cuma
-            # estimasi fiktif 60% dari jumlah expiring.
+            # Pantau metrik masa berlaku dan risiko secara dinamis.
             html_timeline_kpis = f"""
             <div class="timeline-kpi-row">
                 <div class="timeline-kpi-card expiring">
@@ -921,7 +907,7 @@ def render_lease_contract(df_raw=None):
             st.markdown(html_timeline_kpis, unsafe_allow_html=True)
             st.plotly_chart(_build_timeline_chart(df_all), use_container_width=True, config=dict(displayModeBar=False))
             
-            # Dynamic HTML Legend & Risk level indicator strip
+            # Legenda HTML Dinamis & Strip indikator tingkat risiko
             risk_blocks = ""
             for val in [exp_month_counts[m] for m in months_list]:
                 cls = "low" if val < 5 else ("medium" if val <= 7 else "high")
@@ -1002,9 +988,7 @@ def render_lease_contract(df_raw=None):
             """
             st.markdown(html_dist_stack, unsafe_allow_html=True)
 
-            # "Total Estimated Revenue" dihapus dari sini — sebelumnya dihitung
-            # dari multiplier fiktif (0.74/0.72 per kontrak), bukan data riil.
-            # Kartu di bawah ini hanya menunjukkan jumlah kontrak per skema.
+            # Tampilkan jumlah kontrak per skema.
             html_dist_footer = f"""
             <div class="dist-total-footer">
                 <span class="dist-total-icon">{_lc_timeline_icon_svg("file-text")}</span>
@@ -1024,10 +1008,10 @@ def render_lease_contract(df_raw=None):
             p_expiring = (expiring_val / total_val * 100) if total_val > 0 else 0
             p_expired = (expired_val / total_val * 100) if total_val > 0 else 0
 
-            # Donut chart on top (just like Column 2)
+            # Diagram donat di bagian atas (seperti Kolom 2)
             st.plotly_chart(_build_donut_chart({"Active": active_val, "Expiring Soon": expiring_val, "Expired": expired_val}, ["#10B981", "#F59E0B", "#EF4444"], size=140), use_container_width=True, config=dict(displayModeBar=False))
             
-            # Status list below the donut chart, styled like Column 2
+            # Daftar status di bawah diagram donat, dengan gaya yang sama seperti Kolom 2
             html_status_stack = f"""
             <div class="dist-stack">
                 <div class="status-card active">
@@ -1071,7 +1055,7 @@ def render_lease_contract(df_raw=None):
             else:
                 health_label, health_color = "At Risk", "#EF4444"
 
-            # Single-line footer matching Column 2's footer
+            # Footer satu baris yang cocok dengan footer Kolom 2
             html_status_footer = f"""
             <div class="dist-total-footer">
                 <span class="dist-total-icon">{_lc_timeline_icon_svg("check-circle")}</span>
@@ -1084,9 +1068,7 @@ def render_lease_contract(df_raw=None):
     st.markdown('<div class="lc-vertical-spacer"></div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
-    # CONTRACTS EXPIRING SOON — header card + 3 stat pills, then one
-    # bordered card per severity (icon + colored title + "View all (N)"
-    # strip, table, and a "Show more" toggle past the first 5 rows).
+    # Tampilkan kontrak yang akan segera berakhir dikelompokkan berdasarkan status tingkat keparahan.
     # ─────────────────────────────────────────────
     AVATAR_PALETTE = ["#6366F1", "#EC4899", "#10B981", "#F59E0B", "#0EA5E9", "#8B5CF6", "#EF4444", "#14B8A6"]
     VARIANT_COLOR = {"danger": "#EF4444", "warning": "#F59E0B", "success": "#10B981"}
@@ -1152,7 +1134,7 @@ def render_lease_contract(df_raw=None):
                         st.session_state[show_all_key] = not st.session_state[show_all_key]
                         st.rerun()
 
-    # Build dynamic list of critical contracts
+    # Susun daftar dinamis untuk kontrak dengan tingkat kritis
     dynamic_critical = []
     crit_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] <= 30)]
     for _, r in crit_df.iterrows():
@@ -1162,7 +1144,7 @@ def render_lease_contract(df_raw=None):
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": "N/A", "status": "Critical"
         })
 
-    # Build dynamic list of expiring soon contracts
+    # Susun daftar dinamis untuk kontrak yang segera berakhir
     dynamic_expiring = []
     exp_df = df_all[(df_all["Status"] == "Anomaly") & (df_all["Sisa"] > 30) & (df_all["Sisa"] <= 90)]
     for _, r in exp_df.iterrows():
@@ -1172,8 +1154,7 @@ def render_lease_contract(df_raw=None):
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": "N/A", "status": "Expiring Soon"
         })
 
-    # Build dynamic list of approaching renewal contracts (no cap here —
-    # the "Show more" toggle controls how many rows are visible)
+    # Susun daftar dinamis untuk kontrak yang mendekati masa perpanjangan.
     dynamic_approaching = []
     app_df = df_all[(df_all["Status"] == "Valid") & (df_all["Sisa"] > 90)].sort_values(by="Sisa")
     for _, r in app_df.iterrows():
@@ -1183,7 +1164,7 @@ def render_lease_contract(df_raw=None):
             "end_date": end_date, "remaining": f"{r['Sisa']}d", "value": "N/A", "status": "Approaching"
         })
 
-    # Header card: title + 3 stat pills, all wrapped in one outer card
+    # Kartu Header: judul + 3 pil status, semuanya dibungkus dalam satu kartu luar
     with st.container():
         st.markdown('<div class="lc-exp-outer-marker"></div>', unsafe_allow_html=True)
         h_left, h_s1, h_s2, h_s3 = st.columns(4)

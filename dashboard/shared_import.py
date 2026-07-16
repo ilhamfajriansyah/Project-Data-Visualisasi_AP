@@ -8,7 +8,7 @@ import streamlit as st
 SHARED_DATA_KEY = "shared_import_df"
 SHARED_META_KEY = "shared_import_meta"
 
-# KETENTUAN_RULES is defined below with correct keys (format, size, merge_cell, required_filled, structure)
+# KETENTUAN_RULES didefinisikan di bawah dengan kunci yang tepat (format, size, merge_cell, required_filled, structure)
 
 REQUIRED_DASHBOARD_COLUMNS = {
     "perusahaan",
@@ -108,7 +108,7 @@ COLUMN_ALIASES = {
     "mgrs": "mgrs_per_pax",
     "real_pax": "real_pax",
 
-    # Remaining 50 columns
+    # Sisa 50 kolom lainnya
     "document_date": "document_date",
     "pic": "pic",
     "ro_number": "ro_number",
@@ -182,16 +182,7 @@ _ISO_DATE_RE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}")
 
 
 def normalize_identity_key(value) -> str:
-    """Kunci pembanding untuk identitas tenant (perusahaan/brand/terminal) yang
-    tak peduli huruf besar/kecil, spasi ganda, atau titik/koma singkatan badan
-    usaha — dipakai HANYA untuk mencocokkan apakah dua tulisan merujuk ke
-    tenant yang sama (mis. "PT ABC" vs "pt  abc" vs "PT. ABC" vs "P.T. ABC").
-    Titik/koma dibuang total dari kunci ini karena dalam nama perusahaan
-    Indonesia perannya cuma tanda baca singkatan ("PT.", "CV.") yang
-    penulisannya sering tidak konsisten antar end user, bukan karakter
-    pembeda identitas. Nilai aslinya tidak diubah/disimpan lewat fungsi ini,
-    jadi tidak berisiko merusak nama brand yang penulisannya sengaja unik
-    (mis. "eSHOP", "iZone")."""
+    """Buat kunci pencocokan nama tenant yang case-insensitive dan bersih dari tanda baca singkatan PT/CV."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
     text = re.sub(r"[.,]", "", str(value).strip())
@@ -200,10 +191,7 @@ def normalize_identity_key(value) -> str:
 
 def _clean_column_name(column) -> str:
     name = str(column).strip().lower()
-    # Header asli sering punya keterangan format/instruksi nempel, mis.
-    # "END KONTRAK\n(mm/dd/yyyy)" atau "NOMOR KONTRAK SISTEM (SAP)" — buang
-    # isi dalam tanda kurung supaya nama intinya tetap cocok dengan alias
-    # ("end_kontrak", bukan "end_kontrak_mm_dd_yyyy").
+    # Bersihkan nama kolom (lowercase, hilangkan teks dalam kurung) agar cocok dengan alias.
     name = re.sub(r"\([^)]*\)", " ", name)
     name = re.sub(r"[^a-z0-9]+", "_", name)
     return name.strip("_")
@@ -217,12 +205,7 @@ def _translate_indo_months(text: str) -> str:
 
 
 def _parse_one_date(value):
-    """Parse satu nilai tanggal apa adanya dari Excel — menerima nama bulan
-    Indonesia atau Inggris, dan menyimpulkan urutan hari/bulan dengan benar
-    untuk format numerik seperti "05/03/2026" (yang dimaksud end user
-    hampir pasti 5 Maret, bukan 3 Mei — pandas defaultnya menerka gaya
-    Amerika MM/DD kalau tidak diberitahu). Format ISO (YYYY-MM-DD) yang
-    sudah tak ambigu dikecualikan dari aturan ini."""
+    """Parse nilai tanggal dari Excel dengan mendeteksi nama bulan lokal dan urutan hari/bulan secara fleksibel."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return pd.NaT
     if isinstance(value, (pd.Timestamp, datetime)):
@@ -245,11 +228,7 @@ def _parse_flexible_date(series: pd.Series) -> pd.Series:
 
 
 def _parse_one_number(value):
-    """Parse satu nilai angka yang mungkin ditulis gaya Indonesia (titik =
-    pemisah ribuan, koma = desimal — mis. "9.000.000,50") atau gaya
-    Amerika/Excel default (koma = ribuan, titik = desimal — "9,000,000.50"),
-    termasuk kalau ada awalan simbol mata uang ("Rp"). Angka yang sudah
-    numerik asli (bukan teks) dilewati apa adanya."""
+    """Parse nilai numerik dari format penulisan angka gaya Indonesia atau Amerika secara otomatis."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -291,19 +270,7 @@ def _parse_flexible_number(series: pd.Series) -> pd.Series:
 
 
 def normalize_imported_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Bersihkan data mentah hasil upload sebelum disimpan:
-    - Trim whitespace, rapikan spasi ganda jadi satu, & samakan placeholder
-      kosong ("nan"/"-"/dst) jadi NaN.
-    - Kolom numerik: terima format Indonesia (titik ribuan, koma desimal)
-      maupun Amerika (koma ribuan, titik desimal), dengan atau tanpa
-      simbol mata uang.
-    - Kolom tanggal: terima nama bulan Indonesia atau Inggris, dan
-      menyimpulkan urutan hari/bulan dengan benar (format ISO yang tak
-      ambigu dikecualikan dari koreksi ini).
-    - `masa_jasa` dinormalisasi ke tanggal awal bulan supaya key
-      deduplikasi (kode_ruang + masa_jasa + tahun) di import_manager.py
-      bisa diandalkan meski format asal di Excel berbeda-beda antar file.
-    """
+    """Bersihkan data hasil upload (trim spasi, standarisasi angka/tanggal, dan normalisasi masa_jasa)."""
     df = df.copy()
 
     for col in df.columns:
@@ -465,7 +432,7 @@ def store_shared_import(uploaded, sbu: str = "") -> tuple[pd.DataFrame, list[str
     mapping = get_column_mapping(df)
     missing = get_missing_dashboard_columns(df)
     
-    # Extract period from the Masa Jasa column if available
+    # Ambil periode dari kolom Masa Jasa jika tersedia
     period_str = "-"
     masa_jasa_col = mapping.get("masa_jasa")
     if masa_jasa_col and masa_jasa_col in df.columns:

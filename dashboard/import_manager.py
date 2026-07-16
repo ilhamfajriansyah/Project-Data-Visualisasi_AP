@@ -93,7 +93,7 @@ def _mount_im_fixed_header():
     )
 
 # ─────────────────────────────────────────────
-# DUMMY DATA
+# DATA SIMULASI
 # ─────────────────────────────────────────────
 PERIOD_ACTIVE = "April 2026"
 DEADLINE      = date(2026, 4, 30)
@@ -158,13 +158,13 @@ def _get_refined_history_data() -> list[dict]:
 
 
 # ─────────────────────────────────────────────
-# CSS
+# CSS STYLE
 # ─────────────────────────────────────────────
 from .import_manager_styles import _PAGE_CSS, _REFINED_IMPORT_CSS, _NEW_DESIGN_CSS
 
 
 # ─────────────────────────────────────────────
-# INIT STATE
+# INISIALISASI STATE
 # ─────────────────────────────────────────────
 def _init_state():
     defaults = {
@@ -191,10 +191,7 @@ _IM_NOTICE_ICONS = {
 
 
 def _render_save_result_notice(result: dict) -> None:
-    """Kartu notifikasi terstruktur untuk hasil `_save_to_database()`: ikon +
-    judul singkat berbahasa awam + penjelasan, dengan detail teknis (mis.
-    kode ruang yang bentrok) dipisah di baris sendiri — bukan satu paragraf
-    teks polos ala st.error/st.warning bawaan."""
+    """Render structured database save results notification card."""
     from html import escape
 
     severity = result.get("severity", "error")
@@ -225,11 +222,7 @@ def _render_save_result_notice(result: dict) -> None:
 
 
 def _save_to_database():
-    """Simpan data ke transaction_revenue. Selalu mengembalikan
-    (success, result) dengan `result` sebagai dict {severity, title,
-    message, detail_label, detail_items} — bukan string polos — supaya
-    UI bisa menampilkan kartu notifikasi terstruktur (lihat
-    _render_save_result_notice) alih-alih satu paragraf teks teknis."""
+    """Save data to transaction_revenue and return status dict."""
     from .shared_import import SHARED_DATA_KEY
     df = st.session_state.get(SHARED_DATA_KEY)
     if df is None or df.empty:
@@ -242,10 +235,7 @@ def _save_to_database():
     mapping = st.session_state.get("shared_import_mapping", {})
     df_to_save = df.rename(columns={v: k for k, v in mapping.items()})
 
-    # Nama kolom standar Import Manager berbeda dari nama kolom asli di tabel
-    # transaction_revenue (lihat alias "produksi_m2 AS luas_sqm" di
-    # load_dashboard_data), jadi disamakan dulu supaya tidak ikut dibuang
-    # saat filter save_cols di bawah.
+    # Sesuaikan nama kolom import manager dengan kolom tabel database transaction_revenue.
     DB_COLUMN_OVERRIDES = {"luas_sqm": "produksi_m2"}
     df_to_save = df_to_save.rename(columns={
         k: v for k, v in DB_COLUMN_OVERRIDES.items() if k in df_to_save.columns
@@ -277,9 +267,7 @@ def _save_to_database():
         skipped_count = 0
         skipped_items = []
         if all(c in df_final.columns for c in NATURAL_KEY):
-            # Safety net di level database: kombinasi kode_ruang + masa_jasa +
-            # tahun harus unik, supaya baris yang sama tidak pernah bisa dobel
-            # tersimpan walau ada bug di pengecekan aplikasi di bawah.
+            # Pastikan keunikan natural key (kode_ruang, masa_jasa, tahun).
             try:
                 with engine.begin() as ddl_conn:
                     ddl_conn.execute(text(
@@ -360,11 +348,7 @@ def _save_to_database():
                     "detail_items": skipped_items,
                 }
 
-        # Normalisasi tenant: tenant_master adalah satu-satunya sumber
-        # kebenaran untuk identitas tenant (dedup berdasarkan perusahaan +
-        # brand + terminal). transaction_revenue tetap menyimpan kolom
-        # tenant apa adanya (kompatibel dengan halaman lain), tapi sekarang
-        # juga terhubung lewat tenant_id yang benar-benar merujuk ke sana.
+        # Samakan data tenant ke tabel tenant_master dan hubungkan via tenant_id.
         if (
             'tenant_id' in db_columns
             and all(c in df_final.columns for c in ["perusahaan", "brand", "terminal"])
@@ -385,9 +369,7 @@ def _save_to_database():
                 tenant_rows["brand"].map(normalize_identity_key),
                 tenant_rows["terminal"].map(normalize_identity_key),
             ))
-            # Dedup pakai kunci case/spasi-insensitive, bukan kecocokan
-            # string persis — supaya "PT ABC" dan "pt  abc" dalam file yang
-            # sama tidak dianggap dua tenant berbeda.
+            # Hapus duplikasi menggunakan key ternormalisasi untuk menghindari perbedaan ejaan/huruf besar-kecil.
             tenant_rows = tenant_rows.drop_duplicates(subset=["_tenant_key"])
 
             if not tenant_rows.empty:
@@ -424,9 +406,7 @@ def _save_to_database():
                             },
                         ).scalar()
                         if inserted_id is None:
-                            # Konflik exact-match (kasus langka: kunci ternormalisasi
-                            # baru dilihat di batch ini tapi string persisnya sudah
-                            # ada) — ambil id yang sudah ada.
+                            # Tangani konflik data yang sama persis.
                             inserted_id = tconn.execute(
                                 text(
                                     "SELECT id FROM tenant_master "
@@ -448,14 +428,7 @@ def _save_to_database():
                 df_final["tenant_id"] = df_final["_tenant_key"].map(key_to_id)
                 df_final = df_final.drop(columns=["_tenant_key"])
 
-        # Normalisasi kontrak: satu baris kontrak per nomor_kontrak_sistem
-        # (nomor SAP), disimpan terpisah dari transaction_revenue dan
-        # terhubung ke tenant_master. Hanya baris yang benar-benar punya
-        # nomor kontrak sistem yang diproses di sini. Baris kontrak.import_id
-        # merujuk ke import_history, jadi penyiapan datanya di sini, tapi
-        # eksekusi INSERT-nya harus menunggu sampai import_history baris ini
-        # sudah benar-benar ada (lihat di bawah) — kalau tidak, FK gagal
-        # persis seperti bug transaction_revenue vs import_history sebelumnya.
+        # Samakan dan simpan kontrak yang terkait dengan tenant_master dan import_history.
         kontrak_rows = pd.DataFrame()
         kontrak_available = {}
         if "nomor_kontrak_sistem" in df_final.columns:
@@ -529,14 +502,7 @@ def _save_to_database():
 
             df_final.to_sql("transaction_revenue", con=conn, if_exists="append", index=False)
 
-            # Normalisasi trafik: berbeda dari tenant_master/kontrak (yang
-            # berbasis identitas), traffic adalah AGREGAT per
-            # tahun+bulan+terminal yang dijumlahkan dari banyak baris tenant
-            # sekaligus. Jadi bukan sekadar insert baris baru — tiap kali ada
-            # baris baru masuk ke transaction_revenue untuk suatu
-            # tahun+bulan+terminal, agregatnya dihitung ULANG dari seluruh
-            # transaction_revenue (bukan cuma batch ini), supaya tetap akurat
-            # walau datanya datang dari beberapa kali import terpisah.
+            # Hitung ulang akumulasi trafik bulanan berdasarkan tahun, bulan, dan terminal.
             if all(c in df_final.columns for c in ["tahun", "masa_jasa", "terminal"]):
                 try:
                     with engine.begin() as ddl_conn:
@@ -675,11 +641,7 @@ def _get_structure_detail(uploaded) -> list[str]:
 
 
 def _get_required_filled_detail(uploaded) -> list[str]:
-    """Untuk tiap kolom wajib yang punya data kosong: sebutkan nama kolomnya
-    dan nomor baris Excel-nya, sekaligus bedakan baris yang memang kosong di
-    file asli dari baris yang datanya ada tapi tidak terbaca oleh proses
-    pembersihan data (mis. teks di kolom angka, format tanggal yang tidak
-    dikenali) — supaya user tahu harus mengisi atau memperbaiki format."""
+    """Identify missing or invalid required values and list their Excel row numbers."""
     try:
         uploaded.seek(0)
         raw_df = read_import_file(uploaded)
@@ -814,7 +776,7 @@ def _render_import_history_refined():
     end_idx = min(start_idx + per_page, total)
     page_data = data[start_idx:end_idx]
 
-    # Build status badge helper
+    # Helper untuk membuat badge status
     def _hist_status(status):
         s = status.lower()
         if s == "success":
@@ -827,7 +789,7 @@ def _render_import_history_refined():
             return '<span class="im-status-badge im-status-deleted"><span class="status-dot"></span>Deleted</span>'
         return '<span class="im-status-badge im-status-success"><span class="status-dot"></span>' + status + '</span>'
 
-    # Build dot class
+    # Tentukan kelas CSS titik status
     def _dot_class(status):
         s = status.lower()
         if s == "success": return "dot-success"
@@ -836,7 +798,7 @@ def _render_import_history_refined():
         if s == "deleted": return "dot-deleted"
         return "dot-success"
 
-    # Build rows
+    # Buat baris data
     rows_html = ""
     for r in page_data:
         rs_html = f'<span class="im-rs-total">{r["rs_total"]}</span>' if r["rs_total"] else '<span class="im-rs-empty">—</span>'
@@ -930,7 +892,7 @@ def _render_import_history_refined():
     )
     st.markdown(history_html, unsafe_allow_html=True)
 
-    # Render standardized pagination below the table card
+    # Tampilkan paginasi standar di bawah tabel
     st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
     im_page_input = render_pagination(
         current_page=st.session_state.im_hist_page,
@@ -956,9 +918,9 @@ def _render_new_workspace():
     left, right = st.columns([6, 4], gap="medium")
 
     # ── LEFT: three-section upload card ──
-    # Section 1: HTML heading card  (border-bottom: none, top-only radius)
-    # Section 2: native file uploader styled as lavender dashed drop zone
-    # Section 3: hint row (negative margin-top closes the Streamlit flex gap)
+    # Bagian 1: Judul panel HTML (tanpa border bawah, sudut atas membulat)
+    # Bagian 2: Widget uploader file dengan gaya zona drop lavender putus-putus
+    # Bagian 3: Baris petunjuk format file
     with left:
         st.markdown("""
         <div class="im-panel im-upload-shell">
@@ -972,9 +934,9 @@ def _render_new_workspace():
         </div>
         """, unsafe_allow_html=True)
 
-        # Let's get the uploaded file from st.file_uploader
-        # If we use a key that depends on version to reset it
-        # We check if file is uploaded or not
+        # Ambil file yang diunggah dari st.file_uploader
+        # Gunakan key dinamis berbasis versi agar uploader bisa direset
+        # Cek apakah file telah selesai diunggah
         uploaded = st.session_state.get(uploader_key)
 
         if not uploaded:
@@ -1009,14 +971,11 @@ def _render_new_workspace():
                 <div class="im-uploader-overlay">
             """, unsafe_allow_html=True)
 
-            # Render uploader inside the overlay.
-            # No `type=` restriction here on purpose: Streamlit silently
-            # rejects mismatched files at the picker/drop level when `type`
-            # is set, leaving `uploaded` as None with no visible feedback
-            # (its own rejection message renders behind our invisible
-            # overlay). Accepting anything and validating it ourselves below
-            # lets the existing "Format file tidak didukung" error actually
-            # surface to the user.
+            # Tampilkan uploader di dalam overlay.
+            # Sengaja tidak menggunakan batasan `type=`: Streamlit otomatis
+            # menolak file yang tidak cocok secara diam-diam tanpa umpan balik visual
+            # jika parameter `type` diatur. Dengan menerima semua file dan memvalidasinya
+            # sendiri di bawah, pesan error "Format file tidak didukung" bisa muncul.
             uploaded = st.file_uploader(
                 "Browse Files",
                 label_visibility="collapsed",
@@ -1071,8 +1030,8 @@ def _render_new_workspace():
 
                     total_records = len(df_imported)
                     
-                    # Calculate dynamic warnings based on logic:
-                    # check for 0 or negative real_omzet and empty cells
+                    # Hitung peringatan dinamis:
+                    # periksa nilai real_omzet yang nol/negatif dan kolom kosong
                     warnings = 0
                     if "real_omzet" in df_imported.columns:
                         warnings += int((df_imported["real_omzet"] <= 0).sum())
@@ -1080,7 +1039,7 @@ def _render_new_workspace():
                     null_counts = df_imported.isnull().sum().sum()
                     warnings += int(null_counts)
                     
-                    # Capping warnings if they exceed record count for safety
+                    # Batasi jumlah peringatan agar tidak melampaui jumlah total baris demi keamanan
                     warnings = min(warnings, total_records)
                     valid_records = max(0, total_records - warnings)
                     score = int((valid_records / total_records) * 100) if total_records > 0 else 100
@@ -1119,7 +1078,7 @@ def _render_new_workspace():
                     all_valid = False
 
             if not all_valid:
-                # Render the drag & drop zone in failed visual state, keeping it interactive
+                # Tampilkan area drag & drop dalam visual error, namun tetap interaktif
                 st.markdown(f"""
                 <div class="im-dropzone-wrapper">
                     <div class="im-dropzone-visual">
@@ -1141,9 +1100,8 @@ def _render_new_workspace():
                     <div class="im-uploader-overlay">
                 """, unsafe_allow_html=True)
 
-                # Render the overlay file uploader so they can drop a new file.
-                # No `type=` restriction — see comment on the other
-                # file_uploader call above for why.
+                # Tampilkan overlay uploader agar pengguna bisa memasukkan file baru.
+                # Tanpa batasan `type=` — alasannya sama dengan uploader di atas.
                 st.file_uploader(
                     "Browse Files",
                     label_visibility="collapsed",
@@ -1481,16 +1439,18 @@ def show_import_details_dialog(import_id):
             )
             df = pd.read_sql(
                 text("""
-                    SELECT document_date, masa_jasa, tahun, perusahaan, brand, perimeter_spending_pax,
-                           kode_ruang, pic, ro_number, terminal, sub_terminal, area, lokasi, lantai, gate,
-                           smoking_status, sub_bidang_usaha, bidang_usaha, coa, nomor_kontrak_sistem,
-                           nomor_kontrak_legal, start_kontrak, end_kontrak, csp_non_csp, kerja_sama,
-                           pemilihan_mitra_usaha, produksi_m2, tarif_sewa_ruang_m2, rs_percent, min_omzet,
-                           real_omzet, mgrs_per_pax, real_pax, pendapatan_rs, pendapatan_sewa, total_kontribusi,
-                           acv, rev_per_sqm, spending_per_pax, doc_number_rs, doc_number_sewa, variant_no,
-                           catatan, trafik_int_arr, trafik_int_dep, subtotal_trafik_int, trafik_dom_arr,
-                           trafik_dom_dep, subtotal_trafik_dom, total_trafik
-                    FROM transaction_revenue
+                    SELECT tr.document_date, tr.masa_jasa, tr.tahun, tm.perusahaan, tm.brand, tr.perimeter_spending_pax,
+                           tr.kode_ruang, tr.pic, tr.ro_number, tm.terminal, tr.sub_terminal, tr.area, tm.lokasi, tr.lantai, tr.gate,
+                           tr.smoking_status, tr.sub_bidang_usaha, tm.bidang_usaha, tr.coa, tr.nomor_kontrak_sistem,
+                           k.nomor_kontrak_legal, k.start_kontrak, k.end_kontrak, tr.csp_non_csp, k.jenis_kontrak AS kerja_sama,
+                           tr.pemilihan_mitra_usaha, tr.produksi_m2, tr.tarif_sewa_ruang_m2, k.sharing_percent AS rs_percent, k.minimal_omzet AS min_omzet,
+                           tr.real_omzet, k.mgrs_per_pax, tr.real_pax, tr.pendapatan_rs, tr.pendapatan_sewa, tr.total_kontribusi,
+                           tr.acv, tr.rev_per_sqm, tr.spending_per_pax, tr.doc_number_rs, tr.doc_number_sewa, tr.variant_no,
+                           tr.catatan, tr.trafik_int_arr, tr.trafik_int_dep, tr.subtotal_trafik_int, tr.trafik_dom_arr,
+                           tr.trafik_dom_dep, tr.subtotal_trafik_dom, tr.total_trafik
+                    FROM transaction_revenue tr
+                    LEFT JOIN tenant_master tm ON tr.tenant_id = tm.id
+                    LEFT JOIN kontrak k ON tr.nomor_kontrak_sistem = k.nomor_kontrak_sistem
                     WHERE import_id = :import_id
                 """),
                 conn,
@@ -1607,16 +1567,18 @@ def show_download_dialog(import_id):
             )
             df = pd.read_sql(
                 text("""
-                    SELECT document_date, masa_jasa, tahun, perusahaan, brand, perimeter_spending_pax,
-                           kode_ruang, pic, ro_number, terminal, sub_terminal, area, lokasi, lantai, gate,
-                           smoking_status, sub_bidang_usaha, bidang_usaha, coa, nomor_kontrak_sistem,
-                           nomor_kontrak_legal, start_kontrak, end_kontrak, csp_non_csp, kerja_sama,
-                           pemilihan_mitra_usaha, produksi_m2, tarif_sewa_ruang_m2, rs_percent, min_omzet,
-                           real_omzet, mgrs_per_pax, real_pax, pendapatan_rs, pendapatan_sewa, total_kontribusi,
-                           acv, rev_per_sqm, spending_per_pax, doc_number_rs, doc_number_sewa, variant_no,
-                           catatan, trafik_int_arr, trafik_int_dep, subtotal_trafik_int, trafik_dom_arr,
-                           trafik_dom_dep, subtotal_trafik_dom, total_trafik
-                    FROM transaction_revenue
+                    SELECT tr.document_date, tr.masa_jasa, tr.tahun, tm.perusahaan, tm.brand, tr.perimeter_spending_pax,
+                           tr.kode_ruang, tr.pic, tr.ro_number, tm.terminal, tr.sub_terminal, tr.area, tm.lokasi, tr.lantai, tr.gate,
+                           tr.smoking_status, tr.sub_bidang_usaha, tm.bidang_usaha, tr.coa, tr.nomor_kontrak_sistem,
+                           k.nomor_kontrak_legal, k.start_kontrak, k.end_kontrak, tr.csp_non_csp, k.jenis_kontrak AS kerja_sama,
+                           tr.pemilihan_mitra_usaha, tr.produksi_m2, tr.tarif_sewa_ruang_m2, k.sharing_percent AS rs_percent, k.minimal_omzet AS min_omzet,
+                           tr.real_omzet, k.mgrs_per_pax, tr.real_pax, tr.pendapatan_rs, tr.pendapatan_sewa, tr.total_kontribusi,
+                           tr.acv, tr.rev_per_sqm, tr.spending_per_pax, tr.doc_number_rs, tr.doc_number_sewa, tr.variant_no,
+                           tr.catatan, tr.trafik_int_arr, tr.trafik_int_dep, tr.subtotal_trafik_int, tr.trafik_dom_arr,
+                           tr.trafik_dom_dep, tr.subtotal_trafik_dom, tr.total_trafik
+                    FROM transaction_revenue tr
+                    LEFT JOIN tenant_master tm ON tr.tenant_id = tm.id
+                    LEFT JOIN kontrak k ON tr.nomor_kontrak_sistem = k.nomor_kontrak_sistem
                     WHERE import_id = :import_id
                 """),
                 conn,

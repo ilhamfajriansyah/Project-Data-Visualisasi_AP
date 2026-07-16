@@ -36,7 +36,7 @@ load_dotenv()
 OVERVIEW_FONT_FAMILY = "Inter, sans-serif"
 
 # ─────────────────────────────────────────────
-# LOAD CSS
+# MEMUAT CSS
 # ─────────────────────────────────────────────
 def inject_dashboard_css():
     st.markdown(f"<style>{DASHBOARD_CSS}</style>", unsafe_allow_html=True)
@@ -79,72 +79,71 @@ def can_access_menu(menu_name):
 def load_dashboard_data():
     query = text("""
         SELECT
-            document_date,
-            masa_jasa,
-            tahun,
-            perusahaan,
-            brand,
-            kode_ruang,
-            pic,
-            ro_number,
-            terminal,
-            sub_terminal,
-            area,
-            lokasi,
-            lantai,
-            gate,
-            smoking_status,
-            sub_bidang_usaha,
-            bidang_usaha,
-            coa,
-            nomor_kontrak_sistem,
-            nomor_kontrak_legal,
-            start_kontrak,
-            end_kontrak,
-            csp_non_csp,
-            kerja_sama,
-            pemilihan_mitra_usaha,
-            produksi_m2,
-            produksi_m2 AS luas_sqm,
-            tarif_sewa_ruang_m2,
-            rs_percent,
-            min_omzet,
-            real_omzet,
-            mgrs_per_pax,
-            real_pax,
-            real_pax AS jumlah_pax,
-            pendapatan_rs,
-            pendapatan_sewa,
-            total_kontribusi,
-            total_kontribusi AS kontribusi,
-            acv,
-            rev_per_sqm,
-            rev_per_sqm AS rev_sqm,
-            spending_per_pax,
-            doc_number_rs,
-            doc_number_sewa,
-            variant_no,
-            catatan,
-            trafik_int_arr,
-            trafik_int_dep,
-            subtotal_trafik_int,
-            trafik_dom_arr,
-            trafik_dom_dep,
-            subtotal_trafik_dom,
-            total_trafik,
-            tenant_id,
-            import_id
-        FROM (
-            SELECT tr.*
-            FROM transaction_revenue tr
-            WHERE EXISTS (
-                SELECT 1
-                FROM import_history ih
-                WHERE ih.import_id = tr.import_id
-                  AND COALESCE(ih.is_active, true) = true
-            )
-        ) transaction_revenue
-        ORDER BY import_id DESC NULLS LAST, tahun DESC NULLS LAST, masa_jasa
+            tr.document_date,
+            tr.masa_jasa,
+            tr.tahun,
+            tm.perusahaan,
+            tm.brand,
+            tr.kode_ruang,
+            tr.pic,
+            tr.ro_number,
+            tm.terminal,
+            tr.sub_terminal,
+            tr.area,
+            tm.lokasi,
+            tr.lantai,
+            tr.gate,
+            tr.smoking_status,
+            tr.sub_bidang_usaha,
+            tm.bidang_usaha,
+            tr.coa,
+            tr.nomor_kontrak_sistem,
+            k.nomor_kontrak_legal,
+            k.start_kontrak,
+            k.end_kontrak,
+            tr.csp_non_csp,
+            k.jenis_kontrak AS kerja_sama,
+            tr.pemilihan_mitra_usaha,
+            tr.produksi_m2,
+            tr.produksi_m2 AS luas_sqm,
+            tr.tarif_sewa_ruang_m2,
+            k.sharing_percent AS rs_percent,
+            k.minimal_omzet AS min_omzet,
+            tr.real_omzet,
+            k.mgrs_per_pax,
+            tr.real_pax,
+            tr.real_pax AS jumlah_pax,
+            tr.pendapatan_rs,
+            tr.pendapatan_sewa,
+            tr.total_kontribusi,
+            tr.total_kontribusi AS kontribusi,
+            tr.acv,
+            tr.rev_per_sqm,
+            tr.rev_per_sqm AS rev_sqm,
+            tr.spending_per_pax,
+            tr.doc_number_rs,
+            tr.doc_number_sewa,
+            tr.variant_no,
+            tr.catatan,
+            tr.trafik_int_arr,
+            tr.trafik_int_dep,
+            tr.subtotal_trafik_int,
+            tr.trafik_dom_arr,
+            tr.trafik_dom_dep,
+            tr.subtotal_trafik_dom,
+            tr.total_trafik,
+            tr.tenant_id,
+            tr.import_id
+        FROM transaction_revenue tr
+        LEFT JOIN tenant_master tm ON tr.tenant_id = tm.id
+        LEFT JOIN kontrak k ON tr.nomor_kontrak_sistem = k.nomor_kontrak_sistem
+        WHERE EXISTS (
+            SELECT 1
+            FROM import_history ih
+            WHERE ih.import_id = tr.import_id
+              AND COALESCE(ih.is_active, true) = true
+        )
+        ORDER BY tr.import_id DESC NULLS LAST, tr.tahun DESC NULLS LAST, tr.masa_jasa
     """)
 
     try:
@@ -208,7 +207,7 @@ def _fmt_rp_full(value):
 
 
 # ══════════════════════════════════════════════
-# HELPER: KPI cards "pro" (icon + badge + progress bar)
+# FUNGSI BANTU: Kartu KPI "pro" (ikon + badge + progress bar)
 # ══════════════════════════════════════════════
 KPI_PRO_ICON_PATHS = {
     "omzet":  '<line x1="12" y1="2" x2="12" y2="22"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
@@ -265,7 +264,7 @@ def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar
     arrow = "↘" if is_down else "↗"
     bar_width = min(100, max(6, 50 + delta_pct * 2.2)) if has_delta else 50
 
-    # Process unit to extract prefix (like "Rp") and suffix (like "M", "Jt", or empty)
+    # Mengurai satuan untuk memisahkan awalan (seperti "Rp") dan akhiran (seperti "M", "Jt", atau kosong)
     prefix = ""
     display_unit = unit
     if unit.startswith("Rp"):
@@ -275,12 +274,10 @@ def _kpi_pro_card(label, value, unit, subtitle, delta_pct, accent, icon_key, bar
     unit_gap = "" if display_unit == "%" else " "
     unit_span = f'<span class="kpi-pro-unit">{unit_gap}{escape(display_unit)}</span>' if display_unit else ""
 
-    # Format percentage display to Indonesian decimal format
+    # Format tampilan persentase ke format desimal Indonesia (koma)
     formatted_pct = f"{arrow} {abs(delta_pct):.1f}%".replace(".", ",") if has_delta else "N/A"
 
-    # Tanpa data pembanding, baris label + progress bar di footer tidak punya
-    # makna apa pun untuk ditampilkan (bar_width fallback bukan nilai nyata) —
-    # daripada terlihat seperti ada angka 50%, footer ini disembunyikan saja.
+    # Sembunyikan footer pembanding jika tidak ada data untuk periode pembanding.
     foot_html = (
         f'<div class="kpi-pro-foot">'
         f'<div class="kpi-pro-bar-row">'
@@ -622,7 +619,7 @@ def _nav_row(icon, label):
 
 
 # ══════════════════════════════════════════════
-# PAGE: OVERVIEW
+# HALAMAN OVERVIEW
 # ══════════════════════════════════════════════
 _OV_FILTER_DEFAULTS = {
     "f_terminal": "All Terminal", "f_tahun": "All Year", "f_masa": "All Month",
@@ -631,11 +628,9 @@ _OV_FILTER_DEFAULTS = {
 
 
 def _overview_normalize_and_ensure_columns(df_raw):
-    """Tolerate whatever column-naming convention the real source data
-    (DB query / Import Manager upload) actually uses, instead of assuming
-    the dashboard's exact internal names. Renames via aliases and fills in
-    any still-missing required column with a safe default so downstream
-    KPI/filter code never KeyErrors on a column the source data lacks."""
+    """Menyelaraskan nama kolom dari data sumber (query DB / upload Import Manager)
+    ke nama internal dashboard menggunakan alias. Mengisi kolom wajib yang kosong
+    dengan nilai default aman agar proses filter dan perhitungan KPI berikutnya tidak error."""
     df = df_raw.copy()
 
     # =========================================================
@@ -836,24 +831,17 @@ def _overview_normalize_and_ensure_columns(df_raw):
         numeric=False,
     )
 
-    # masa_jasa kadang berisi tanggal utuh (mis. Excel menampilkan "Jun-26"
-    # tapi nilai selnya tetap tanggal 2026-06-01), kadang teks "Jun-2025",
-    # kadang sudah nama bulan penuh. Samakan semua jadi nama bulan penuh
-    # ("June") supaya dropdown/filter/chart yang membaca kolom ini konsisten.
+    # Samakan nama bulan menjadi format nama bulan penuh demi konsistensi.
     _parsed_masa = pd.to_datetime(df["masa_jasa"], errors="coerce")
     df["masa_jasa"] = _parsed_masa.dt.strftime("%B").where(
         _parsed_masa.notna(), df["masa_jasa"].astype(str)
     )
 
-    # Derived per-row metrics the rest of the page expects to already exist.
+    # Hitung metrik per baris yang dibutuhkan oleh bagian halaman lainnya.
     df["rev_sqm"] = df["real_omzet"] / df["luas_sqm"].replace(0, pd.NA)
     df["rev_sqm"] = pd.to_numeric(df["rev_sqm"], errors="coerce").fillna(0)
 
-    # Kolom acv (% ACV) dari Excel/database dipakai apa adanya kalau terisi;
-    # baru dihitung dari real_omzet/min_omzet kalau memang kosong di sumbernya.
-    # Sel ACV di Excel berformat persen (mis. "100,00%"), jadi nilai mentahnya
-    # tersimpan sebagai pecahan (1 = 100%) — perlu dikali 100 dulu supaya
-    # satuannya sama dengan hasil rumus fallback (yang sudah dalam skala 0-100).
+    # Hitung persentase ACV dengan opsi fallback perhitungan lokal.
     acv_raw = pd.to_numeric(df["acv"], errors="coerce") if "acv" in df.columns else pd.Series(pd.NA, index=df.index)
     acv_raw = acv_raw * 100
     acv_fallback = (df["real_omzet"] / df["min_omzet"].replace(0, pd.NA) * 100).round(2)
@@ -965,21 +953,16 @@ def page_overview(df_raw):
 
     df_raw = _overview_normalize_and_ensure_columns(df_raw)
 
-    # Tahun & Bulan ikut apa yang benar-benar ada di data (kolom tahun & masa_jasa),
-    # bukan daftar statis yang dipadatkan secara manual.
+    # Gunakan tahun dan bulan yang benar-benar ada di data, bukan daftar statis.
     year_options = ["All Year"] + sorted(
         (int(y) for y in df_raw["tahun"].dropna().unique()), reverse=True
     )
-    # _overview_normalize_and_ensure_columns() sudah menyamakan masa_jasa
-    # jadi nama bulan penuh ("June"), jadi cukup cocokkan ke urutan kalender BULAN.
+    # Cocokkan bulan hasil normalisasi dengan urutan kalender BULAN.
     masa_jasa_values = set(df_raw["masa_jasa"].dropna().unique().tolist())
     month_options = ["All Month"] + [m for m in BULAN if m in masa_jasa_values]
     perusahaan_options = ["All Perusahaan"] + sorted(df_raw["perusahaan"].dropna().unique().tolist())
 
-    # Terminal & Kode Ruang menyesuaikan Perusahaan yang sedang dipilih di
-    # dropdown (termasuk pilihan yang belum di-"Terapkan Filter"), dan juga
-    # saling menyaring satu sama lain — supaya tidak bisa memilih kombinasi
-    # Terminal + Kode Ruang yang tidak pernah ada di data (hasilnya 0).
+    # Filter opsi dropdown Terminal dan Kode Ruang secara dinamis berdasarkan Perusahaan yang dipilih.
     sel_pend_perusahaan = st.session_state.get("f_pend_perusahaan", "All Perusahaan")
     sel_pend_terminal = st.session_state.get("f_pend_terminal", "All Terminal")
     sel_pend_kode_ruang = st.session_state.get("f_pend_kode_ruang", "All Kode Ruang")
@@ -1059,7 +1042,7 @@ def page_overview(df_raw):
     if sel_perusahaan != "All Perusahaan": df = df[df["perusahaan"]  == sel_perusahaan]
     if sel_kode_ruang != "All Kode Ruang": df = df[df["kode_ruang"]  == sel_kode_ruang]
 
-    # Periode pembanding (tahun sebelumnya, dengan filter terminal & bulan yang sama)
+    # Bandingkan dengan bulan/terminal yang sama pada tahun sebelumnya.
     current_year = int(sel_tahun) if sel_tahun != "All Year" else (int(df["tahun"].max()) if not df.empty else None)
     prior_df = df_raw.iloc[0:0]
     if current_year is not None:
@@ -1086,18 +1069,14 @@ def page_overview(df_raw):
     def _safe_mean(col): return df[col].mean() if col in df.columns and not df.empty else 0
 
     def _rev_per_sqm_sum(frame):
-        # Rev/Sqm card = SUM per baris dari (Total Kontribusi / Produksi M2),
-        # bukan rasio dari total agregat. Sesuai kolom "Rev /" di Excel
-        # sumber, yang dihitung per baris lalu dijumlahkan.
+        # Jumlahkan hasil pembagian Rev/Sqm per baris agar cocok dengan logika di Excel.
         if frame.empty or "kontribusi" not in frame.columns or "luas_sqm" not in frame.columns:
             return 0
         sqm = frame["luas_sqm"].replace(0, pd.NA)
         return (frame["kontribusi"] / sqm).fillna(0).sum()
 
     def _spending_per_pax_sum(frame):
-        # Spending/Pax card = SUM per baris dari (Total Kontribusi / Total Trafik),
-        # bukan rasio dari total agregat. Sesuai kolom "Spending / Pax" di Excel
-        # sumber, yang dihitung per baris lalu dijumlahkan.
+        # Jumlahkan hasil pembagian Spending/Pax per baris agar cocok dengan logika di Excel.
         if frame.empty or "kontribusi" not in frame.columns or "total_trafik" not in frame.columns:
             return 0
         kontribusi = pd.to_numeric(frame["kontribusi"], errors="coerce").fillna(0)
@@ -1130,8 +1109,7 @@ def page_overview(df_raw):
     contrib_val, contrib_scale = _compact_number(total_contribution)
     spend_val, spend_scale = _compact_number(spending_per_pax, decimals=0)
     revsqm_val, revsqm_scale = _compact_number(rev_per_sqm, decimals=2)
-    # Tampilkan ",0" hanya kalau memang ada pecahannya (90,7%), bukan untuk
-    # angka bulat seperti 100% yang tidak pernah ditulis "100,0%".
+    # Tampilkan koma hanya jika nilai persentase ACV bukan angka bulat.
     acv_decimals = 0 if float(round(avg_acv, 1)).is_integer() else 1
     acv_val, acv_scale = _compact_number(avg_acv, decimals=acv_decimals)
     traffic_val, traffic_scale = _compact_number(total_pax)
@@ -1205,9 +1183,7 @@ def page_overview(df_raw):
         )
         trend["month"] = trend["masa_jasa"].astype(str).str[:3]
 
-        # Skala mengikuti besar data asli (Ribu/Juta/Miliar/Triliun), bukan
-        # dipatok "Rp Miliar" terus — data kecil jadi mendekati nol & susah
-        # dibaca kalau dipaksa pakai skala miliar.
+        # Tentukan skala grafik tren secara dinamis sesuai dengan volume data.
         max_val = float(trend[["real_revenue", "revenue_sharing", "contribution"]].to_numpy().max() or 0)
         if max_val >= 1_000_000_000_000:
             divisor, unit_label = 1_000_000_000_000, "Rp Triliun"
@@ -1295,8 +1271,7 @@ def page_overview(df_raw):
         top_bidang = bidang_sum.idxmax() if len(bidang_sum) else "-"
         top_bidang_share = int((bidang_sum.max() / bidang_sum.sum()) * 100) if bidang_sum.sum() else 0
 
-        # Lease Contract — kontrak akan/sudah expired, supaya Overview
-        # mencerminkan kondisi bisnis lintas menu (bukan cuma data revenue).
+        # Ambil data anomali kontrak untuk peringatan lintas menu.
         try:
             contract_df, _ = _get_contract_source_data(df)
         except Exception:
@@ -1304,7 +1279,7 @@ def page_overview(df_raw):
         expiring_contracts = int((contract_df["Status"] == "Anomaly").sum()) if not contract_df.empty else 0
         expired_contracts = int((contract_df["Status"] == "Expired").sum()) if not contract_df.empty else 0
 
-        # Revenue Sharing — total periode aktif & kategori penyumbang terbesar.
+        # Ambil rincian revenue sharing untuk periode aktif.
         rs_detail = get_detail_revenue_sharing_data(df)
         total_rs = rs_detail["_pendapatan_rs"].sum() if not rs_detail.empty else 0
         rs_by_bidang = rs_detail.groupby("Service/SBU")["_pendapatan_rs"].sum() if not rs_detail.empty else pd.Series(dtype=float)
@@ -1404,7 +1379,7 @@ def page_overview(df_raw):
         first_item = 0 if total_rows == 0 else start_idx + 1
         last_item = min(end_idx, total_rows)
 
-        # Use new generic pagination module
+        # Gunakan modul paginasi umum yang baru
         st.markdown('<div class="overview-detail-pagination-footer-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
         ov_page_input = render_pagination(
             current_page=st.session_state.overview_detail_page,
@@ -1420,12 +1395,12 @@ def page_overview(df_raw):
                 st.session_state.overview_detail_page = new_page
                 st.rerun()
 
-        # Mount Javascript listener
+        # Pasang event listener JavaScript
         patch_pagination()
 
 
 # ══════════════════════════════════════════════
-# MAIN — ROUTING
+# ALUR UTAMA (ROUTING)
 # ══════════════════════════════════════════════
 def init_dashboard_state():
     init_auth_state()
@@ -1448,9 +1423,7 @@ def init_dashboard_state():
 
 
 def render_dashboard_app():
-    # ?ap_logout=1 / ?ap_keepalive=1 are handled earlier, in login/app.py's
-    # main(), before this function is ever reached — see the comment there
-    # for why (it must run before the cookie/pending-session gate).
+    # Fungsi logout dan keepalive ditangani di bagian awal login/app.py.
     init_dashboard_state()
     inject_dashboard_css()
 
@@ -1472,12 +1445,7 @@ def render_dashboard_app():
 
     menu = st.session_state.active_menu
 
-    # Import Manager keeps action dialogs (view/download/reload/delete) open
-    # across reruns via session_state until JS detects the modal closing and
-    # signals it explicitly. If the user closes a dialog and switches menus
-    # before that signal arrives, the "open dialog" flag is left stale and
-    # would otherwise reappear the moment the user navigates back. Clear it
-    # whenever we're freshly entering Import Manager from a different menu.
+    # Bersihkan status dialog Import Manager saat berpindah menu.
     prev_menu = st.session_state.get("_prev_active_menu")
     if menu != prev_menu:
         st.session_state["_prev_active_menu"] = menu
@@ -1522,10 +1490,17 @@ def main():
 
     init_auth_state()
 
-    if os.getenv("DEV_BYPASS_LOGIN", "false").lower() == "true":
-        st.session_state.authenticated = True
-        st.session_state.user_name = st.session_state.get("user_name", "Developer")
-        st.session_state.user_role = st.session_state.get("user_role", Role.ADMIN)
+    if os.getenv("DEV_BYPASS_LOGIN", "false").lower() == "true" and not st.session_state.get("is_authenticated"):
+        st.session_state.is_authenticated = True
+        st.session_state.auth_user = {
+            "email": "admin@airport.com",
+            "name": "Developer",
+            "role": "Admin"
+        }
+        st.session_state.user_name = "Developer"
+        st.session_state.user_email = "admin@airport.com"
+        st.session_state.user_role = Role.ADMIN.value
+        st.session_state.login_role = Role.ADMIN.value
 
     if not is_authenticated():
         from login.app import render_current_page as render_login_page
